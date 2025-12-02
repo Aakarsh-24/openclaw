@@ -14,18 +14,26 @@ type TwilioRequester = {
   request: (options: TwilioRequestOptions) => Promise<unknown>;
 };
 
+export type TypingIndicatorResult = {
+  sent: boolean;
+  response?: unknown;
+  error?: unknown;
+};
+
 export async function sendTypingIndicator(
   client: TwilioRequester,
   runtime: RuntimeEnv,
   messageSid?: string,
-) {
+): Promise<TypingIndicatorResult> {
   // Best-effort WhatsApp typing indicator (public beta as of Nov 2025).
+  // Note: This API also marks the referenced message as read automatically.
+  // The typing indicator disappears after 25 seconds or when a response is sent.
   if (!messageSid) {
     logVerbose("Skipping typing indicator: missing MessageSid");
-    return;
+    return { sent: false };
   }
   try {
-    await client.request({
+    const response = await client.request({
       method: "post",
       uri: "https://messaging.twilio.com/v2/Indicators/Typing.json",
       form: {
@@ -33,11 +41,21 @@ export async function sendTypingIndicator(
         channel: "whatsapp",
       },
     });
-    logVerbose(`Sent typing indicator for inbound ${messageSid}`);
+    logVerbose(
+      `Sent typing indicator for inbound ${messageSid} (response: ${JSON.stringify(response)})`,
+    );
+    return { sent: true, response };
   } catch (err) {
-    if (isVerbose()) {
-      runtime.error(warn("Typing indicator failed (continuing without it)"));
-      runtime.error(err as Error);
+    // Always log typing indicator failures (not just in verbose mode) since
+    // this helps diagnose why read receipts/typing aren't working.
+    const errorMsg =
+      err instanceof Error ? err.message : JSON.stringify(err, null, 2);
+    runtime.error(
+      warn(`Typing indicator failed for ${messageSid}: ${errorMsg}`),
+    );
+    if (isVerbose() && err instanceof Error && err.stack) {
+      runtime.error(err.stack);
     }
+    return { sent: false, error: err };
   }
 }

@@ -117,7 +117,7 @@ This is the actual config running on @steipete's Mac (`~/.warelay/warelay.json`)
 Peter trusts you with a lot of power. Don't betray that trust.`,
       command: [
         "claude",
-        "--model", "claude-opus-4-5-20251101",   // or claude-sonnet-4-5 for faster/cheaper
+        "--model", "claude-opus-4-5-20251101",   // or claude-sonnet-4-5-20250929 for faster/cheaper
         "-p",
         "--output-format", "json",
         "--dangerously-skip-permissions",        // lets Claude run commands freely

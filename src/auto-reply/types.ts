@@ -1,5 +1,5 @@
 export type GetReplyOptions = {
-  onReplyStart?: () => Promise<void> | void;
+  onReplyStart?: () => Promise<unknown> | void;
 };
 
 export type ReplyPayload = {
