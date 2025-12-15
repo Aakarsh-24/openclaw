@@ -610,9 +610,13 @@ export async function getReplyFromConfig(
       ? (() => {
           const subject = sessionCtx.GroupSubject?.trim();
           const members = sessionCtx.GroupMembers?.trim();
+          const surface = sessionCtx.Surface?.trim().toLowerCase();
+          const surfaceLabel = surface
+            ? `${surface.at(0)?.toUpperCase() ?? ""}${surface.slice(1)}`
+            : "chat";
           const subjectLine = subject
-            ? `You are replying inside the WhatsApp group "${subject}".`
-            : "You are replying inside a WhatsApp group chat.";
+            ? `You are replying inside the ${surfaceLabel} group "${subject}".`
+            : `You are replying inside a ${surfaceLabel} group chat.`;
           const membersLine = members
             ? `Group members: ${members}.`
             : undefined;

@@ -38,6 +38,10 @@ import {
 import { CronService } from "../cron/service.js";
 import { resolveCronStorePath } from "../cron/store.js";
 import type { CronJobCreate, CronJobPatch } from "../cron/types.js";
+import {
+  monitorDiscordProvider,
+  sendMessageDiscord,
+} from "../discord/index.js";
 import { isVerbose } from "../globals.js";
 import { onAgentEvent } from "../infra/agent-events.js";
 import { startGatewayBonjourAdvertiser } from "../infra/bonjour.js";
@@ -390,7 +394,7 @@ function listSessionsFromStore(params: {
   const includeUnknown = opts.includeUnknown === true;
   const activeMinutes =
     typeof opts.activeMinutes === "number" &&
-    Number.isFinite(opts.activeMinutes)
+      Number.isFinite(opts.activeMinutes)
       ? Math.max(1, Math.floor(opts.activeMinutes))
       : undefined;
 
@@ -606,6 +610,8 @@ export async function startGatewayServer(
     const cfg = loadConfig();
     const telegramToken =
       process.env.TELEGRAM_BOT_TOKEN ?? cfg.telegram?.botToken ?? "";
+    const discordToken =
+      process.env.DISCORD_BOT_TOKEN ?? cfg.discord?.token ?? "";
 
     if (await webAuthExists()) {
       defaultRuntime.log("gateway: starting WhatsApp Web provider");
@@ -643,6 +649,26 @@ export async function startGatewayServer(
     } else {
       defaultRuntime.log(
         "gateway: skipping Telegram provider (no TELEGRAM_BOT_TOKEN/config)",
+      );
+    }
+
+    if (discordToken.trim().length > 0) {
+      defaultRuntime.log("gateway: starting Discord provider");
+      providerTasks.push(
+        monitorDiscordProvider({
+          token: discordToken.trim(),
+          runtime: defaultRuntime,
+          abortSignal: providerAbort.signal,
+          allowFrom: cfg.discord?.allowFrom,
+          requireMention: cfg.discord?.requireMention,
+          mediaMaxMb: cfg.discord?.mediaMaxMb,
+        }).catch((err) =>
+          logError(`discord provider exited: ${formatError(err)}`),
+        ),
+      );
+    } else {
+      defaultRuntime.log(
+        "gateway: skipping Discord provider (no DISCORD_BOT_TOKEN/config)",
       );
     }
   };
@@ -911,10 +937,10 @@ export async function startGatewayServer(
                   ? a.content
                   : ArrayBuffer.isView(a?.content)
                     ? Buffer.from(
-                        a.content.buffer,
-                        a.content.byteOffset,
-                        a.content.byteLength,
-                      ).toString("base64")
+                      a.content.buffer,
+                      a.content.byteOffset,
+                      a.content.byteLength,
+                    ).toString("base64")
                     : undefined,
             })) ?? [];
 
@@ -1120,7 +1146,9 @@ export async function startGatewayServer(
           typeof link?.channel === "string" ? link.channel.trim() : "";
         const channel = channelRaw.toLowerCase();
         const provider =
-          channel === "whatsapp" || channel === "telegram"
+          channel === "whatsapp" ||
+            channel === "telegram" ||
+            channel === "discord"
             ? channel
             : undefined;
         const to =
@@ -1416,10 +1444,10 @@ export async function startGatewayServer(
             state: "final",
             message: text
               ? {
-                  role: "assistant",
-                  content: [{ type: "text", text }],
-                  timestamp: Date.now(),
-                }
+                role: "assistant",
+                content: [{ type: "text", text }],
+                timestamp: Date.now(),
+              }
               : undefined,
           };
           broadcast("chat", payload);
@@ -1870,10 +1898,10 @@ export async function startGatewayServer(
                     ? a.content
                     : ArrayBuffer.isView(a?.content)
                       ? Buffer.from(
-                          a.content.buffer,
-                          a.content.byteOffset,
-                          a.content.byteLength,
-                        ).toString("base64")
+                        a.content.buffer,
+                        a.content.byteOffset,
+                        a.content.byteLength,
+                      ).toString("base64")
                       : undefined,
               })) ?? [];
             let messageWithAttachments = p.message;
@@ -2192,9 +2220,9 @@ export async function startGatewayServer(
             const existing = store[key];
             const next: SessionEntry = existing
               ? {
-                  ...existing,
-                  updatedAt: Math.max(existing.updatedAt ?? 0, now),
-                }
+                ...existing,
+                updatedAt: Math.max(existing.updatedAt ?? 0, now),
+              }
               : { sessionId: randomUUID(), updatedAt: now };
 
             if ("thinkingLevel" in p) {
@@ -2305,14 +2333,14 @@ export async function startGatewayServer(
               typeof params.platform === "string" ? params.platform : undefined;
             const lastInputSeconds =
               typeof params.lastInputSeconds === "number" &&
-              Number.isFinite(params.lastInputSeconds)
+                Number.isFinite(params.lastInputSeconds)
                 ? params.lastInputSeconds
                 : undefined;
             const reason =
               typeof params.reason === "string" ? params.reason : undefined;
             const tags =
               Array.isArray(params.tags) &&
-              params.tags.every((t) => typeof t === "string")
+                params.tags.every((t) => typeof t === "string")
                 ? (params.tags as string[])
                 : undefined;
             updateSystemPresence({
@@ -2639,12 +2667,12 @@ export async function startGatewayServer(
               const payload =
                 typeof res.payloadJSON === "string" && res.payloadJSON.trim()
                   ? (() => {
-                      try {
-                        return JSON.parse(res.payloadJSON) as unknown;
-                      } catch {
-                        return { payloadJSON: res.payloadJSON };
-                      }
-                    })()
+                    try {
+                      return JSON.parse(res.payloadJSON) as unknown;
+                    } catch {
+                      return { payloadJSON: res.payloadJSON };
+                    }
+                  })()
                   : undefined;
               respond(
                 true,
@@ -2707,6 +2735,23 @@ export async function startGatewayServer(
                   runId: idem,
                   messageId: result.messageId,
                   chatId: result.chatId,
+                  provider,
+                };
+                dedupe.set(`send:${idem}`, {
+                  ts: Date.now(),
+                  ok: true,
+                  payload,
+                });
+                respond(true, payload, undefined, { provider });
+              } else if (provider === "discord") {
+                const result = await sendMessageDiscord(to, message, {
+                  mediaUrl: params.mediaUrl,
+                  token: process.env.DISCORD_BOT_TOKEN,
+                });
+                const payload = {
+                  runId: idem,
+                  messageId: result.messageId,
+                  channelId: result.channelId,
                   provider,
                 };
                 dedupe.set(`send:${idem}`, {
@@ -2845,6 +2890,7 @@ export async function startGatewayServer(
               if (
                 requestedChannel === "whatsapp" ||
                 requestedChannel === "telegram" ||
+                requestedChannel === "discord" ||
                 requestedChannel === "webchat"
               ) {
                 return requestedChannel;
@@ -2862,7 +2908,8 @@ export async function startGatewayServer(
               if (explicit) return explicit;
               if (
                 resolvedChannel === "whatsapp" ||
-                resolvedChannel === "telegram"
+                resolvedChannel === "telegram" ||
+                resolvedChannel === "discord"
               ) {
                 return lastTo || undefined;
               }
@@ -3065,7 +3112,7 @@ export async function startGatewayServer(
         }
       }
       clients.clear();
-      await stopBrowserControlServer().catch(() => {});
+      await stopBrowserControlServer().catch(() => { });
       await Promise.allSettled(providerTasks);
       await new Promise<void>((resolve) => wss.close(() => resolve()));
       await new Promise<void>((resolve, reject) =>
