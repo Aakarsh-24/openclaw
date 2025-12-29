@@ -136,6 +136,7 @@ Example:
   - [Sessions](./session.md)
   - [Cron + wakeups](./cron.md)
   - [Security](./security.md)
+  - [Manual E2E smoke tests](./e2e.md)
   - [Troubleshooting](./troubleshooting.md)
 
 ## The name
