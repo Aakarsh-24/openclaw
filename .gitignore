@@ -45,3 +45,39 @@ apps/ios/*.mobileprovision
 
 # Qoder IDE artifacts
 .qoder/
+
+# Local config files with secrets
+models.json
+settings.json
+
+# Debug and test scripts (temp development)
+test-*.mjs
+test-*.js
+debug-*.js
+fix-*.js
+fix-*.js
+simulate-*.mjs
+regenerate-*.js
+create-*.js
+load-*.mjs
+reproduce-*.mjs
+
+# Documentation drafts
+*-SUMMARY.md
+*-fix-summary.md
+investigation.md
+
+# Deployment and service files (local)
+QUICK_DEPLOY.sh
+*.service
+ecosystem.config.cjs
+
+# Local backup files
+*.zip
+*-backup.zip
+
+# Transcription cache
+.transcriptions/
+
+# Temporary directories
+temp_/
