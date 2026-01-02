@@ -94,3 +94,6 @@ docs/project_gathering/
 # Deep research working files (generated)
 docs/sdd/
 runs/
+.flows/
+prompts/
+sdd-flow/
