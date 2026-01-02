@@ -55,6 +55,16 @@ function candidateBinDirs(opts: EnsureClawdisPathOpts): string[] {
 
   const candidates: string[] = [];
 
+  // Always prefer the directory of the current executable (keeps correct Node first).
+  try {
+    const execDir = path.dirname(execPath);
+    if (isExecutable(execPath) && isDirectory(execDir)) {
+      candidates.push(execDir);
+    }
+  } catch {
+    // ignore
+  }
+
   // Bun bundled (macOS app): `clawdis` lives in the Relay dir (process.execPath).
   try {
     const execDir = path.dirname(execPath);
@@ -74,6 +84,7 @@ function candidateBinDirs(opts: EnsureClawdisPathOpts): string[] {
   if (platform === "darwin") {
     candidates.push(path.join(homeDir, "Library", "pnpm"));
   }
+  candidates.push(path.join(homeDir, ".local", "bin"));
   candidates.push(path.join(homeDir, ".local", "share", "pnpm"));
   candidates.push(path.join(homeDir, ".bun", "bin"));
   candidates.push(path.join(homeDir, ".yarn", "bin"));

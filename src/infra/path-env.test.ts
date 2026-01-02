@@ -7,6 +7,39 @@ import { describe, expect, it } from "vitest";
 import { ensureClawdisCliOnPath } from "./path-env.js";
 
 describe("ensureClawdisCliOnPath", () => {
+  it("prepends the execPath directory even without a sibling clawdis", async () => {
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "clawdis-path-"));
+    try {
+      const binDir = path.join(tmp, "bin");
+      await fs.mkdir(binDir, { recursive: true });
+      const nodePath = path.join(binDir, "node");
+      await fs.writeFile(nodePath, "#!/bin/sh\necho ok\n", "utf-8");
+      await fs.chmod(nodePath, 0o755);
+
+      const originalPath = process.env.PATH;
+      const originalFlag = process.env.CLAWDIS_PATH_BOOTSTRAPPED;
+      process.env.PATH = "/usr/bin";
+      delete process.env.CLAWDIS_PATH_BOOTSTRAPPED;
+      try {
+        ensureClawdisCliOnPath({
+          execPath: nodePath,
+          cwd: tmp,
+          homeDir: tmp,
+          platform: "linux",
+        });
+        const updated = process.env.PATH ?? "";
+        expect(updated.split(path.delimiter)[0]).toBe(binDir);
+      } finally {
+        process.env.PATH = originalPath;
+        if (originalFlag === undefined)
+          delete process.env.CLAWDIS_PATH_BOOTSTRAPPED;
+        else process.env.CLAWDIS_PATH_BOOTSTRAPPED = originalFlag;
+      }
+    } finally {
+      await fs.rm(tmp, { recursive: true, force: true });
+    }
+  });
+
   it("prepends the bundled Relay dir when a sibling clawdis exists", async () => {
     const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "clawdis-path-"));
     try {
