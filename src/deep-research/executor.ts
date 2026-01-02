@@ -7,7 +7,8 @@ import { spawn } from "node:child_process";
 import { access, constants, readFile } from "node:fs/promises";
 import path from "node:path";
 
-import { loadConfig } from "../config/config.js";
+import { DEFAULT_DEEP_RESEARCH_CLI_PATH, loadConfig } from "../config/config.js";
+import { normalizeDeepResearchTopic } from "./topic.js";
 
 export interface ExecuteOptions {
   topic: string;
@@ -25,17 +26,41 @@ export interface ExecuteResult {
   stderr: string;
 }
 
+async function findCliOnPath(command: string): Promise<string | null> {
+  const entries = (process.env.PATH ?? "")
+    .split(path.delimiter)
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+
+  for (const entry of entries) {
+    const candidate = path.join(entry, command);
+    try {
+      await access(candidate, constants.X_OK);
+      return candidate;
+    } catch {
+      // continue searching PATH
+    }
+  }
+
+  return null;
+}
+
 /**
  * Validate CLI exists and is executable
  */
 export async function validateCli(
   cliPath: string,
-): Promise<{ valid: boolean; error?: string }> {
+): Promise<{ valid: boolean; error?: string; resolvedPath?: string }> {
   try {
     await access(cliPath, constants.X_OK);
-    return { valid: true };
+    return { valid: true, resolvedPath: cliPath };
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === "ENOENT") {
+      const fallback = await findCliOnPath(path.basename(cliPath));
+      if (fallback) {
+        return { valid: true, resolvedPath: fallback };
+      }
       return { valid: false, error: `CLI not found: ${cliPath}` };
     }
     return { valid: false, error: `CLI not executable: ${cliPath}` };
@@ -50,13 +75,26 @@ export async function executeDeepResearch(
   options: ExecuteOptions,
 ): Promise<ExecuteResult> {
   const cfg = loadConfig();
-  const cliPath =
-    cfg.deepResearch?.cliPath ??
-    "/home/almaz/TOOLS/gemini_deep_research/gdr.sh";
+  const cliPath = cfg.deepResearch?.cliPath ?? DEFAULT_DEEP_RESEARCH_CLI_PATH;
   const dryRun = options.dryRun ?? cfg.deepResearch?.dryRun ?? true;
   const outputLanguage =
     options.outputLanguage ?? cfg.deepResearch?.outputLanguage ?? "auto";
   const timeoutMs = options.timeoutMs ?? 20 * 60 * 1000;
+
+  const normalized = normalizeDeepResearchTopic(options.topic);
+  if (!normalized) {
+    return {
+      success: false,
+      error: "Empty topic",
+      stdout: "",
+      stderr: "",
+    };
+  }
+  if (normalized.truncated) {
+    console.log(
+      `[deep-research] Topic truncated to ${normalized.topic.length} chars`,
+    );
+  }
 
   const validation = await validateCli(cliPath);
   if (!validation.valid) {
@@ -67,6 +105,7 @@ export async function executeDeepResearch(
       stderr: "",
     };
   }
+  const resolvedCliPath = validation.resolvedPath ?? cliPath;
 
   // Build command arguments
   const args: string[] = [];
@@ -81,14 +120,16 @@ export async function executeDeepResearch(
     args.push("--mode", "stream");
   }
 
-  args.push("--prompt", options.topic);
+  args.push("--prompt", normalized.topic);
   args.push("--publish");
 
   if (outputLanguage !== "auto") {
     args.push("--output-language", outputLanguage);
   }
 
-  console.log(`[deep-research] Executing: ${cliPath} ${args.join(" ")}`);
+  console.log(
+    `[deep-research] Executing: ${resolvedCliPath} ${args.join(" ")}`,
+  );
 
   return new Promise((resolve) => {
     const stdoutChunks: string[] = [];
@@ -98,6 +139,7 @@ export async function executeDeepResearch(
     let stdoutBuffer = "";
     let finished = false;
     let timeoutId: NodeJS.Timeout | undefined;
+    const baseDir = path.dirname(resolvedCliPath);
 
     const finish = (result: ExecuteResult) => {
       if (finished) return;
@@ -108,10 +150,11 @@ export async function executeDeepResearch(
       resolve(result);
     };
 
-    const proc = spawn(cliPath, args, {
-      cwd: path.dirname(cliPath),
+    const proc = spawn(resolvedCliPath, args, {
+      cwd: baseDir,
       env: { ...process.env },
       stdio: ["ignore", "pipe", "pipe"],
+      shell: false,
     });
 
     timeoutId = setTimeout(() => {
@@ -165,10 +208,10 @@ export async function executeDeepResearch(
       let resolvedResultJsonPath = resultJsonPath;
 
       if (!success && dryRun && !resolvedResultJsonPath) {
-        const fallbackPath = path.join(path.dirname(cliPath), dryRunFallbackResult);
+        const fallbackPath = path.join(baseDir, dryRunFallbackResult);
         try {
           await access(fallbackPath, constants.R_OK);
-          resolvedResultJsonPath = dryRunFallbackResult;
+          resolvedResultJsonPath = fallbackPath;
           resolvedSuccess = true;
           resolvedError = undefined;
           if (!runId) {
@@ -183,6 +226,9 @@ export async function executeDeepResearch(
         } catch {
           // Keep failure as-is if fixture is missing.
         }
+      }
+      if (resolvedResultJsonPath && !resolvedResultJsonPath.startsWith("/")) {
+        resolvedResultJsonPath = path.join(baseDir, resolvedResultJsonPath);
       }
 
       finish({
