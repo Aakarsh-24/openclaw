@@ -49,6 +49,7 @@ import {
   ensureSessionHeader,
   formatAssistantErrorText,
   sanitizeSessionMessagesImages,
+  sanitizeSessionMessagesForGoogle,
 } from "./pi-embedded-helpers.js";
 import { subscribeEmbeddedPiSession } from "./pi-embedded-subscribe.js";
 import { extractAssistantText } from "./pi-embedded-utils.js";
@@ -561,8 +562,16 @@ async function runEmbeddedPiAgentOnce(
           await loadWorkspaceBootstrapFiles(resolvedWorkspace);
         const contextFiles = buildBootstrapContextFiles(bootstrapFiles);
         const promptSkills = resolvePromptSkills(skillsSnapshot, skillEntries);
+        const modelApi =
+          model && typeof model === "object" && "api" in model
+            ? (model as { api?: string }).api
+            : undefined;
+        const isGoogleModel =
+          modelApi === "google-generative-ai" || provider === "google";
         const tools = createClawdisCodingTools({
           bash: params.config?.agent?.bash,
+          stripAnyOf: isGoogleModel,
+          sanitizeForGoogle: isGoogleModel,
         });
         const machineName = await getMachineDisplayName();
         const runtimeInfo = {
@@ -611,10 +620,13 @@ async function runEmbeddedPiAgentOnce(
           contextFiles,
         });
 
-        const prior = await sanitizeSessionMessagesImages(
+        let prior = await sanitizeSessionMessagesImages(
           session.messages,
           "session:history",
         );
+        if (isGoogleModel) {
+          prior = sanitizeSessionMessagesForGoogle(prior);
+        }
         if (prior.length > 0) {
           session.agent.replaceMessages(prior);
         }
