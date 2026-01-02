@@ -3,6 +3,8 @@ import fs from "node:fs/promises";
 
 import type { AgentTool, AgentToolResult } from "@mariozechner/pi-ai";
 import { Type } from "@sinclair/typebox";
+
+import { createAtlasTool } from "./atlas-tool.js";
 import {
   browserCloseTab,
   browserFocusTab,
@@ -1515,5 +1517,6 @@ export function createClawdisTools(): AnyAgentTool[] {
     createCronTool(),
     createDiscordTool(),
     createGatewayTool(),
+    createAtlasTool(),
   ];
 }
