@@ -54,7 +54,7 @@ Clawdis already uses:
 
 For the clawd browser-control server, use "family" ports:
 - Browser control HTTP API: `18791` (bridge + 1)
-- Browser CDP/debugging port: `18792` (control + 1)
+- Browser CDP/debugging ports: `18800-18899` (one per profile, auto-allocated)
 - Canvas host HTTP: `18793` by default, mounted at `/__clawdis__/canvas/`
 
 The user usually only configures the **control URL** (port `18791`). CDP is an
@@ -153,6 +153,58 @@ Hooks (arming):
 Clawdis should treat "open/closed" as a health check (fast path), not by scanning
 global Chrome processes (avoid false positives).
 
+## Multi-profile support
+
+Clawdis supports multiple named browser profiles, each with:
+- Dedicated CDP port (auto-allocated from 18800-18899)
+- Persistent user data directory (`~/.clawdis/browser/<name>/user-data/`)
+- Unique color for visual distinction
+
+### Configuration
+
+```json
+{
+  "browser": {
+    "enabled": true,
+    "defaultProfile": "clawd",
+    "profiles": {
+      "clawd": { "cdpPort": 18800, "color": "#FF4500" },
+      "work": { "cdpPort": 18801, "color": "#0066CC" }
+    }
+  }
+}
+```
+
+### Profile actions
+
+- `GET /profiles` — list all profiles with status
+- `POST /profiles/create` `{ name, color? }` — create new profile (auto-allocates port)
+- `DELETE /profiles/:name` — delete profile (stops browser, removes user data)
+- `POST /reset-profile?profile=<name>` — kill orphan process on profile's port
+
+### Profile parameter
+
+All existing endpoints accept optional `?profile=<name>` query parameter:
+- `GET /?profile=work` — status for work profile
+- `POST /start?profile=work` — start work profile browser
+- `GET /tabs?profile=work` — list tabs for work profile
+- etc.
+
+When `profile` is omitted, uses `browser.defaultProfile` (defaults to "clawd").
+
+### Profile naming rules
+
+- Lowercase alphanumeric characters and hyphens only
+- Must start with a letter or number (not a hyphen)
+- Maximum 64 characters
+- Examples: `clawd`, `work`, `my-project-1`
+
+### Port allocation
+
+Ports are allocated from range 18800-18899 (~100 profiles max). This is far more
+than practical use — memory and CPU exhaustion occur well before port exhaustion.
+Ports are allocated once at profile creation and persisted permanently.
+
 ## Interaction with the agent (clawd)
 
 The agent should use browser tools only when:
@@ -167,6 +219,13 @@ The agent should not assume tabs are ephemeral. It should:
 - avoid opening duplicate tabs unless asked
 
 ## CLI quick reference (one example each)
+
+All commands accept `--profile <name>` to target a specific profile (default: `clawd`).
+
+Profile management:
+- `clawdis browser profiles`
+- `clawdis browser create-profile --name work`
+- `clawdis browser delete-profile --name work`
 
 Basics:
 - `clawdis browser status`

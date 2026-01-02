@@ -1,5 +1,27 @@
 import type express from "express";
 
+import type { BrowserRouteContext, ProfileContext } from "../server-context.js";
+
+/**
+ * Extract profile name from query string and get profile context.
+ * Returns the profile context or null if the profile doesn't exist.
+ */
+export function getProfileContext(
+  req: express.Request,
+  ctx: BrowserRouteContext,
+): ProfileContext | { error: string; status: number } {
+  const profileName =
+    typeof req.query.profile === "string"
+      ? req.query.profile.trim()
+      : undefined;
+
+  try {
+    return ctx.forProfile(profileName);
+  } catch (err) {
+    return { error: String(err), status: 404 };
+  }
+}
+
 export function jsonError(
   res: express.Response,
   status: number,

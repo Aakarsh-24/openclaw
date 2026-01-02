@@ -19,6 +19,10 @@ export function registerBrowserCli(program: Command) {
       "--url <url>",
       "Override browser control URL (default from ~/.clawdis/clawdis.json)",
     )
+    .option(
+      "--profile <name>",
+      "Target a specific browser profile (default from config)",
+    )
     .option("--json", "Output machine-readable JSON", false)
     .addHelpText(
       "after",

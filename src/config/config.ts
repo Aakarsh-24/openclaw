@@ -63,6 +63,13 @@ export type WhatsAppConfig = {
   allowFrom?: string[];
 };
 
+export type BrowserProfileConfig = {
+  /** CDP port for this profile. Allocated once at creation, persisted permanently. */
+  cdpPort: number;
+  /** Profile color (hex). Auto-assigned at creation. */
+  color: string;
+};
+
 export type BrowserConfig = {
   enabled?: boolean;
   /** Base URL of the clawd browser control server. Default: http://127.0.0.1:18791 */
@@ -79,6 +86,10 @@ export type BrowserConfig = {
   noSandbox?: boolean;
   /** If true: never launch; only attach to an existing browser. Default: false */
   attachOnly?: boolean;
+  /** Default profile to use when profile param is omitted. Default: "clawd" */
+  defaultProfile?: string;
+  /** Named browser profiles with explicit CDP ports. */
+  profiles?: Record<string, BrowserProfileConfig>;
 };
 
 export type CronConfig = {
@@ -851,6 +862,21 @@ const ClawdisSchema = z.object({
       headless: z.boolean().optional(),
       noSandbox: z.boolean().optional(),
       attachOnly: z.boolean().optional(),
+      defaultProfile: z.string().optional(),
+      profiles: z
+        .record(
+          z
+            .string()
+            .regex(
+              /^[a-z0-9-]+$/,
+              "Profile names must be alphanumeric with hyphens only",
+            ),
+          z.object({
+            cdpPort: z.number().int().min(1).max(65535),
+            color: HexColorSchema,
+          }),
+        )
+        .optional(),
     })
     .optional(),
   ui: z

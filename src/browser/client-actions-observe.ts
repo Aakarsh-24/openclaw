@@ -4,11 +4,12 @@ import type { BrowserConsoleMessage } from "./pw-session.js";
 
 export async function browserConsoleMessages(
   baseUrl: string,
-  opts: { level?: string; targetId?: string } = {},
+  opts: { level?: string; targetId?: string; profile?: string } = {},
 ): Promise<{ ok: true; messages: BrowserConsoleMessage[]; targetId: string }> {
   const q = new URLSearchParams();
   if (opts.level) q.set("level", opts.level);
   if (opts.targetId) q.set("targetId", opts.targetId);
+  if (opts.profile) q.set("profile", opts.profile);
   const suffix = q.toString() ? `?${q.toString()}` : "";
   return await fetchBrowserJson<{
     ok: true;
@@ -19,12 +20,12 @@ export async function browserConsoleMessages(
 
 export async function browserPdfSave(
   baseUrl: string,
-  opts: { targetId?: string } = {},
+  opts: { targetId?: string; profile?: string } = {},
 ): Promise<BrowserActionPathResult> {
   return await fetchBrowserJson<BrowserActionPathResult>(`${baseUrl}/pdf`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ targetId: opts.targetId }),
+    body: JSON.stringify({ targetId: opts.targetId, profile: opts.profile }),
     timeoutMs: 20000,
   });
 }

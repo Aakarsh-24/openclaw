@@ -57,12 +57,16 @@ export type BrowserActResponse = {
 
 export async function browserNavigate(
   baseUrl: string,
-  opts: { url: string; targetId?: string },
+  opts: { url: string; targetId?: string; profile?: string },
 ): Promise<BrowserActionTabResult> {
   return await fetchBrowserJson<BrowserActionTabResult>(`${baseUrl}/navigate`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ url: opts.url, targetId: opts.targetId }),
+    body: JSON.stringify({
+      url: opts.url,
+      targetId: opts.targetId,
+      profile: opts.profile,
+    }),
     timeoutMs: 20000,
   });
 }
@@ -74,6 +78,7 @@ export async function browserArmDialog(
     promptText?: string;
     targetId?: string;
     timeoutMs?: number;
+    profile?: string;
   },
 ): Promise<BrowserActionOk> {
   return await fetchBrowserJson<BrowserActionOk>(`${baseUrl}/hooks/dialog`, {
@@ -84,6 +89,7 @@ export async function browserArmDialog(
       promptText: opts.promptText,
       targetId: opts.targetId,
       timeoutMs: opts.timeoutMs,
+      profile: opts.profile,
     }),
     timeoutMs: 20000,
   });
@@ -98,6 +104,7 @@ export async function browserArmFileChooser(
     element?: string;
     targetId?: string;
     timeoutMs?: number;
+    profile?: string;
   },
 ): Promise<BrowserActionOk> {
   return await fetchBrowserJson<BrowserActionOk>(
@@ -112,6 +119,7 @@ export async function browserArmFileChooser(
         element: opts.element,
         targetId: opts.targetId,
         timeoutMs: opts.timeoutMs,
+        profile: opts.profile,
       }),
       timeoutMs: 20000,
     },
@@ -121,11 +129,12 @@ export async function browserArmFileChooser(
 export async function browserAct(
   baseUrl: string,
   req: BrowserActRequest,
+  opts?: { profile?: string },
 ): Promise<BrowserActResponse> {
   return await fetchBrowserJson<BrowserActResponse>(`${baseUrl}/act`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(req),
+    body: JSON.stringify({ ...req, profile: opts?.profile }),
     timeoutMs: 20000,
   });
 }
@@ -138,6 +147,7 @@ export async function browserScreenshotAction(
     ref?: string;
     element?: string;
     type?: "png" | "jpeg";
+    profile?: string;
   },
 ): Promise<BrowserActionPathResult> {
   return await fetchBrowserJson<BrowserActionPathResult>(
@@ -151,6 +161,7 @@ export async function browserScreenshotAction(
         ref: opts.ref,
         element: opts.element,
         type: opts.type,
+        profile: opts.profile,
       }),
       timeoutMs: 20000,
     },

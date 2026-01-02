@@ -5,8 +5,12 @@ import type { AgentTool, AgentToolResult } from "@mariozechner/pi-ai";
 import { Type } from "@sinclair/typebox";
 import {
   browserCloseTab,
+  browserCreateProfile,
+  browserDeleteProfile,
   browserFocusTab,
   browserOpenTab,
+  browserProfiles,
+  browserResetProfile,
   browserSnapshot,
   browserStart,
   browserStatus,
@@ -414,39 +418,67 @@ const BrowserActSchema = Type.Union([
 
 const BrowserToolSchema = Type.Union([
   Type.Object({
+    action: Type.Literal("profiles"),
+    controlUrl: Type.Optional(Type.String()),
+  }),
+  Type.Object({
     action: Type.Literal("status"),
     controlUrl: Type.Optional(Type.String()),
+    profile: Type.Optional(Type.String()),
   }),
   Type.Object({
     action: Type.Literal("start"),
     controlUrl: Type.Optional(Type.String()),
+    profile: Type.Optional(Type.String()),
   }),
   Type.Object({
     action: Type.Literal("stop"),
     controlUrl: Type.Optional(Type.String()),
+    profile: Type.Optional(Type.String()),
+  }),
+  Type.Object({
+    action: Type.Literal("reset-profile"),
+    controlUrl: Type.Optional(Type.String()),
+    profile: Type.Optional(Type.String()),
+  }),
+  Type.Object({
+    action: Type.Literal("create-profile"),
+    controlUrl: Type.Optional(Type.String()),
+    name: Type.String(),
+    color: Type.Optional(Type.String()),
+  }),
+  Type.Object({
+    action: Type.Literal("delete-profile"),
+    controlUrl: Type.Optional(Type.String()),
+    profile: Type.String(),
   }),
   Type.Object({
     action: Type.Literal("tabs"),
     controlUrl: Type.Optional(Type.String()),
+    profile: Type.Optional(Type.String()),
   }),
   Type.Object({
     action: Type.Literal("open"),
     controlUrl: Type.Optional(Type.String()),
+    profile: Type.Optional(Type.String()),
     targetUrl: Type.String(),
   }),
   Type.Object({
     action: Type.Literal("focus"),
     controlUrl: Type.Optional(Type.String()),
+    profile: Type.Optional(Type.String()),
     targetId: Type.String(),
   }),
   Type.Object({
     action: Type.Literal("close"),
     controlUrl: Type.Optional(Type.String()),
+    profile: Type.Optional(Type.String()),
     targetId: Type.Optional(Type.String()),
   }),
   Type.Object({
     action: Type.Literal("snapshot"),
     controlUrl: Type.Optional(Type.String()),
+    profile: Type.Optional(Type.String()),
     format: Type.Optional(
       Type.Union([Type.Literal("aria"), Type.Literal("ai")]),
     ),
@@ -456,6 +488,7 @@ const BrowserToolSchema = Type.Union([
   Type.Object({
     action: Type.Literal("screenshot"),
     controlUrl: Type.Optional(Type.String()),
+    profile: Type.Optional(Type.String()),
     targetId: Type.Optional(Type.String()),
     fullPage: Type.Optional(Type.Boolean()),
     ref: Type.Optional(Type.String()),
@@ -467,23 +500,27 @@ const BrowserToolSchema = Type.Union([
   Type.Object({
     action: Type.Literal("navigate"),
     controlUrl: Type.Optional(Type.String()),
+    profile: Type.Optional(Type.String()),
     targetUrl: Type.String(),
     targetId: Type.Optional(Type.String()),
   }),
   Type.Object({
     action: Type.Literal("console"),
     controlUrl: Type.Optional(Type.String()),
+    profile: Type.Optional(Type.String()),
     level: Type.Optional(Type.String()),
     targetId: Type.Optional(Type.String()),
   }),
   Type.Object({
     action: Type.Literal("pdf"),
     controlUrl: Type.Optional(Type.String()),
+    profile: Type.Optional(Type.String()),
     targetId: Type.Optional(Type.String()),
   }),
   Type.Object({
     action: Type.Literal("upload"),
     controlUrl: Type.Optional(Type.String()),
+    profile: Type.Optional(Type.String()),
     paths: Type.Array(Type.String()),
     ref: Type.Optional(Type.String()),
     inputRef: Type.Optional(Type.String()),
@@ -494,6 +531,7 @@ const BrowserToolSchema = Type.Union([
   Type.Object({
     action: Type.Literal("dialog"),
     controlUrl: Type.Optional(Type.String()),
+    profile: Type.Optional(Type.String()),
     accept: Type.Boolean(),
     promptText: Type.Optional(Type.String()),
     targetId: Type.Optional(Type.String()),
@@ -502,6 +540,7 @@ const BrowserToolSchema = Type.Union([
   Type.Object({
     action: Type.Literal("act"),
     controlUrl: Type.Optional(Type.String()),
+    profile: Type.Optional(Type.String()),
     request: BrowserActSchema,
   }),
 ]);
@@ -518,35 +557,58 @@ function createBrowserTool(): AnyAgentTool {
       const action = readStringParam(params, "action", { required: true });
       const controlUrl = readStringParam(params, "controlUrl");
       const baseUrl = resolveBrowserBaseUrl(controlUrl);
+      const profile = readStringParam(params, "profile");
+      const profileOpts = profile ? { profile } : undefined;
 
       switch (action) {
+        case "profiles":
+          return jsonResult({ profiles: await browserProfiles(baseUrl) });
         case "status":
-          return jsonResult(await browserStatus(baseUrl));
+          return jsonResult(await browserStatus(baseUrl, profileOpts));
         case "start":
-          await browserStart(baseUrl);
-          return jsonResult(await browserStatus(baseUrl));
+          await browserStart(baseUrl, profileOpts);
+          return jsonResult(await browserStatus(baseUrl, profileOpts));
         case "stop":
-          await browserStop(baseUrl);
-          return jsonResult(await browserStatus(baseUrl));
+          await browserStop(baseUrl, profileOpts);
+          return jsonResult(await browserStatus(baseUrl, profileOpts));
+        case "reset-profile":
+          return jsonResult(await browserResetProfile(baseUrl, profileOpts));
+        case "create-profile": {
+          const name = readStringParam(params, "name", { required: true });
+          const color = readStringParam(params, "color");
+          return jsonResult(
+            await browserCreateProfile(baseUrl, { name, color }),
+          );
+        }
+        case "delete-profile": {
+          const profileToDelete = readStringParam(params, "profile", {
+            required: true,
+          });
+          return jsonResult(
+            await browserDeleteProfile(baseUrl, profileToDelete),
+          );
+        }
         case "tabs":
-          return jsonResult({ tabs: await browserTabs(baseUrl) });
+          return jsonResult({ tabs: await browserTabs(baseUrl, profileOpts) });
         case "open": {
           const targetUrl = readStringParam(params, "targetUrl", {
             required: true,
           });
-          return jsonResult(await browserOpenTab(baseUrl, targetUrl));
+          return jsonResult(
+            await browserOpenTab(baseUrl, targetUrl, profileOpts),
+          );
         }
         case "focus": {
           const targetId = readStringParam(params, "targetId", {
             required: true,
           });
-          await browserFocusTab(baseUrl, targetId);
+          await browserFocusTab(baseUrl, targetId, profileOpts);
           return jsonResult({ ok: true });
         }
         case "close": {
           const targetId = readStringParam(params, "targetId");
-          if (targetId) await browserCloseTab(baseUrl, targetId);
-          else await browserAct(baseUrl, { kind: "close" });
+          if (targetId) await browserCloseTab(baseUrl, targetId, profileOpts);
+          else await browserAct(baseUrl, { kind: "close" }, profileOpts);
           return jsonResult({ ok: true });
         }
         case "snapshot": {
@@ -566,6 +628,7 @@ function createBrowserTool(): AnyAgentTool {
             format,
             targetId,
             limit,
+            profile,
           });
           if (snapshot.format === "ai") {
             return {
@@ -587,6 +650,7 @@ function createBrowserTool(): AnyAgentTool {
             ref,
             element,
             type,
+            profile,
           });
           return await imageResultFromFile({
             label: "browser:screenshot",
@@ -600,7 +664,11 @@ function createBrowserTool(): AnyAgentTool {
           });
           const targetId = readStringParam(params, "targetId");
           return jsonResult(
-            await browserNavigate(baseUrl, { url: targetUrl, targetId }),
+            await browserNavigate(baseUrl, {
+              url: targetUrl,
+              targetId,
+              profile,
+            }),
           );
         }
         case "console": {
@@ -611,7 +679,7 @@ function createBrowserTool(): AnyAgentTool {
               ? params.targetId.trim()
               : undefined;
           return jsonResult(
-            await browserConsoleMessages(baseUrl, { level, targetId }),
+            await browserConsoleMessages(baseUrl, { level, targetId, profile }),
           );
         }
         case "pdf": {
@@ -619,7 +687,7 @@ function createBrowserTool(): AnyAgentTool {
             typeof params.targetId === "string"
               ? params.targetId.trim()
               : undefined;
-          const result = await browserPdfSave(baseUrl, { targetId });
+          const result = await browserPdfSave(baseUrl, { targetId, profile });
           return {
             content: [{ type: "text", text: `FILE:${result.path}` }],
             details: result,
@@ -650,6 +718,7 @@ function createBrowserTool(): AnyAgentTool {
               element,
               targetId,
               timeoutMs,
+              profile,
             }),
           );
         }
@@ -674,6 +743,7 @@ function createBrowserTool(): AnyAgentTool {
               promptText,
               targetId,
               timeoutMs,
+              profile,
             }),
           );
         }
@@ -685,6 +755,7 @@ function createBrowserTool(): AnyAgentTool {
           const result = await browserAct(
             baseUrl,
             request as Parameters<typeof browserAct>[1],
+            profileOpts,
           );
           return jsonResult(result);
         }
