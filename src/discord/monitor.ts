@@ -1,4 +1,5 @@
 import {
+  ApplicationCommandOptionType,
   type CommandInteractionOption,
   Client,
   Events,
@@ -102,6 +103,9 @@ export async function monitorDiscordProvider(opts: MonitorDiscordOpts = {}) {
 
   client.once(Events.ClientReady, () => {
     runtime.log?.(`logged in as ${client.user?.tag ?? "unknown"}`);
+    if (slashCommand.enabled) {
+      void ensureSlashCommand(client, slashCommand, runtime);
+    }
   });
 
   client.on(Events.Error, (err) => {
@@ -466,6 +470,58 @@ function resolveSlashPrompt(
   const direct = findFirstStringOption(options);
   if (direct) return direct;
   return undefined;
+}
+
+async function ensureSlashCommand(
+  client: Client,
+  slashCommand: Required<DiscordSlashCommandConfig>,
+  runtime: RuntimeEnv,
+) {
+  try {
+    const appCommands = client.application?.commands;
+    if (!appCommands) {
+      runtime.error?.(danger("discord slash commands unavailable"));
+      return;
+    }
+    const existing = await appCommands.fetch();
+    let hasCommand = false;
+    for (const entry of existing.values()) {
+      if (entry.name === slashCommand.name) {
+        hasCommand = true;
+        continue;
+      }
+      await entry.delete();
+    }
+    if (hasCommand) return;
+    await appCommands.create({
+      name: slashCommand.name,
+      description: "Ask Clawdis a question",
+      options: [
+        {
+          name: "prompt",
+          description: "What should Clawdis help with?",
+          type: ApplicationCommandOptionType.String,
+          required: true,
+        },
+      ],
+    });
+    runtime.log?.(`registered discord slash command /${slashCommand.name}`);
+  } catch (err) {
+    const status = (err as { status?: number | string })?.status;
+    const code = (err as { code?: number | string })?.code;
+    const message = String(err);
+    const isRateLimit =
+      status === 429 ||
+      code === 429 ||
+      /rate ?limit/i.test(message);
+    const text = `discord slash command setup failed: ${message}`;
+    if (isRateLimit) {
+      logVerbose(text);
+      runtime.error?.(warn(text));
+    } else {
+      runtime.error?.(danger(text));
+    }
+  }
 }
 
 function findFirstStringOption(

@@ -72,6 +72,7 @@ Note: Discord does not provide a simple username → id lookup without extra gui
 Slash command notes:
 - Register a chat input command in Discord with at least one string option (e.g., `prompt`).
 - The first non-empty string option is treated as the prompt.
+- Clawdis will auto-register `/clawd` (or configured name) if it doesn't already exist.
 
 ## Reactions
 When `discord.enableReactions = true`, the agent can call `clawdis_discord` with:
