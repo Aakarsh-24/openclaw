@@ -12,26 +12,60 @@ describe("detectDeepResearchIntent", () => {
       expect(detectDeepResearchIntent("Сделай депресерч про AI")).toBe(true);
     });
 
-    it("detects \"депресерч\" standalone", () => {
-      expect(detectDeepResearchIntent("Депресерч!")).toBe(true);
-    });
-
     it("detects \"дип рисерч\" phonetic", () => {
       expect(
         detectDeepResearchIntent("Сделай дип рисерч про криптовалюты"),
       ).toBe(true);
     });
+
+    it("detects \"дип-ресерч\" with hyphen", () => {
+      expect(
+        detectDeepResearchIntent("Сделай дип-ресерч про криптовалюты"),
+      ).toBe(true);
+    });
+
+    it("detects typo variant \"дипресерч\" with verb", () => {
+      expect(detectDeepResearchIntent("Сделай дипресерч про рынок")).toBe(true);
+    });
+
+    it("detects with filler words between verb and keyword", () => {
+      expect(
+        detectDeepResearchIntent(
+          "Пожалуйста, сделай для этого дипресерч про китайскую робототехнику",
+        ),
+      ).toBe(true);
+    });
+
+    it("detects typo variant \"гипресерч\" with verb", () => {
+      expect(
+        detectDeepResearchIntent("Сделай для нас гипресерч по рынку"),
+      ).toBe(true);
+    });
+
+    it("detects \"глубокий поиск\" with verb", () => {
+      expect(
+        detectDeepResearchIntent("Сделай глубокий поиск по трендам"),
+      ).toBe(true);
+    });
+
+    it("detects \"глубокое исследование\" with verb", () => {
+      expect(
+        detectDeepResearchIntent("Сделай глубокое исследование про бренды"),
+      ).toBe(true);
+    });
   });
 
   describe("English patterns", () => {
-    it("detects \"deep research\"", () => {
+    it("detects \"do deep research\"", () => {
       expect(
         detectDeepResearchIntent("Do deep research on quantum computing"),
       ).toBe(true);
     });
 
-    it("detects \"deepresearch\" without space", () => {
-      expect(detectDeepResearchIntent("deepresearch AI trends")).toBe(true);
+    it("detects \"conduct deep research\"", () => {
+      expect(
+        detectDeepResearchIntent("Conduct deep research for AI trends"),
+      ).toBe(true);
     });
   });
 
@@ -39,6 +73,20 @@ describe("detectDeepResearchIntent", () => {
     it("detects \"сделай deep research\"", () => {
       expect(
         detectDeepResearchIntent("Сделай deep research про блокчейн"),
+      ).toBe(true);
+    });
+
+    it("detects \"deep research, на тему\" pattern", () => {
+      expect(
+        detectDeepResearchIntent(
+          "Я хочу попросить тебя, deep research, на тему того, как используется suno",
+        ),
+      ).toBe(true);
+    });
+
+    it("detects mixed-latin transcript spelling", () => {
+      expect(
+        detectDeepResearchIntent("Сделай дип-реeseерch про тренды"),
       ).toBe(true);
     });
   });
@@ -54,18 +102,30 @@ describe("detectDeepResearchIntent", () => {
   });
 
   describe("Substring matching", () => {
-    it("matches \"депресерчить\" (contains депресерч)", () => {
-      expect(detectDeepResearchIntent("депресерчнуть бы")).toBe(true);
-    });
-
-    it("matches \"deep researching\"", () => {
-      expect(detectDeepResearchIntent("I am deep researching this topic")).toBe(
-        true,
-      );
+    it("matches patterns inside a longer sentence", () => {
+      expect(
+        detectDeepResearchIntent("Пожалуйста, сделай депресерч сегодня"),
+      ).toBe(true);
     });
   });
 
   describe("Non-matching cases", () => {
+    it("does NOT match \"депресерч\" standalone", () => {
+      expect(detectDeepResearchIntent("депресерч")).toBe(false);
+    });
+
+    it("does NOT match \"дип рисерч\" standalone", () => {
+      expect(detectDeepResearchIntent("дип рисерч")).toBe(false);
+    });
+
+    it("does NOT match \"deep research\" mention", () => {
+      expect(detectDeepResearchIntent("What is deep research?")).toBe(false);
+    });
+
+    it("does NOT match \"глубокий поиск\" mention", () => {
+      expect(detectDeepResearchIntent("глубокий поиск по рынку")).toBe(false);
+    });
+
     it("does NOT match \"deepsearch\" (different word)", () => {
       expect(detectDeepResearchIntent("deepsearch something")).toBe(false);
     });
@@ -104,7 +164,7 @@ describe("extractTopicFromMessage", () => {
 
   it("extracts topic after \"deep research on\"", () => {
     expect(extractTopicFromMessage("Do deep research on AI safety")).toBe(
-      "Do on AI safety",
+      "on AI safety",
     );
   });
 
@@ -112,14 +172,56 @@ describe("extractTopicFromMessage", () => {
     expect(extractTopicFromMessage("random message")).toBe("random message");
   });
 
-  it("handles pattern at end of message", () => {
-    expect(extractTopicFromMessage("Нужен депресерч")).toBe("Нужен");
+  it("returns empty topic when only trigger words are present", () => {
+    expect(extractTopicFromMessage("Нужен депресерч")).toBe("");
+    expect(extractTopicFromMessage("Сделай депресерч")).toBe("");
+  });
+
+  it("treats punctuation-only topics as empty", () => {
+    expect(extractTopicFromMessage("Сделай депресерч?")).toBe("");
+    expect(extractTopicFromMessage("Do deep research?")).toBe("");
   });
 
   it("cleans leading punctuation", () => {
-    expect(extractTopicFromMessage("Депресерч: тема исследования")).toBe(
-      "тема исследования",
-    );
+    expect(
+      extractTopicFromMessage("Сделай депресерч: тема исследования"),
+    ).toBe("тема исследования");
+  });
+
+  it("extracts topic with filler words in request", () => {
+    expect(
+      extractTopicFromMessage(
+        "Пожалуйста, сделай для этого дипресерч про китайских роботов",
+      ),
+    ).toBe("китайских роботов");
+  });
+
+  it("extracts topic from noisy voice transcript", () => {
+    expect(
+      extractTopicFromMessage(
+        "Сделайгу глубокий поиск, сделай дип-ресерч. И глубокий поиск, я думаю, ну, сделай дипресерч на тему, э-э-э, какие валенки модны в Китае в 2025 году.",
+      ),
+    ).toBe("какие валенки модны в Китае в 2025 году");
+  });
+
+  it("extracts topic from \"глубокий поиск\" request", () => {
+    expect(
+      extractTopicFromMessage("Сделай глубокий поиск по трендам"),
+    ).toBe("трендам");
+  });
+
+  it("extracts topic from \"глубокое исследование\" request", () => {
+    expect(
+      extractTopicFromMessage("Сделай глубокое исследование про бренды"),
+    ).toBe("бренды");
+  });
+
+  it("extracts topic from mixed-latin transcript spelling", () => {
+    expect(
+      extractTopicFromMessage(
+        "Сделай дип-реeseерch на тему последние тренды в одежде",
+      ),
+    ).toBe("последние тренды в одежде");
   });
 
   it("uses custom patterns when provided", () => {
@@ -136,8 +238,8 @@ describe("getDefaultPatterns", () => {
 
   it("includes key patterns", () => {
     const patterns = getDefaultPatterns();
-    expect(patterns).toContain("депресерч");
-    expect(patterns).toContain("deep research");
-    expect(patterns).toContain("дип рисерч");
+    expect(patterns).toContain("сделай депресерч");
+    expect(patterns).toContain("perform deep research");
+    expect(patterns).toContain("сделай дипресерч");
   });
 });

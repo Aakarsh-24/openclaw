@@ -49,25 +49,56 @@ describe("deep-research button callbacks", () => {
     expect(parsed?.ownerId).toBe(ownerId);
   });
 
-  it("handles long topics without throwing", () => {
-    const topic = "a".repeat(200);
+  it("stores long topics and round-trips via callback", () => {
+    const topic = "Использование носков рок-звездами в истории".repeat(4);
     const keyboard = createExecuteButton(topic, 1);
     const data = getCallbackData(keyboard);
 
     const parsed = parseCallbackData(data);
     expect(parsed?.action).toBe(CallbackActions.EXECUTE);
-    expect(parsed?.topic).toBeTruthy();
+    expect(parsed?.topic).toBe(topic);
   });
 
   it("parses callbacks without owner id", () => {
     const topic = "plain topic";
-    const keyboard = createExecuteButton(topic);
-    const data = getCallbackData(keyboard);
+    const data = `${CALLBACK_PREFIX}${CallbackActions.EXECUTE}:${topic}`;
 
     const parsed = parseCallbackData(data);
     expect(parsed?.action).toBe(CallbackActions.EXECUTE);
     expect(parsed?.topic).toBe(topic);
     expect(parsed?.ownerId).toBeUndefined();
+  });
+
+  it("parses legacy owner format", () => {
+    const topic = "legacy topic";
+    const ownerId = 777;
+    const data = `${CALLBACK_PREFIX}${CallbackActions.EXECUTE}:${ownerId}:${topic}`;
+
+    const parsed = parseCallbackData(data);
+    expect(parsed?.action).toBe(CallbackActions.EXECUTE);
+    expect(parsed?.topic).toBe(topic);
+    expect(parsed?.ownerId).toBe(ownerId);
+  });
+
+  it("parses u-prefixed owner format", () => {
+    const topic = "prefixed topic";
+    const ownerId = 888;
+    const data = `${CALLBACK_PREFIX}${CallbackActions.EXECUTE}:u${ownerId}:${topic}`;
+
+    const parsed = parseCallbackData(data);
+    expect(parsed?.action).toBe(CallbackActions.EXECUTE);
+    expect(parsed?.topic).toBe(topic);
+    expect(parsed?.ownerId).toBe(ownerId);
+  });
+
+  it("treats malformed owner prefix as topic", () => {
+    const topic = "topic";
+    const data = `${CALLBACK_PREFIX}${CallbackActions.EXECUTE}:uabc:${topic}`;
+
+    const parsed = parseCallbackData(data);
+    expect(parsed?.action).toBe(CallbackActions.EXECUTE);
+    expect(parsed?.ownerId).toBeUndefined();
+    expect(parsed?.topic).toBe(`uabc:${topic}`);
   });
 
   it("returns null for unrelated callback data", () => {
