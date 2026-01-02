@@ -489,7 +489,7 @@ public final class ClawdisChatViewModel {
     private static func removeTagBlocks(tag: String, from text: String) -> String {
         var result = text
         var searchIndex = result.startIndex
-        while let openRange = Self.findOpeningTagStart(tag: tag, in: result, from: searchIndex) {
+        while let openRange = Self.findTagStart(tag: tag, closing: false, in: result, from: searchIndex) {
             guard let tagEnd = result.range(of: ">", range: openRange.upperBound..<result.endIndex) else {
                 result.removeSubrange(openRange.lowerBound..<result.endIndex)
                 break
@@ -499,7 +499,7 @@ public final class ClawdisChatViewModel {
                 searchIndex = openRange.lowerBound
                 continue
             }
-            if let closeRange = Self.findClosingTagStart(tag: tag, in: result, from: tagEnd.upperBound),
+            if let closeRange = Self.findTagStart(tag: tag, closing: true, in: result, from: tagEnd.upperBound),
                let closeEnd = result.range(of: ">", range: closeRange.upperBound..<result.endIndex)
             {
                 result.removeSubrange(openRange.lowerBound..<closeEnd.upperBound)
@@ -515,7 +515,7 @@ public final class ClawdisChatViewModel {
     private static func stripStandaloneTags(tag: String, from text: String) -> String {
         var result = text
         var searchIndex = result.startIndex
-        while let openRange = Self.findOpeningTagStart(tag: tag, in: result, from: searchIndex) {
+        while let openRange = Self.findTagStart(tag: tag, closing: false, in: result, from: searchIndex) {
             guard let tagEnd = result.range(of: ">", range: openRange.upperBound..<result.endIndex) else {
                 result.removeSubrange(openRange.lowerBound..<result.endIndex)
                 break
@@ -524,7 +524,7 @@ public final class ClawdisChatViewModel {
             searchIndex = openRange.lowerBound
         }
         searchIndex = result.startIndex
-        while let closeRange = Self.findClosingTagStart(tag: tag, in: result, from: searchIndex) {
+        while let closeRange = Self.findTagStart(tag: tag, closing: true, in: result, from: searchIndex) {
             guard let tagEnd = result.range(of: ">", range: closeRange.upperBound..<result.endIndex) else {
                 result.removeSubrange(closeRange.lowerBound..<result.endIndex)
                 break
@@ -535,63 +535,29 @@ public final class ClawdisChatViewModel {
         return result
     }
 
-    private static func findOpeningTagStart(
+    private static func findTagStart(
         tag: String,
+        closing: Bool,
         in text: String,
         from start: String.Index) -> Range<String.Index>?
     {
+        let token = closing ? "</\(tag)" : "<\(tag)"
         var searchRange = start..<text.endIndex
-        while let ltRange = text.range(of: "<", range: searchRange) {
-            let afterLt = ltRange.upperBound
-            if afterLt < text.endIndex, text[afterLt] == "/" {
-                searchRange = text.index(after: afterLt)..<text.endIndex
-                continue
+        while let range = text.range(
+            of: token,
+            options: [.caseInsensitive, .diacriticInsensitive],
+            range: searchRange)
+        {
+            let boundaryIndex = range.upperBound
+            guard boundaryIndex < text.endIndex else { return range }
+            let boundary = text[boundaryIndex]
+            let isBoundary = boundary == ">" || boundary.isWhitespace || (!closing && boundary == "/")
+            if isBoundary {
+                return range
             }
-            if Self.matchesTagName(in: text, from: afterLt, tag: tag, allowSlash: true) {
-                return ltRange
-            }
-            searchRange = afterLt..<text.endIndex
+            searchRange = boundaryIndex..<text.endIndex
         }
         return nil
-    }
-
-    private static func findClosingTagStart(
-        tag: String,
-        in text: String,
-        from start: String.Index) -> Range<String.Index>?
-    {
-        var searchRange = start..<text.endIndex
-        while let ltRange = text.range(of: "</", range: searchRange) {
-            let afterSlash = ltRange.upperBound
-            if Self.matchesTagName(in: text, from: afterSlash, tag: tag, allowSlash: false) {
-                return ltRange
-            }
-            searchRange = afterSlash..<text.endIndex
-        }
-        return nil
-    }
-
-    private static func matchesTagName(
-        in text: String,
-        from start: String.Index,
-        tag: String,
-        allowSlash: Bool) -> Bool
-    {
-        var current = start
-        for expected in tag.lowercased() {
-            guard current < text.endIndex else { return false }
-            let actual = text[current]
-            if String(actual).lowercased() != String(expected) {
-                return false
-            }
-            current = text.index(after: current)
-        }
-        guard current < text.endIndex else { return false }
-        let boundary = text[current]
-        if boundary == ">" { return true }
-        if allowSlash, boundary == "/" { return true }
-        if boundary.isWhitespace { return true }
-        return false
     }
 
     private static func isSelfClosingTag(in text: String, tagEnd: Range<String.Index>) -> Bool {
