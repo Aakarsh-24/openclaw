@@ -3,6 +3,8 @@
  * Run with: pnpm test src/deep-research/e2e.test.ts
  */
 
+import { accessSync, constants } from "node:fs";
+
 import { beforeAll, describe, expect, it } from "vitest";
 
 import {
@@ -12,8 +14,21 @@ import {
   parseResultJson,
   messages,
 } from "./index.js";
+import { getDefaultDeepResearchCliPath } from "../config/config.js";
 
-describe("Deep Research E2E (dry-run)", () => {
+const cliPath =
+  process.env.DEEP_RESEARCH_CLI_PATH?.trim() ||
+  getDefaultDeepResearchCliPath();
+let hasCli = false;
+try {
+  accessSync(cliPath, constants.X_OK);
+  hasCli = true;
+} catch {
+  hasCli = false;
+}
+const describeE2E = hasCli ? describe : describe.skip;
+
+describeE2E("Deep Research E2E (dry-run)", () => {
   // Ensure dry-run is enabled
   beforeAll(() => {
     process.env.DEEP_RESEARCH_DRY_RUN = "true";
