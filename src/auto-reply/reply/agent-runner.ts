@@ -26,6 +26,7 @@ import {
   type QueueSettings,
   scheduleFollowupDrain,
 } from "./queue.js";
+import { extractAudioTag } from "./audio-tags.js";
 import { extractReplyToTag } from "./reply-tags.js";
 import type { TypingController } from "./typing.js";
 
@@ -250,7 +251,8 @@ export async function runReplyAgent(params: {
                       text,
                       sessionCtx.MessageSid,
                     );
-                    const cleaned = tagResult.cleaned || undefined;
+                    const audioTagResult = extractAudioTag(tagResult.cleaned);
+                    const cleaned = audioTagResult.cleaned || undefined;
                     const hasMedia = (payload.mediaUrls?.length ?? 0) > 0;
                     if (!cleaned && !hasMedia) return;
                     if (cleaned?.trim() === SILENT_REPLY_TOKEN && !hasMedia)
@@ -260,6 +262,7 @@ export async function runReplyAgent(params: {
                       mediaUrls: payload.mediaUrls,
                       mediaUrl: payload.mediaUrls?.[0],
                       replyToId: tagResult.replyToId,
+                      audioAsVoice: audioTagResult.audioAsVoice,
                     };
                     const payloadKey = buildPayloadKey(blockPayload);
                     if (
@@ -378,10 +381,12 @@ export async function runReplyAgent(params: {
           payload.text,
           sessionCtx.MessageSid,
         );
+        const audioTagResult = extractAudioTag(cleaned);
         return {
           ...payload,
-          text: cleaned ? cleaned : undefined,
+          text: audioTagResult.cleaned ? audioTagResult.cleaned : undefined,
           replyToId: replyToId ?? payload.replyToId,
+          audioAsVoice: audioTagResult.audioAsVoice,
         };
       })
       .filter(
