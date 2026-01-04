@@ -10,6 +10,8 @@ type TelegramSendOpts = {
   mediaUrl?: string;
   maxBytes?: number;
   api?: Bot["api"];
+  /** Send audio as voice message (round bubble) instead of audio file. Defaults to true. */
+  asVoice?: boolean;
 };
 
 type TelegramSendResult = {
@@ -135,12 +137,25 @@ export async function sendMessageTelegram(
         throw wrapChatNotFound(err);
       });
     } else if (kind === "audio") {
-      result = await sendWithRetry(
-        () => api.sendAudio(chatId, file, { caption }),
-        "audio",
-      ).catch((err) => {
-        throw wrapChatNotFound(err);
-      });
+      const useVoice = opts.asVoice !== false; // default true
+      if (useVoice) {
+        // Voice message - displays as round playable bubble in Telegram
+        // Supports OGG/Opus, MP3, M4A. Large files (>1MB) may show as file instead.
+        result = await sendWithRetry(
+          () => api.sendVoice(chatId, file, { caption }),
+          "voice",
+        ).catch((err) => {
+          throw wrapChatNotFound(err);
+        });
+      } else {
+        // Audio file - displays with metadata (title, artist, duration)
+        result = await sendWithRetry(
+          () => api.sendAudio(chatId, file, { caption }),
+          "audio",
+        ).catch((err) => {
+          throw wrapChatNotFound(err);
+        });
+      }
     } else {
       result = await sendWithRetry(
         () => api.sendDocument(chatId, file, { caption }),
