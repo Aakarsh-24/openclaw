@@ -1,4 +1,11 @@
 import type { ThinkLevel } from "../auto-reply/thinking.js";
+import type { ClisConfig } from "../config/types.js";
+
+export type CliPromptEntry = {
+  name: string;
+  description: string;
+  examples?: string[];
+};
 
 export function buildAgentSystemPromptAppend(params: {
   workspaceDir: string;
@@ -19,6 +26,7 @@ export function buildAgentSystemPromptAppend(params: {
     browserControlUrl?: string;
     browserNoVncUrl?: string;
   };
+  clis?: ClisConfig;
 }) {
   const thinkHint =
     params.defaultThinkLevel && params.defaultThinkLevel !== "off"
@@ -57,6 +65,26 @@ export function buildAgentSystemPromptAppend(params: {
   if (runtimeInfo?.node) runtimeLines.push(`Node: ${runtimeInfo.node}`);
   if (runtimeInfo?.model) runtimeLines.push(`Model: ${runtimeInfo.model}`);
 
+  // Build CLI section if there are enabled CLIs
+  const cliEntries = Object.entries(params.clis?.entries ?? {})
+    .filter(([_, entry]) => entry.enabled !== false)
+    .map(([name, entry]) => ({ name, ...entry }));
+
+  const cliLines: string[] = [];
+  if (cliEntries.length > 0) {
+    cliLines.push("## Available CLIs");
+    cliLines.push(
+      "The following CLIs are installed and available via bash. Use them when appropriate:",
+    );
+    for (const cli of cliEntries) {
+      cliLines.push(`- **${cli.name}**: ${cli.description}`);
+      if (cli.examples && cli.examples.length > 0) {
+        cliLines.push(`  Example: \`${cli.examples[0]}\``);
+      }
+    }
+    cliLines.push("");
+  }
+
   const lines = [
     "You are Clawd, a personal assistant running inside Clawdbot.",
     "",
@@ -74,6 +102,7 @@ export function buildAgentSystemPromptAppend(params: {
     "- cron: manage cron jobs and wake events",
     "TOOLS.md does not control tool availability; it is user guidance for how to use external tools.",
     "",
+    ...cliLines,
     "## Workspace",
     `Your working directory is: ${params.workspaceDir}`,
     "Treat this directory as the single global workspace for file operations unless explicitly instructed otherwise.",

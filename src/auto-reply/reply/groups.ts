@@ -47,6 +47,18 @@ export function resolveGroupRequireMention(params: {
     if (typeof groupDefault === "boolean") return groupDefault;
     return true;
   }
+  if (surface === "discord") {
+    // Discord uses "guilds" instead of "groups"
+    if (groupId) {
+      const guildConfig = cfg.discord?.guilds?.[groupId];
+      if (typeof guildConfig?.requireMention === "boolean") {
+        return guildConfig.requireMention;
+      }
+    }
+    const guildDefault = cfg.discord?.guilds?.["*"]?.requireMention;
+    if (typeof guildDefault === "boolean") return guildDefault;
+    return true;
+  }
   return true;
 }
 

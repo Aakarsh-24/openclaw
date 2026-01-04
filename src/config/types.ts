@@ -570,6 +570,32 @@ export type SkillConfig = {
   [key: string]: unknown;
 };
 
+// --------------------------------------------------------------------------
+// External CLIs (mise-installable)
+// --------------------------------------------------------------------------
+
+export type ExternalCliEntry = {
+  /** mise package identifier (e.g., "jq", "aqua:jqlang/jq", "ubi:astral-sh/uv"). */
+  misePackage: string;
+  /** Version constraint (e.g., "latest", "1.7.1"). */
+  version?: string;
+  /** Description of when the agent should use this CLI. */
+  description: string;
+  /** Example usage patterns for the agent. */
+  examples?: string[];
+  /** Environment variables to set when running this CLI. */
+  env?: Record<string, string>;
+  /** Whether the agent can use this CLI. Default: true. */
+  enabled?: boolean;
+};
+
+export type ClisConfig = {
+  /** Auto-install missing CLIs on agent startup. Default: false. */
+  autoInstall?: boolean;
+  /** CLI definitions keyed by short name (e.g., "jq", "rg"). */
+  entries?: Record<string, ExternalCliEntry>;
+};
+
 export type SkillsLoadConfig = {
   /**
    * Additional skill folders to scan (lowest precedence).
@@ -656,6 +682,7 @@ export type ClawdbotConfig = {
     seamColor?: string;
   };
   skills?: SkillsConfig;
+  clis?: ClisConfig;
   models?: ModelsConfig;
   agent?: {
     /** Model id (provider/model), e.g. "anthropic/claude-opus-4-5". */

@@ -12,11 +12,13 @@ import type { UiSettings } from "./storage";
 import type { ThemeMode } from "./theme";
 import type { ThemeTransitionContext } from "./theme-transition";
 import type {
+  ClisStatusReport,
   ConfigSnapshot,
   CronJob,
   CronRunLogEntry,
   CronStatus,
   HealthSnapshot,
+  MiseRegistrySearchResult,
   PresenceEntry,
   ProvidersStatusSnapshot,
   SessionsListResult,
@@ -41,6 +43,7 @@ import { renderNodes } from "./views/nodes";
 import { renderOverview } from "./views/overview";
 import { renderSessions } from "./views/sessions";
 import { renderSkills } from "./views/skills";
+import { renderCliStore } from "./views/cli-store";
 import {
   loadProviders,
   updateDiscordForm,
@@ -63,6 +66,16 @@ import { loadChatHistory } from "./controllers/chat";
 import { loadConfig, saveConfig, updateConfigFormValue } from "./controllers/config";
 import { loadCronRuns, toggleCronJob, runCronJob, removeCronJob, addCronJob } from "./controllers/cron";
 import { loadDebug, callDebugMethod } from "./controllers/debug";
+import {
+  loadClisStatus,
+  searchClisRegistry,
+  openInstallForm,
+  closeInstallForm,
+  updateInstallForm,
+  installCli,
+  uninstallCli,
+  toggleCliEnabled,
+} from "./controllers/clis";
 
 export type EventLogEntry = {
   ts: number;
@@ -155,6 +168,18 @@ export type AppViewState = {
   skillsFilter: string;
   skillEdits: Record<string, string>;
   skillsBusyKey: string | null;
+  clisLoading: boolean;
+  clisReport: ClisStatusReport | null;
+  clisError: string | null;
+  clisBusyKey: string | null;
+  clisSearchQuery: string;
+  clisSearchResults: MiseRegistrySearchResult | null;
+  clisSearchLoading: boolean;
+  clisInstallForm: {
+    shortName: string;
+    description: string;
+    examples: string;
+  } | null;
   debugLoading: boolean;
   debugStatus: StatusSummary | null;
   debugHealth: HealthSnapshot | null;
@@ -359,6 +384,27 @@ export function renderApp(state: AppViewState) {
               onEdit: (key, value) => updateSkillEdit(state, key, value),
               onSaveKey: (key) => saveSkillApiKey(state, key),
               onInstall: (name, installId) => installSkill(state, name, installId),
+            })
+          : nothing}
+
+        ${state.tab === "clis"
+          ? renderCliStore({
+              loading: state.clisLoading,
+              report: state.clisReport,
+              error: state.clisError,
+              searchQuery: state.clisSearchQuery,
+              searchResults: state.clisSearchResults,
+              searchLoading: state.clisSearchLoading,
+              busyKey: state.clisBusyKey,
+              installForm: state.clisInstallForm,
+              onRefresh: () => loadClisStatus(state),
+              onSearch: (query) => searchClisRegistry(state, query),
+              onOpenInstall: (shortName) => openInstallForm(state, shortName),
+              onCloseInstall: () => closeInstallForm(state),
+              onUpdateInstallForm: (field, value) => updateInstallForm(state, field, value),
+              onInstall: () => installCli(state),
+              onUninstall: (shortName) => uninstallCli(state, shortName),
+              onToggle: (shortName, enabled) => toggleCliEnabled(state, shortName, enabled),
             })
           : nothing}
 

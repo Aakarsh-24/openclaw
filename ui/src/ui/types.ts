@@ -371,3 +371,33 @@ export type SkillStatusReport = {
 export type StatusSummary = Record<string, unknown>;
 
 export type HealthSnapshot = Record<string, unknown>;
+
+// ---------------------------------------------------------------------------
+// CLI Store (mise-installable CLIs)
+// ---------------------------------------------------------------------------
+
+export type MiseRegistryEntry = {
+  short: string;
+  backends: string[];
+};
+
+export type MiseRegistrySearchResult = {
+  entries: MiseRegistryEntry[];
+  total: number;
+};
+
+export type CliStatusEntry = {
+  shortName: string;
+  misePackage: string;
+  installedVersion?: string;
+  description: string;
+  examples?: string[];
+  enabled: boolean;
+  isInstalled: boolean;
+  isConfigured: boolean;
+};
+
+export type ClisStatusReport = {
+  miseAvailable: boolean;
+  clis: CliStatusEntry[];
+};

@@ -1,6 +1,7 @@
 import { ErrorCodes, errorShape } from "./protocol/index.js";
 import { agentHandlers } from "./server-methods/agent.js";
 import { chatHandlers } from "./server-methods/chat.js";
+import { clisHandlers } from "./server-methods/clis.js";
 import { configHandlers } from "./server-methods/config.js";
 import { connectHandlers } from "./server-methods/connect.js";
 import { cronHandlers } from "./server-methods/cron.js";
@@ -34,6 +35,7 @@ const handlers: GatewayRequestHandlers = {
   ...wizardHandlers,
   ...talkHandlers,
   ...skillsHandlers,
+  ...clisHandlers,
   ...sessionsHandlers,
   ...systemHandlers,
   ...nodeHandlers,

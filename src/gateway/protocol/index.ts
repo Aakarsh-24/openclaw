@@ -11,6 +11,18 @@ import {
   ChatEventSchema,
   ChatHistoryParamsSchema,
   ChatSendParamsSchema,
+  type ClisInstalledParams,
+  ClisInstalledParamsSchema,
+  type ClisInstallParams,
+  ClisInstallParamsSchema,
+  type ClisRegistrySearchParams,
+  ClisRegistrySearchParamsSchema,
+  type ClisStatusParams,
+  ClisStatusParamsSchema,
+  type ClisUninstallParams,
+  ClisUninstallParamsSchema,
+  type ClisUpdateParams,
+  ClisUpdateParamsSchema,
   type ConfigGetParams,
   ConfigGetParamsSchema,
   type ConfigSchemaParams,
@@ -231,6 +243,23 @@ export const validateSkillsInstallParams = ajv.compile<SkillsInstallParams>(
 export const validateSkillsUpdateParams = ajv.compile<SkillsUpdateParams>(
   SkillsUpdateParamsSchema,
 );
+export const validateClisRegistrySearchParams =
+  ajv.compile<ClisRegistrySearchParams>(ClisRegistrySearchParamsSchema);
+export const validateClisInstalledParams = ajv.compile<ClisInstalledParams>(
+  ClisInstalledParamsSchema,
+);
+export const validateClisInstallParams = ajv.compile<ClisInstallParams>(
+  ClisInstallParamsSchema,
+);
+export const validateClisUninstallParams = ajv.compile<ClisUninstallParams>(
+  ClisUninstallParamsSchema,
+);
+export const validateClisUpdateParams = ajv.compile<ClisUpdateParams>(
+  ClisUpdateParamsSchema,
+);
+export const validateClisStatusParams = ajv.compile<ClisStatusParams>(
+  ClisStatusParamsSchema,
+);
 export const validateCronListParams =
   ajv.compile<CronListParams>(CronListParamsSchema);
 export const validateCronStatusParams = ajv.compile<CronStatusParams>(
@@ -315,6 +344,12 @@ export {
   SkillsStatusParamsSchema,
   SkillsInstallParamsSchema,
   SkillsUpdateParamsSchema,
+  ClisRegistrySearchParamsSchema,
+  ClisInstalledParamsSchema,
+  ClisInstallParamsSchema,
+  ClisUninstallParamsSchema,
+  ClisUpdateParamsSchema,
+  ClisStatusParamsSchema,
   CronJobSchema,
   CronListParamsSchema,
   CronStatusParamsSchema,
@@ -372,6 +407,12 @@ export type {
   SkillsStatusParams,
   SkillsInstallParams,
   SkillsUpdateParams,
+  ClisRegistrySearchParams,
+  ClisInstalledParams,
+  ClisInstallParams,
+  ClisUninstallParams,
+  ClisUpdateParams,
+  ClisStatusParams,
   NodePairRejectParams,
   NodePairVerifyParams,
   NodeListParams,

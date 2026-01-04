@@ -4,7 +4,7 @@ export const TAB_GROUPS = [
     label: "Control",
     tabs: ["overview", "connections", "instances", "sessions", "cron"],
   },
-  { label: "Agent", tabs: ["skills", "nodes"] },
+  { label: "Agent", tabs: ["skills", "clis", "nodes"] },
   { label: "Settings", tabs: ["config", "debug"] },
 ] as const;
 
@@ -15,6 +15,7 @@ export type Tab =
   | "sessions"
   | "cron"
   | "skills"
+  | "clis"
   | "nodes"
   | "chat"
   | "config"
@@ -27,6 +28,7 @@ const TAB_PATHS: Record<Tab, string> = {
   sessions: "/sessions",
   cron: "/cron",
   skills: "/skills",
+  clis: "/clis",
   nodes: "/nodes",
   chat: "/chat",
   config: "/config",
@@ -110,6 +112,8 @@ export function titleForTab(tab: Tab) {
       return "Cron Jobs";
     case "skills":
       return "Skills";
+    case "clis":
+      return "CLIs";
     case "nodes":
       return "Nodes";
     case "chat":
@@ -137,6 +141,8 @@ export function subtitleForTab(tab: Tab) {
       return "Schedule wakeups and recurring agent runs.";
     case "skills":
       return "Manage skill availability and API key injection.";
+    case "clis":
+      return "Install CLIs via mise and describe when Clawdbot should use them.";
     case "nodes":
       return "Paired devices, capabilities, and command exposure.";
     case "chat":

@@ -197,13 +197,63 @@ function legacyOAuthPaths(): string[] {
   return Array.from(new Set(paths));
 }
 
+/**
+ * Claude Code credentials path (used by Claude Code CLI).
+ * Different from legacy oauth.json - stored as .credentials.json with different format.
+ */
+function claudeCodeCredentialsPath(): string {
+  return path.join(os.homedir(), ".claude", ".credentials.json");
+}
+
+type ClaudeCodeCredentials = {
+  claudeAiOauth?: {
+    accessToken?: string;
+    refreshToken?: string;
+    expiresAt?: number;
+    scopes?: string[];
+    subscriptionType?: string;
+  };
+};
+
+/**
+ * Load Claude Code credentials and convert to clawdbot OAuth format.
+ * Claude Code stores credentials differently (claudeAiOauth key vs anthropic key).
+ */
+function loadClaudeCodeCredentials(): OAuthStorage | null {
+  const credPath = claudeCodeCredentialsPath();
+  if (!fsSync.existsSync(credPath)) return null;
+  try {
+    const content = fsSync.readFileSync(credPath, "utf8");
+    const json = JSON.parse(content) as ClaudeCodeCredentials;
+    if (!json?.claudeAiOauth) return null;
+    const { accessToken, refreshToken, expiresAt } = json.claudeAiOauth;
+    if (!accessToken?.trim() || !refreshToken?.trim()) return null;
+    // Convert to clawdbot format (pi-ai uses refresh/access/expires property names)
+    return {
+      anthropic: {
+        refresh: refreshToken.trim(),
+        access: accessToken.trim(),
+        expires: expiresAt ?? Date.now() + 3600_000,
+      } as OAuthCredentials,
+    };
+  } catch {
+    return null;
+  }
+}
+
 function importLegacyOAuthIfNeeded(destPath: string): void {
   if (fsSync.existsSync(destPath)) return;
+  // Check legacy oauth.json paths first
   for (const legacyPath of legacyOAuthPaths()) {
     const storage = loadOAuthStorageAt(legacyPath);
     if (!storage || !hasAnthropicOAuth(storage)) continue;
     saveOAuthStorageAt(destPath, storage);
     return;
+  }
+  // Fall back to Claude Code credentials (~/.claude/.credentials.json)
+  const claudeCodeStorage = loadClaudeCodeCredentials();
+  if (claudeCodeStorage && hasAnthropicOAuth(claudeCodeStorage)) {
+    saveOAuthStorageAt(destPath, claudeCodeStorage);
   }
 }
 
@@ -340,7 +390,8 @@ async function getApiKeyForModel(
   if (envKey) return envKey;
   if (isOAuthProvider(model.provider)) {
     const oauthPath = resolveClawdbotOAuthPath();
-    const storage = loadOAuthStorageAt(oauthPath);
+    let storage = loadOAuthStorageAt(oauthPath);
+    // Try existing clawdbot OAuth storage
     if (storage) {
       try {
         const result = await getOAuthApiKey(model.provider, storage);
@@ -350,7 +401,25 @@ async function getApiKeyForModel(
           return result.apiKey;
         }
       } catch {
-        // fall through to error below
+        // OAuth refresh failed, fall through to try Claude Code credentials
+      }
+    }
+    // Fall back to Claude Code credentials for Anthropic provider
+    if (model.provider === "anthropic") {
+      const claudeCodeStorage = loadClaudeCodeCredentials();
+      if (claudeCodeStorage && hasAnthropicOAuth(claudeCodeStorage)) {
+        try {
+          const result = await getOAuthApiKey("anthropic", claudeCodeStorage);
+          if (result?.apiKey) {
+            // Save refreshed credentials to clawdbot path
+            storage = storage ?? {};
+            storage.anthropic = result.newCredentials;
+            saveOAuthStorageAt(oauthPath, storage);
+            return result.apiKey;
+          }
+        } catch {
+          // Claude Code credentials also failed
+        }
       }
     }
   }
@@ -522,6 +591,7 @@ export async function runEmbeddedPiAgent(params: {
             reasoningTagHint,
             runtimeInfo,
             sandboxInfo,
+            clis: params.config?.clis,
           }),
           contextFiles,
           skills: promptSkills,

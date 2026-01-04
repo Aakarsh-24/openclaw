@@ -588,6 +588,57 @@ export const SkillsUpdateParamsSchema = Type.Object(
   { additionalProperties: false },
 );
 
+// ---------------------------------------------------------------------------
+// CLI Store (mise-installable CLIs)
+// ---------------------------------------------------------------------------
+
+export const ClisRegistrySearchParamsSchema = Type.Object(
+  {
+    query: Type.Optional(Type.String()),
+    limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 200 })),
+    offset: Type.Optional(Type.Integer({ minimum: 0 })),
+  },
+  { additionalProperties: false },
+);
+
+export const ClisInstalledParamsSchema = Type.Object(
+  {},
+  { additionalProperties: false },
+);
+
+export const ClisInstallParamsSchema = Type.Object(
+  {
+    shortName: NonEmptyString,
+    version: Type.Optional(Type.String()),
+    description: NonEmptyString,
+    examples: Type.Optional(Type.Array(Type.String())),
+  },
+  { additionalProperties: false },
+);
+
+export const ClisUninstallParamsSchema = Type.Object(
+  {
+    shortName: NonEmptyString,
+    version: Type.Optional(Type.String()),
+  },
+  { additionalProperties: false },
+);
+
+export const ClisUpdateParamsSchema = Type.Object(
+  {
+    shortName: NonEmptyString,
+    description: Type.Optional(Type.String()),
+    examples: Type.Optional(Type.Array(Type.String())),
+    enabled: Type.Optional(Type.Boolean()),
+  },
+  { additionalProperties: false },
+);
+
+export const ClisStatusParamsSchema = Type.Object(
+  {},
+  { additionalProperties: false },
+);
+
 export const CronScheduleSchema = Type.Union([
   Type.Object(
     {
@@ -869,6 +920,12 @@ export const ProtocolSchemas: Record<string, TSchema> = {
   SkillsStatusParams: SkillsStatusParamsSchema,
   SkillsInstallParams: SkillsInstallParamsSchema,
   SkillsUpdateParams: SkillsUpdateParamsSchema,
+  ClisRegistrySearchParams: ClisRegistrySearchParamsSchema,
+  ClisInstalledParams: ClisInstalledParamsSchema,
+  ClisInstallParams: ClisInstallParamsSchema,
+  ClisUninstallParams: ClisUninstallParamsSchema,
+  ClisUpdateParams: ClisUpdateParamsSchema,
+  ClisStatusParams: ClisStatusParamsSchema,
   CronJob: CronJobSchema,
   CronListParams: CronListParamsSchema,
   CronStatusParams: CronStatusParamsSchema,
@@ -937,6 +994,14 @@ export type ModelsListResult = Static<typeof ModelsListResultSchema>;
 export type SkillsStatusParams = Static<typeof SkillsStatusParamsSchema>;
 export type SkillsInstallParams = Static<typeof SkillsInstallParamsSchema>;
 export type SkillsUpdateParams = Static<typeof SkillsUpdateParamsSchema>;
+export type ClisRegistrySearchParams = Static<
+  typeof ClisRegistrySearchParamsSchema
+>;
+export type ClisInstalledParams = Static<typeof ClisInstalledParamsSchema>;
+export type ClisInstallParams = Static<typeof ClisInstallParamsSchema>;
+export type ClisUninstallParams = Static<typeof ClisUninstallParamsSchema>;
+export type ClisUpdateParams = Static<typeof ClisUpdateParamsSchema>;
+export type ClisStatusParams = Static<typeof ClisStatusParamsSchema>;
 export type CronJob = Static<typeof CronJobSchema>;
 export type CronListParams = Static<typeof CronListParamsSchema>;
 export type CronStatusParams = Static<typeof CronStatusParamsSchema>;

@@ -22,12 +22,14 @@ import {
   type ThemeTransitionContext,
 } from "./theme-transition";
 import type {
+  ClisStatusReport,
   ConfigSnapshot,
   ConfigUiHints,
   CronJob,
   CronRunLogEntry,
   CronStatus,
   HealthSnapshot,
+  MiseRegistrySearchResult,
   PresenceEntry,
   ProvidersStatusSnapshot,
   SessionsListResult,
@@ -76,6 +78,16 @@ import {
 import {
   loadSkills,
 } from "./controllers/skills";
+import {
+  loadClisStatus,
+  searchClisRegistry,
+  openInstallForm,
+  closeInstallForm,
+  updateInstallForm,
+  installCli,
+  uninstallCli,
+  toggleCliEnabled,
+} from "./controllers/clis";
 import { loadDebug } from "./controllers/debug";
 
 type EventLogEntry = {
@@ -327,6 +339,19 @@ export class ClawdbotApp extends LitElement {
   @state() skillsFilter = "";
   @state() skillEdits: Record<string, string> = {};
   @state() skillsBusyKey: string | null = null;
+
+  @state() clisLoading = false;
+  @state() clisReport: ClisStatusReport | null = null;
+  @state() clisError: string | null = null;
+  @state() clisBusyKey: string | null = null;
+  @state() clisSearchQuery = "";
+  @state() clisSearchResults: MiseRegistrySearchResult | null = null;
+  @state() clisSearchLoading = false;
+  @state() clisInstallForm: {
+    shortName: string;
+    description: string;
+    examples: string;
+  } | null = null;
 
   @state() debugLoading = false;
   @state() debugStatus: StatusSummary | null = null;
@@ -638,6 +663,7 @@ export class ClawdbotApp extends LitElement {
     if (this.tab === "sessions") await loadSessions(this);
     if (this.tab === "cron") await this.loadCron();
     if (this.tab === "skills") await loadSkills(this);
+    if (this.tab === "clis") await loadClisStatus(this);
     if (this.tab === "nodes") await loadNodes(this);
     if (this.tab === "chat") {
       await Promise.all([loadChatHistory(this), loadSessions(this)]);
