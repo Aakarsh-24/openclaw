@@ -6,6 +6,29 @@
 
 ### Fixes
 - Onboarding: resolve CLI entrypoint when running via `npx` so gateway daemon install works without a build step.
+- TUI: migrate key handling to the updated pi-tui Key matcher API.
+- macOS: prefer gateway config reads/writes in local mode (fall back to disk if the gateway is unavailable).
+- macOS: local gateway now connects via tailnet IP when bind mode is `tailnet`/`auto`.
+- macOS: Connections settings now use a custom sidebar to avoid toolbar toggle issues, with rounded styling and full-width row hit targets.
+- macOS: drop deprecated `afterMs` from agent wait params to match gateway schema.
+- Auth: add OpenAI Codex OAuth support and migrate legacy oauth.json into auth.json.
+- Docs: clarify auth storage, migration, and OpenAI Codex OAuth onboarding.
+- Sandbox: copy inbound media into sandbox workspaces so agent tools can read attachments.
+- Status: show runtime (docker/direct) and move shortcuts to `/help`.
+
+### Maintenance
+- Deps: bump pi-* stack, Slack SDK, discord-api-types, file-type, zod, and Biome.
+
+## 2026.1.5-3
+
+### Fixes
+- NPM package: include missing runtime dist folders (slack/signal/imessage/tui/wizard/control-ui/daemon) to avoid `ERR_MODULE_NOT_FOUND` in Node 25 npx installs.
+
+## 2026.1.5-2
+
+### Fixes
+- NPM package: include `dist/sessions` so `clawdbot agent` resolves session helpers in npx installs.
+- Node 25: avoid unsupported directory import by targeting `qrcode-terminal/vendor/QRCode/*.js` modules.
 
 ## 2026.1.5-1
 
@@ -30,6 +53,7 @@
 - macOS: treat location permission as always-only to avoid iOS-only enums. (#165) — thanks @Nachx639
 - macOS: make generated gateway protocol models `Sendable` for Swift 6 strict concurrency. (#195) — thanks @andranik-sahakyan
 - macOS: bundle QR code renderer modules so DMG gateway boot doesn't crash on missing qrcode-terminal vendor files.
+- macOS: parse JSON5 config safely to avoid wiping user settings when comments are present.
 - WhatsApp: suppress typing indicator during heartbeat background tasks. (#190) — thanks @mcinteerj
 - WhatsApp: mark offline history sync messages as read without auto-reply. (#193) — thanks @mcinteerj
 - Discord: avoid duplicate replies when a provider emits late streaming `text_end` events (OpenAI/GPT).
