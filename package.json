@@ -59,7 +59,8 @@
     "protocol:gen": "tsx scripts/protocol-gen.ts",
     "protocol:gen:swift": "tsx scripts/protocol-gen-swift.ts",
     "protocol:check": "pnpm protocol:gen && pnpm protocol:gen:swift && git diff --exit-code -- dist/protocol.schema.json apps/macos/Sources/ClawdisProtocol/GatewayModels.swift",
-    "canvas:a2ui:bundle": "bash scripts/bundle-a2ui.sh"
+    "canvas:a2ui:bundle": "bash scripts/bundle-a2ui.sh",
+    "web-search": "bash scripts/web_search_with_gemini.sh"
   },
   "keywords": [],
   "author": "",
