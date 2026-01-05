@@ -12,9 +12,13 @@
 - macOS: Connections settings now use a custom sidebar to avoid toolbar toggle issues, with rounded styling and full-width row hit targets.
 - macOS: drop deprecated `afterMs` from agent wait params to match gateway schema.
 - Auth: add OpenAI Codex OAuth support and migrate legacy oauth.json into auth.json.
+- Model: `/model` list shows auth source (masked key or OAuth email) per provider.
+- Model: `/model list` is an alias for `/model`.
+- Model: `/model` output now includes auth source location (env/auth.json/models.json).
 - Docs: clarify auth storage, migration, and OpenAI Codex OAuth onboarding.
 - Sandbox: copy inbound media into sandbox workspaces so agent tools can read attachments.
 - Status: show runtime (docker/direct) and move shortcuts to `/help`.
+- Status: show model auth source (api-key/oauth).
 
 ### Maintenance
 - Deps: bump pi-* stack, Slack SDK, discord-api-types, file-type, zod, and Biome.
