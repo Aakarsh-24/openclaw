@@ -101,11 +101,12 @@ export function createTelegramBot(opts: TelegramBotOptions) {
       // allowFrom for direct chats
       if (!isGroup && Array.isArray(allowFrom) && allowFrom.length > 0) {
         const candidate = String(chatId);
-        const allowed = allowFrom.map(String);
-        const allowedWithPrefix = allowFrom.map((v) => `telegram:${String(v)}`);
+        const allowed = allowFrom.map((v) => {
+          const s = String(v);
+          return s.startsWith("telegram:") ? s.slice(9) : s;
+        });
         const permitted =
           allowed.includes(candidate) ||
-          allowedWithPrefix.includes(`telegram:${candidate}`) ||
           allowed.includes("*");
         if (!permitted) {
           logVerbose(
@@ -122,11 +123,12 @@ export function createTelegramBot(opts: TelegramBotOptions) {
         allowFromGroups.length > 0
       ) {
         const candidate = String(chatId);
-        const allowed = allowFromGroups.map(String);
-        const allowedWithPrefix = allowFromGroups.map((v) => `telegram:${String(v)}`);
+        const allowed = allowFromGroups.map((v) => {
+          const s = String(v);
+          return s.startsWith("telegram:") ? s.slice(9) : s;
+        });
         const permitted =
           allowed.includes(candidate) ||
-          allowedWithPrefix.includes(`telegram:${candidate}`) ||
           allowed.includes("*");
         if (!permitted) {
           logVerbose(

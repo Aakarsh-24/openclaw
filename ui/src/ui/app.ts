@@ -218,6 +218,7 @@ export class ClawdbotApp extends LitElement {
     token: "",
     requireMention: true,
     allowFrom: "",
+    allowFromGroups: "",
     proxy: "",
     webhookUrl: "",
     webhookSecret: "",
