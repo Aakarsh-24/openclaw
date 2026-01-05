@@ -79,7 +79,11 @@ export function createTelegramBot(opts: TelegramBotOptions) {
   };
 
   // Pre-compute normalized allowlist for filtering (used by both group and DM checks)
-  const normalizedAllowFrom = (allowFrom ?? []).map(String);
+  // Strip telegram: prefix so users can use either "123456789" or "telegram:123456789"
+  const normalizedAllowFrom = (allowFrom ?? []).map((v) => {
+    const s = String(v);
+    return s.startsWith("telegram:") ? s.slice(9) : s;
+  });
   const normalizedAllowFromLower = normalizedAllowFrom.map((v) =>
     v.toLowerCase(),
   );

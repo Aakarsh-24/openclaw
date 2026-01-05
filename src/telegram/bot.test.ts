@@ -668,4 +668,38 @@ describe("createTelegramBot", () => {
 
     expect(replySpy).not.toHaveBeenCalled();
   });
+
+  it("matches telegram:-prefixed allowFrom entries in group allowlist", async () => {
+    onSpy.mockReset();
+    const replySpy = replyModule.__replySpy as unknown as ReturnType<
+      typeof vi.fn
+    >;
+    replySpy.mockReset();
+    loadConfig.mockReturnValue({
+      telegram: {
+        groupPolicy: "allowlist",
+        allowFrom: ["telegram:123456789"], // Prefixed format
+        groups: { "*": { requireMention: false } },
+      },
+    });
+
+    createTelegramBot({ token: "tok" });
+    const handler = onSpy.mock.calls[0][1] as (
+      ctx: Record<string, unknown>,
+    ) => Promise<void>;
+
+    await handler({
+      message: {
+        chat: { id: -100123456789, type: "group", title: "Test Group" },
+        from: { id: 123456789, username: "testuser" }, // Matches after stripping prefix
+        text: "hello from prefixed user",
+        date: 1736380800,
+      },
+      me: { username: "clawdbot_bot" },
+      getFile: async () => ({ download: async () => new Uint8Array() }),
+    });
+
+    // Should call reply because sender ID matches after stripping telegram: prefix
+    expect(replySpy).toHaveBeenCalled();
+  });
 });

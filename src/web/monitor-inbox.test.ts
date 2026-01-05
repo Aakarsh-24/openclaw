@@ -799,6 +799,49 @@ describe("web monitor inbox", () => {
     await listener.close();
   });
 
+  it("allows all group senders with wildcard in groupPolicy allowlist", async () => {
+    mockLoadConfig.mockReturnValue({
+      whatsapp: {
+        allowFrom: ["*"], // Wildcard allows everyone
+        groupPolicy: "allowlist",
+      },
+      messages: {
+        messagePrefix: undefined,
+        responsePrefix: undefined,
+        timestampPrefix: false,
+      },
+    });
+
+    const onMessage = vi.fn();
+    const listener = await monitorWebInbox({ verbose: false, onMessage });
+    const sock = await createWaSocket();
+
+    const upsert = {
+      type: "notify",
+      messages: [
+        {
+          key: {
+            id: "grp-wildcard-test",
+            fromMe: false,
+            remoteJid: "22222@g.us",
+            participant: "9999999999@s.whatsapp.net", // Random sender
+          },
+          message: { conversation: "wildcard group sender" },
+        },
+      ],
+    };
+
+    sock.ev.emit("messages.upsert", upsert);
+    await new Promise((resolve) => setImmediate(resolve));
+
+    // Should call onMessage because wildcard allows all senders
+    expect(onMessage).toHaveBeenCalledTimes(1);
+    const payload = onMessage.mock.calls[0][0];
+    expect(payload.chatType).toBe("group");
+
+    await listener.close();
+  });
+
   it("allows messages from senders in allowFrom list", async () => {
     mockLoadConfig.mockReturnValue({
       whatsapp: {
