@@ -30,6 +30,11 @@
 - Run: `pnpm clawdis agent --message "test" --provider telegram --to <TELEGRAM_ID> --deliver`
 - Expect a reply in Telegram; check `/tmp/clawdis/clawdis-YYYY-MM-DD.log` if it fails.
 
+## Telegram Auto-Categorization
+- Automatic LLM-based message categorization (web search, deep research, none) is **disabled by default**.
+- To enable, set `TELEGRAM_AUTO_CATEGORIZE_ENABLED=true` in `.env` or `telegram.autoCategorize: true` in `~/.clawdis/clawdis.json`.
+- Explicit `/web` and `/deep` commands always work regardless of this setting.
+
 ## Commit & Pull Request Guidelines
 - Create commits with `scripts/committer "<msg>" <file...>`; avoid manual `git add`/`git commit` so staging stays scoped.
 - Follow concise, action-oriented commit messages (e.g., `CLI: add verbose flag to send`).

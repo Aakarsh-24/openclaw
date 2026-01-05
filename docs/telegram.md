@@ -50,10 +50,23 @@ Example config:
     proxy: "socks5://localhost:9050",
     webhookSecret: "mysecret",
     webhookPath: "/telegram-webhook",
-    webhookUrl: "https://yourdomain.com/telegram-webhook"
+    webhookUrl: "https://yourdomain.com/telegram-webhook",
+    autoCategorize: false // Enable automatic LLM-based intent detection (default: false)
   }
 }
 ```
+
+### Automatic Intent Detection
+The bot can automatically categorize messages using an LLM to detect if a user wants web search or deep research. This is **disabled by default**.
+
+**To enable:**
+- Set environment variable: `TELEGRAM_AUTO_CATEGORIZE_ENABLED=true`
+- Or set in config: `telegram.autoCategorize: true`
+
+**Behavior:**
+- When enabled, the bot will send messages like "google it" or "do deep research" to an LLM for categorization
+- Only messages that pass confidence threshold (0.7) and meet criteria (≥2 words, ≥6 chars, not commands) are processed
+- **Explicit commands `/web` and `/deep` always work regardless of this setting**
 - Tests: grammY-based paths in `src/telegram/*.test.ts` cover DM + group gating; add more media and webhook cases as needed.
 
 ## Group etiquette
