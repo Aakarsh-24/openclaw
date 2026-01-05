@@ -203,6 +203,8 @@ export type TelegramConfig = {
     }
   >;
   allowFrom?: Array<string | number>;
+  /** Optional allowlist for group chats (ids or slugs). */
+  allowFromGroups?: Array<string | number>;
   /** Outbound text chunk size (chars). Default: 4000. */
   textChunkLimit?: number;
   mediaMaxMb?: number;

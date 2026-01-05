@@ -39,6 +39,7 @@ export type TelegramBotOptions = {
   runtime?: RuntimeEnv;
   requireMention?: boolean;
   allowFrom?: Array<string | number>;
+  allowFromGroups?: Array<string | number>;
   mediaMaxMb?: number;
   replyToMode?: ReplyToMode;
   proxyFetch?: typeof fetch;
@@ -62,6 +63,7 @@ export function createTelegramBot(opts: TelegramBotOptions) {
   const cfg = loadConfig();
   const textLimit = resolveTextChunkLimit(cfg, "telegram");
   const allowFrom = opts.allowFrom ?? cfg.telegram?.allowFrom;
+  const allowFromGroups = opts.allowFromGroups ?? cfg.telegram?.allowFromGroups;
   const replyToMode = opts.replyToMode ?? cfg.telegram?.replyToMode ?? "off";
   const mediaMaxBytes =
     (opts.mediaMaxMb ?? cfg.telegram?.mediaMaxMb ?? 5) * 1024 * 1024;
@@ -108,6 +110,27 @@ export function createTelegramBot(opts: TelegramBotOptions) {
         if (!permitted) {
           logVerbose(
             `Blocked unauthorized telegram sender ${candidate} (not in allowFrom)`,
+          );
+          return;
+        }
+      }
+
+      // allowFromGroups for group chats
+      if (
+        isGroup &&
+        Array.isArray(allowFromGroups) &&
+        allowFromGroups.length > 0
+      ) {
+        const candidate = String(chatId);
+        const allowed = allowFromGroups.map(String);
+        const allowedWithPrefix = allowFromGroups.map((v) => `telegram:${String(v)}`);
+        const permitted =
+          allowed.includes(candidate) ||
+          allowedWithPrefix.includes(`telegram:${candidate}`) ||
+          allowed.includes("*");
+        if (!permitted) {
+          logVerbose(
+            `Blocked unauthorized telegram group ${candidate} (not in allowFromGroups)`,
           );
           return;
         }
