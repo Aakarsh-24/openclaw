@@ -1272,4 +1272,216 @@ describe("createTelegramBot", () => {
 
     expect(replySpy).toHaveBeenCalledTimes(1);
   });
+
+  // Topics/forum support tests
+  it("extracts thread ID from message_thread_id and includes it in context", async () => {
+    onSpy.mockReset();
+    const replySpy = replyModule.__replySpy as unknown as ReturnType<
+      typeof vi.fn
+    >;
+    replySpy.mockReset();
+
+    loadConfig.mockReturnValue({
+      telegram: { groups: { "*": { requireMention: false } } },
+    });
+
+    createTelegramBot({ token: "tok" });
+    const handler = onSpy.mock.calls[0][1] as (
+      ctx: Record<string, unknown>,
+    ) => Promise<void>;
+
+    await handler({
+      message: {
+        chat: { id: 123, type: "supergroup", title: "Forum Group" },
+        text: "hello from topic",
+        date: 1736380800,
+        message_id: 1001,
+        message_thread_id: 42, // Topic thread ID
+        from: { id: 999, first_name: "Ada" },
+      },
+      me: { username: "clawdbot_bot" },
+      getFile: async () => ({ download: async () => new Uint8Array() }),
+    });
+
+    expect(replySpy).toHaveBeenCalledTimes(1);
+    const payload = replySpy.mock.calls[0][0];
+    expect(payload.ThreadId).toBe("42");
+    expect(payload.Body).toContain("thread:42");
+  });
+
+  it("passes message_thread_id to sendMessage for text replies in topics", async () => {
+    onSpy.mockReset();
+    sendMessageSpy.mockReset();
+    const replySpy = replyModule.__replySpy as unknown as ReturnType<
+      typeof vi.fn
+    >;
+    replySpy.mockReset();
+    replySpy.mockResolvedValue({ text: "reply text" });
+
+    loadConfig.mockReturnValue({
+      telegram: { groups: { "*": { requireMention: false } } },
+    });
+
+    createTelegramBot({ token: "tok" });
+    const handler = onSpy.mock.calls[0][1] as (
+      ctx: Record<string, unknown>,
+    ) => Promise<void>;
+
+    await handler({
+      message: {
+        chat: { id: 123, type: "supergroup", title: "Forum Group" },
+        text: "hello",
+        date: 1736380800,
+        message_id: 1001,
+        message_thread_id: 42,
+        from: { id: 999, first_name: "Ada" },
+      },
+      me: { username: "clawdbot_bot" },
+      getFile: async () => ({ download: async () => new Uint8Array() }),
+    });
+
+    expect(sendMessageSpy).toHaveBeenCalledTimes(1);
+    expect(sendMessageSpy.mock.calls[0][2]).toEqual(
+      expect.objectContaining({
+        message_thread_id: 42,
+      }),
+    );
+  });
+
+  it("passes message_thread_id to sendPhoto for image replies in topics", async () => {
+    onSpy.mockReset();
+    sendPhotoSpy.mockReset();
+    const replySpy = replyModule.__replySpy as unknown as ReturnType<
+      typeof vi.fn
+    >;
+    replySpy.mockReset();
+    replySpy.mockResolvedValue({
+      text: "caption",
+      mediaUrl: "https://example.com/photo.jpg",
+    });
+
+    loadWebMedia.mockResolvedValueOnce({
+      buffer: Buffer.from("fake-image"),
+      contentType: "image/jpeg",
+      fileName: "photo.jpg",
+    });
+
+    loadConfig.mockReturnValue({
+      telegram: { groups: { "*": { requireMention: false } } },
+    });
+
+    createTelegramBot({ token: "tok" });
+    const handler = onSpy.mock.calls[0][1] as (
+      ctx: Record<string, unknown>,
+    ) => Promise<void>;
+
+    await handler({
+      message: {
+        chat: { id: 123, type: "supergroup", title: "Forum Group" },
+        text: "show me a picture",
+        date: 1736380800,
+        message_id: 1001,
+        message_thread_id: 42,
+        from: { id: 999, first_name: "Ada" },
+      },
+      me: { username: "clawdbot_bot" },
+      getFile: async () => ({ download: async () => new Uint8Array() }),
+    });
+
+    expect(sendPhotoSpy).toHaveBeenCalledTimes(1);
+    expect(sendPhotoSpy.mock.calls[0][2]).toEqual(
+      expect.objectContaining({
+        message_thread_id: 42,
+      }),
+    );
+  });
+
+  it("passes message_thread_id to sendAnimation for GIF replies in topics", async () => {
+    onSpy.mockReset();
+    sendAnimationSpy.mockReset();
+    const replySpy = replyModule.__replySpy as unknown as ReturnType<
+      typeof vi.fn
+    >;
+    replySpy.mockReset();
+    replySpy.mockResolvedValue({
+      text: "animated caption",
+      mediaUrl: "https://example.com/fun.gif",
+    });
+
+    loadWebMedia.mockResolvedValueOnce({
+      buffer: Buffer.from("GIF89a"),
+      contentType: "image/gif",
+      fileName: "fun.gif",
+    });
+
+    loadConfig.mockReturnValue({
+      telegram: { groups: { "*": { requireMention: false } } },
+    });
+
+    createTelegramBot({ token: "tok" });
+    const handler = onSpy.mock.calls[0][1] as (
+      ctx: Record<string, unknown>,
+    ) => Promise<void>;
+
+    await handler({
+      message: {
+        chat: { id: 123, type: "supergroup", title: "Forum Group" },
+        text: "show me a gif",
+        date: 1736380800,
+        message_id: 1001,
+        message_thread_id: 42,
+        from: { id: 999, first_name: "Ada" },
+      },
+      me: { username: "clawdbot_bot" },
+      getFile: async () => ({ download: async () => new Uint8Array() }),
+    });
+
+    expect(sendAnimationSpy).toHaveBeenCalledTimes(1);
+    expect(sendAnimationSpy.mock.calls[0][2]).toEqual(
+      expect.objectContaining({
+        message_thread_id: 42,
+      }),
+    );
+  });
+
+  it("does not include message_thread_id when message has no thread", async () => {
+    onSpy.mockReset();
+    sendMessageSpy.mockReset();
+    const replySpy = replyModule.__replySpy as unknown as ReturnType<
+      typeof vi.fn
+    >;
+    replySpy.mockReset();
+    replySpy.mockResolvedValue({ text: "reply text" });
+
+    loadConfig.mockReturnValue({
+      telegram: { groups: { "*": { requireMention: false } } },
+    });
+
+    createTelegramBot({ token: "tok" });
+    const handler = onSpy.mock.calls[0][1] as (
+      ctx: Record<string, unknown>,
+    ) => Promise<void>;
+
+    await handler({
+      message: {
+        chat: { id: 123, type: "group", title: "Regular Group" },
+        text: "hello",
+        date: 1736380800,
+        message_id: 1001,
+        // No message_thread_id
+        from: { id: 999, first_name: "Ada" },
+      },
+      me: { username: "clawdbot_bot" },
+      getFile: async () => ({ download: async () => new Uint8Array() }),
+    });
+
+    expect(sendMessageSpy).toHaveBeenCalledTimes(1);
+    const payload = replySpy.mock.calls[0][0];
+    expect(payload.ThreadId).toBeUndefined();
+    expect(sendMessageSpy.mock.calls[0][2]).toEqual(
+      expect.objectContaining({
+        message_thread_id: undefined,
+      }),
+    );
+  });
 });
