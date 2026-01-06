@@ -166,8 +166,10 @@ export function createTelegramBot(opts: TelegramBotOptions) {
         ""
       ).trim();
       if (!rawBody) return;
-      const threadId = msg.message_thread_id ? String(msg.message_thread_id) : undefined;
-      
+      const threadId = msg.message_thread_id
+        ? String(msg.message_thread_id)
+        : undefined;
+
       const replySuffix = replyTarget
         ? `\n\n[Replying to ${replyTarget.sender}${
             replyTarget.id ? ` id:${replyTarget.id}` : ""
@@ -182,7 +184,7 @@ export function createTelegramBot(opts: TelegramBotOptions) {
         body: `${rawBody}${replySuffix}`,
         thread: threadId,
       });
-      
+
       const ctxPayload = {
         Body: body,
         From: isGroup ? `group:${chatId}` : `telegram:${chatId}`,
@@ -309,7 +311,8 @@ async function deliverReplies(params: {
   replyToMode: ReplyToMode;
   textLimit: number;
 }) {
-  const { replies, chatId, threadId, runtime, bot, replyToMode, textLimit } = params;
+  const { replies, chatId, threadId, runtime, bot, replyToMode, textLimit } =
+    params;
   let hasReplied = false;
   for (const reply of replies) {
     if (!reply?.text && !reply?.mediaUrl && !(reply?.mediaUrls?.length ?? 0)) {
