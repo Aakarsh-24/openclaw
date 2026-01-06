@@ -274,19 +274,20 @@ function renderNode(params: {
     const currentIndex = enumValues.findIndex(
       (v) => v === value || String(v) === String(value),
     );
+    const unsetValue = "__unset__";
     return html`
       <label class="field">
         ${showLabel ? html`<span>${label}</span>` : nothing}
         ${help ? html`<div class="muted">${help}</div>` : nothing}
         <select
-          .value=${currentIndex >= 0 ? String(currentIndex) : ""}
+          .value=${currentIndex >= 0 ? String(currentIndex) : unsetValue}
           ?disabled=${disabled}
           @change=${(e: Event) => {
             const idx = (e.target as HTMLSelectElement).value;
-            onPatch(path, idx === "" ? undefined : enumValues[Number(idx)]);
+            onPatch(path, idx === unsetValue ? undefined : enumValues[Number(idx)]);
           }}
         >
-          <option value="">—</option>
+          <option value=${unsetValue}>—</option>
           ${enumValues.map(
             (opt, i) => html`<option value=${String(i)}>${String(opt)}</option>`,
           )}
