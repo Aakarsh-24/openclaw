@@ -152,7 +152,7 @@ export function createTelegramBot(opts: TelegramBotOptions) {
   };
   const dmAllow = normalizeAllowFrom(allowFrom);
   const groupAllow = normalizeAllowFrom(groupAllowFrom);
-  const replyToMode = opts.replyToMode ?? cfg.telegram?.replyToMode ?? "off";
+  const replyToMode = opts.replyToMode ?? cfg.telegram?.replyToMode ?? "first";
   const ackReaction = (cfg.messages?.ackReaction ?? "").trim();
   const ackReactionScope = cfg.messages?.ackReactionScope ?? "group-mentions";
   const mediaMaxBytes =

@@ -33,10 +33,12 @@ export async function monitorTelegramProvider(opts: MonitorTelegramOpts = {}) {
       ? makeProxyFetch(loadConfig().telegram?.proxy as string)
       : undefined);
 
+  const cfg = loadConfig();
   const bot = createTelegramBot({
     token,
     runtime: opts.runtime,
     proxyFetch,
+    replyToMode: cfg.telegram?.replyToMode,
   });
 
   if (opts.useWebhook) {
