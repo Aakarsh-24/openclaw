@@ -340,7 +340,12 @@ export async function modelsListCommand(
   ensureFlagCompatibility(opts);
   const cfg = loadConfig();
   const authStore = ensureAuthProfileStore();
-  const providerFilter = opts.provider?.trim().toLowerCase();
+  const providerFilter = (() => {
+    const raw = opts.provider?.trim();
+    if (!raw) return undefined;
+    const parsed = parseModelRef(`${raw}/_`, DEFAULT_PROVIDER);
+    return parsed?.provider ?? raw.toLowerCase();
+  })();
 
   let models: Model<Api>[] = [];
   let availableKeys: Set<string> | undefined;
@@ -444,7 +449,8 @@ export async function modelsStatusCommand(
     typeof modelConfig === "string"
       ? modelConfig.trim()
       : (modelConfig?.primary?.trim() ?? "");
-  const defaultLabel = rawModel || `${resolved.provider}/${resolved.model}`;
+  const resolvedLabel = `${resolved.provider}/${resolved.model}`;
+  const defaultLabel = rawModel || resolvedLabel;
   const fallbacks =
     typeof modelConfig === "object" ? (modelConfig?.fallbacks ?? []) : [];
   const imageModel =
@@ -467,7 +473,7 @@ export async function modelsStatusCommand(
       JSON.stringify(
         {
           configPath: CONFIG_PATH_CLAWDBOT,
-          defaultModel: defaultLabel,
+          defaultModel: rawModel || resolvedLabel,
           resolvedDefault: `${resolved.provider}/${resolved.model}`,
           fallbacks,
           imageModel: imageModel || null,
@@ -483,12 +489,16 @@ export async function modelsStatusCommand(
   }
 
   if (opts.plain) {
-    runtime.log(defaultLabel);
+    runtime.log(resolvedLabel);
     return;
   }
 
   runtime.log(info(`Config: ${CONFIG_PATH_CLAWDBOT}`));
-  runtime.log(`Default: ${defaultLabel}`);
+  runtime.log(
+    `Default: ${defaultLabel}${
+      rawModel && rawModel !== resolvedLabel ? ` (from ${rawModel})` : ""
+    }`,
+  );
   runtime.log(
     `Fallbacks (${fallbacks.length || 0}): ${fallbacks.join(", ") || "-"}`,
   );
