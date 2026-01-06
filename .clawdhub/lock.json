@@ -32,6 +32,10 @@
     "1password": {
       "version": "1.0.0",
       "installedAt": 1767668517959
+    },
+    "otter": {
+      "version": "1.0.0",
+      "installedAt": 1767714704384
     }
   }
 }
