@@ -3,12 +3,13 @@
 Cloudflare CLI - DNS, Cache, Workers Routes
 
 Usage:
+    cloudflare.py verify
     cloudflare.py zones [--json]
     cloudflare.py zone <domain> [--json]
     cloudflare.py dns list <domain> [--json]
     cloudflare.py dns add <domain> --type TYPE --name NAME --content CONTENT [--proxied] [--ttl TTL]
     cloudflare.py dns update <domain> <record_id> [--content CONTENT] [--proxied]
-    cloudflare.py dns delete <domain> <record_id>
+    cloudflare.py dns delete <domain> <record_id> [--yes]
     cloudflare.py cache purge <domain> [--all] [--urls URLS] [--prefix PREFIX]
     cloudflare.py routes list <domain> [--json]
     cloudflare.py routes add <domain> --pattern PATTERN --worker WORKER
@@ -21,6 +22,16 @@ import sys
 from typing import Optional
 
 import requests
+
+
+def confirm(prompt: str, default: bool = False) -> bool:
+    """Ask for confirmation"""
+    if default:
+        choice = input(f"{prompt} [Y/n]: ").strip().lower()
+        return choice != 'n'
+    else:
+        choice = input(f"{prompt} [y/N]: ").strip().lower()
+        return choice == 'y'
 
 
 class CloudflareClient:
@@ -38,15 +49,45 @@ class CloudflareClient:
     def _request(self, method: str, endpoint: str, data: dict = None) -> dict:
         """Make API request"""
         url = f"{self.API_BASE}/{endpoint}"
-        resp = requests.request(method, url, headers=self.headers, json=data)
-        result = resp.json()
+        
+        try:
+            resp = requests.request(method, url, headers=self.headers, json=data, timeout=30)
+        except requests.exceptions.Timeout:
+            raise Exception("Request timed out - Cloudflare API may be slow")
+        except requests.exceptions.ConnectionError:
+            raise Exception("Connection failed - check your internet connection")
+        
+        try:
+            result = resp.json()
+        except json.JSONDecodeError:
+            raise Exception(f"Invalid response from API (status {resp.status_code})")
         
         if not result.get("success", False):
             errors = result.get("errors", [])
-            error_msg = "; ".join([e.get("message", str(e)) for e in errors])
-            raise Exception(f"API error: {error_msg}")
+            if errors:
+                # Extract meaningful error info
+                error_parts = []
+                for e in errors:
+                    code = e.get("code", "")
+                    msg = e.get("message", str(e))
+                    if code == 10000:
+                        error_parts.append("Authentication failed - check your API token")
+                    elif code == 7003:
+                        error_parts.append(f"Zone not found or no permission")
+                    elif code == 81057:
+                        error_parts.append("Record already exists")
+                    else:
+                        error_parts.append(f"{msg} (code {code})" if code else msg)
+                raise Exception("; ".join(error_parts))
+            else:
+                raise Exception(f"API error (status {resp.status_code})")
         
         return result
+    
+    def verify_token(self) -> dict:
+        """Verify the API token and return token details"""
+        result = self._request("GET", "user/tokens/verify")
+        return result.get("result", {})
     
     # === Zones ===
     
@@ -194,6 +235,9 @@ def main():
     
     subparsers = parser.add_subparsers(dest="command", help="Commands")
     
+    # verify
+    subparsers.add_parser("verify", help="Verify API token")
+    
     # zones
     subparsers.add_parser("zones", help="List zones")
     
@@ -226,6 +270,7 @@ def main():
     dns_delete = dns_sub.add_parser("delete", help="Delete DNS record")
     dns_delete.add_argument("domain")
     dns_delete.add_argument("record_id")
+    dns_delete.add_argument("--yes", "-y", action="store_true", help="Skip confirmation")
     
     # cache
     cache_p = subparsers.add_parser("cache", help="Cache commands")
@@ -236,6 +281,7 @@ def main():
     cache_purge.add_argument("--all", action="store_true", help="Purge everything")
     cache_purge.add_argument("--urls", help="Comma-separated URLs to purge")
     cache_purge.add_argument("--prefix", help="URL prefix to purge")
+    cache_purge.add_argument("--yes", "-y", action="store_true", help="Skip confirmation")
     
     # routes
     routes_p = subparsers.add_parser("routes", help="Workers routes commands")
@@ -260,14 +306,30 @@ def main():
     client = CloudflareClient(api_token)
     
     try:
-        if args.command == "zones":
+        if args.command == "verify":
+            result = client.verify_token()
+            status = result.get("status", "unknown")
+            if status == "active":
+                print("✅ Token is valid")
+                print(f"   Status: {status}")
+                print(f"   ID: {result.get('id', 'N/A')}")
+                if args.json:
+                    print(json.dumps(result, indent=2))
+            else:
+                print(f"⚠️  Token status: {status}")
+                sys.exit(1)
+        
+        elif args.command == "zones":
             zones = client.list_zones()
             if args.json:
                 print(json.dumps(zones, indent=2))
             else:
-                for z in zones:
-                    status = "✓" if z.get("status") == "active" else "○"
-                    print(f"{status} {z.get('name')} ({z.get('id')[:8]}...)")
+                if not zones:
+                    print("No zones found (check token permissions)")
+                else:
+                    for z in zones:
+                        status = "✓" if z.get("status") == "active" else "○"
+                        print(f"{status} {z.get('name')} ({z.get('id')[:8]}...)")
         
         elif args.command == "zone":
             zone = client.get_zone(args.domain)
@@ -310,17 +372,46 @@ def main():
                 print(f"✅ Updated: {record.get('name')} → {record.get('content')}")
             
             elif args.dns_action == "delete":
+                # Get record details first for confirmation
+                records = client.list_dns_records(args.domain)
+                record = next((r for r in records if r.get("id") == args.record_id), None)
+                
+                if not record:
+                    print(f"❌ Record not found: {args.record_id}", file=sys.stderr)
+                    sys.exit(1)
+                
+                record_info = f"{record.get('type')} {record.get('name')} → {record.get('content')}"
+                
+                if not args.yes:
+                    print(f"About to delete: {record_info}")
+                    if not confirm("Are you sure?"):
+                        print("Cancelled")
+                        sys.exit(0)
+                
                 client.delete_dns_record(args.domain, args.record_id)
-                print(f"✅ Deleted record {args.record_id}")
+                print(f"✅ Deleted: {record_info}")
         
         elif args.command == "cache":
             if args.cache_action == "purge":
                 urls = args.urls.split(",") if args.urls else None
                 prefixes = [args.prefix] if args.prefix else None
                 
+                # Confirm for purge all
+                if args.all and not args.yes:
+                    print(f"⚠️  This will purge ALL cached content for {args.domain}")
+                    if not confirm("Are you sure?"):
+                        print("Cancelled")
+                        sys.exit(0)
+                
                 result = client.purge_cache(args.domain, purge_all=args.all, 
                                            urls=urls, prefixes=prefixes)
-                print(f"✅ Cache purged for {args.domain}")
+                if args.all:
+                    print(f"✅ Purged ALL cache for {args.domain}")
+                elif urls:
+                    print(f"✅ Purged {len(urls)} URL(s) from cache")
+                else:
+                    print(f"✅ Purged cache by prefix for {args.domain}")
+                    
                 if args.json:
                     print(json.dumps(result, indent=2))
         

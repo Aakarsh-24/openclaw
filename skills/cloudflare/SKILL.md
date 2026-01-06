@@ -46,6 +46,13 @@ Configure in `~/.clawdis/clawdis.json`:
 
 ## 📋 Commands
 
+### Verify Token
+
+```bash
+# Test that your token works
+uv run {baseDir}/scripts/cloudflare.py verify
+```
+
 ### Zones (Domains)
 
 ```bash
@@ -69,8 +76,11 @@ uv run {baseDir}/scripts/cloudflare.py dns add <domain> --type CNAME --name blog
 # Update DNS record
 uv run {baseDir}/scripts/cloudflare.py dns update <domain> <record_id> --content 5.6.7.8
 
-# Delete DNS record
+# Delete DNS record (asks for confirmation)
 uv run {baseDir}/scripts/cloudflare.py dns delete <domain> <record_id>
+
+# Delete without confirmation
+uv run {baseDir}/scripts/cloudflare.py dns delete <domain> <record_id> --yes
 ```
 
 ### Cache
