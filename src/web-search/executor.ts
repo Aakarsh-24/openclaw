@@ -83,8 +83,33 @@ export async function executeWebSearch(
       jsonStr = jsonStr.slice(jsonStart);
     }
 
-    const result = JSON.parse(jsonStr);
-    
+    // Validate JSON before parsing
+    let result;
+    try {
+      result = JSON.parse(jsonStr);
+    } catch (_) {
+      // JSON parse failed - gemini CLI likely output an error
+      // Return structured error instead of throwing
+      return {
+        success: false,
+        runId: `error-${Date.now()}`,
+        error: `gemini CLI output was not valid JSON: ${jsonStr.slice(0, 200)}`,
+        stdout: stdout,
+        stderr: stderr
+      };
+    }
+
+    // Validate required fields exist
+    if (!result || typeof result.response !== 'string') {
+      return {
+        success: false,
+        runId: `error-${Date.now()}`,
+        error: `Invalid response format from gemini CLI`,
+        stdout: stdout,
+        stderr: stderr
+      };
+    }
+
     return {
       success: true,
       runId: result.session_id || `web-${Date.now()}`,
