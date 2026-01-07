@@ -1,3 +1,5 @@
+import com.android.build.api.variant.impl.VariantOutputImpl
+
 plugins {
   id("com.android.application")
   id("org.jetbrains.kotlin.android")
@@ -56,11 +58,15 @@ android {
 
 androidComponents {
   onVariants { variant ->
-    variant.outputs.forEach { output ->
-      val apkOutput = output as? com.android.build.api.variant.ApkVariantOutput ?: return@forEach
-      val versionName = variant.versionName.orNull ?: "0"
-      apkOutput.outputFileName.set("clawdbot-${versionName}-${variant.name}.apk")
-    }
+    variant.outputs
+      .filterIsInstance<VariantOutputImpl>()
+      .forEach { output ->
+        val versionName = output.versionName.get()
+        val buildType = variant.buildType
+
+        val outputFileName = "clawdbot-${versionName}-${buildType}.apk"
+        output.outputFileName = outputFileName
+      }
   }
 }
 
