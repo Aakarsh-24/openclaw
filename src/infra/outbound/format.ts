@@ -43,7 +43,10 @@ export function buildOutboundDeliveryJson(params: {
   provider: string;
   to: string;
   result?: OutboundDeliveryMeta | OutboundDeliveryResult;
-  via?: "direct" | "gateway";                                                                        mediaUrl?: string | null;                                                                        }): OutboundDeliveryJson {                                                                           const { provider, to, result } = params;
+  via?: "direct" | "gateway";
+  mediaUrl?: string | null;
+}): OutboundDeliveryJson {
+  const { provider, to, result } = params;
   const messageId = result?.messageId ?? "unknown";
   const payload: OutboundDeliveryJson = {
     provider,
@@ -60,7 +63,6 @@ export function buildOutboundDeliveryJson(params: {
 
   return payload;
 }
-
 export function formatGatewaySummary(params: {
   action?: string;
   provider?: string;
