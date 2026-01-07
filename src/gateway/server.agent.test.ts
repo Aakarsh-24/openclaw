@@ -101,6 +101,7 @@ describe("gateway server agent", () => {
     const spy = vi.mocked(agentCommand);
     const call = spy.mock.calls.at(-1)?.[0] as Record<string, unknown>;
     expect(call.provider).toBe("whatsapp");
+    expect(call.messageProvider).toBe("whatsapp");
     expect(call.to).toBe("+1555");
     expect(call.deliver).toBe(true);
     expect(call.bestEffortDeliver).toBe(true);

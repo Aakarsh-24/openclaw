@@ -249,7 +249,7 @@ export const agentHandlers: GatewayRequestHandlers = {
         provider: resolvedProvider,
         timeout: request.timeout?.toString(),
         bestEffortDeliver,
-        messageProvider: "voicewake",
+        messageProvider: resolvedProvider,
         runId,
         lane: request.lane,
         extraSystemPrompt: request.extraSystemPrompt,
