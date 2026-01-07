@@ -16,6 +16,11 @@ import {
 import { DEFAULT_CLAWD_BROWSER_COLOR } from "../browser/constants.js";
 import type { ClawdbotConfig } from "../config/config.js";
 import { STATE_DIR_CLAWDBOT } from "../config/config.js";
+import {
+  DEFAULT_AGENT_ID,
+  normalizeAgentId,
+  parseAgentSessionKey,
+} from "../routing/session-key.js";
 import { defaultRuntime } from "../runtime.js";
 import { resolveUserPath } from "../utils.js";
 import {
@@ -197,12 +202,31 @@ function isToolAllowed(policy: SandboxToolPolicy, name: string) {
   return allow.includes(name.toLowerCase());
 }
 
-function defaultSandboxConfig(cfg?: ClawdbotConfig): SandboxConfig {
+function resolveSandboxAgentId(
+  cfg: ClawdbotConfig | undefined,
+  sessionKey?: string,
+) {
+  const parsed = parseAgentSessionKey(sessionKey);
+  if (parsed?.agentId) return normalizeAgentId(parsed.agentId);
+  return normalizeAgentId(cfg?.routing?.defaultAgentId ?? DEFAULT_AGENT_ID);
+}
+
+function defaultSandboxConfig(
+  cfg?: ClawdbotConfig,
+  agentId?: string,
+): SandboxConfig {
+  const resolvedAgentId = agentId ? normalizeAgentId(agentId) : undefined;
   const agent = cfg?.agent?.sandbox;
+  const perAgent = resolvedAgentId
+    ? cfg?.routing?.agents?.[resolvedAgentId]?.sandbox
+    : undefined;
   return {
-    mode: agent?.mode ?? "off",
-    perSession: agent?.perSession ?? true,
-    workspaceRoot: agent?.workspaceRoot ?? DEFAULT_SANDBOX_WORKSPACE_ROOT,
+    mode: perAgent?.mode ?? agent?.mode ?? "off",
+    perSession: perAgent?.perSession ?? agent?.perSession ?? true,
+    workspaceRoot:
+      perAgent?.workspaceRoot ??
+      agent?.workspaceRoot ??
+      DEFAULT_SANDBOX_WORKSPACE_ROOT,
     docker: {
       image: agent?.docker?.image ?? DEFAULT_SANDBOX_IMAGE,
       containerPrefix:
@@ -851,7 +875,8 @@ export async function resolveSandboxContext(params: {
 }): Promise<SandboxContext | null> {
   const rawSessionKey = params.sessionKey?.trim();
   if (!rawSessionKey) return null;
-  const cfg = defaultSandboxConfig(params.config);
+  const agentId = resolveSandboxAgentId(params.config, rawSessionKey);
+  const cfg = defaultSandboxConfig(params.config, agentId);
   const mainKey = params.config?.session?.mainKey?.trim() || "main";
   if (!shouldSandboxSession(cfg, rawSessionKey, mainKey)) return null;
 
@@ -900,7 +925,8 @@ export async function ensureSandboxWorkspaceForSession(params: {
 }): Promise<SandboxWorkspaceInfo | null> {
   const rawSessionKey = params.sessionKey?.trim();
   if (!rawSessionKey) return null;
-  const cfg = defaultSandboxConfig(params.config);
+  const agentId = resolveSandboxAgentId(params.config, rawSessionKey);
+  const cfg = defaultSandboxConfig(params.config, agentId);
   const mainKey = params.config?.session?.mainKey?.trim() || "main";
   if (!shouldSandboxSession(cfg, rawSessionKey, mainKey)) return null;
 
