@@ -39,6 +39,7 @@ import {
   buildBootstrapContextFiles,
   ensureSessionHeader,
   formatAssistantErrorText,
+  isContextOverflowError,
   sanitizeSessionMessagesImages,
 } from "./pi-embedded-helpers.js";
 import { subscribeEmbeddedPiSession } from "./pi-embedded-subscribe.js";
@@ -536,6 +537,28 @@ export async function runEmbeddedPiAgent(params: {
           params.abortSignal?.removeEventListener?.("abort", onAbort);
         }
         if (promptError && !aborted) {
+          // Check if this is a context overflow error (413)
+          const errorMsg = String(promptError);
+          if (isContextOverflowError(errorMsg)) {
+            // Return a helpful message instead of throwing
+            return {
+              payloads: [
+                {
+                  text:
+                    "Context overflow: the conversation history is too large for the model. " +
+                    "Use /new or /reset to start a fresh session, or try a model with a larger context window.",
+                },
+              ],
+              meta: {
+                durationMs: Date.now() - started,
+                agentMeta: {
+                  sessionId: sessionIdUsed,
+                  provider,
+                  model: model.id,
+                },
+              },
+            };
+          }
           throw promptError;
         }
 
