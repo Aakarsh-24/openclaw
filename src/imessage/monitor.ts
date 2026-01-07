@@ -351,7 +351,10 @@ export async function monitorIMessageProvider(
           : normalizeIMessageHandle(sender),
       },
     });
-    const imessageTo = chatTarget || `imessage:${sender}`;
+    // For DMs, use phone number directly (chat_id doesn't work with AppleScript for 1:1 chats)
+    const imessageTo = isGroup
+      ? chatTarget || `imessage:${sender}`
+      : `imessage:${sender}`;
     const ctxPayload = {
       Body: body,
       From: isGroup ? `group:${chatId}` : `imessage:${sender}`,
