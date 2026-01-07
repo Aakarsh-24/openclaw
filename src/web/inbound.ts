@@ -258,7 +258,7 @@ export async function monitorWebInbox(options: {
               normalizedAllowFrom.includes(candidate));
           if (!allowed) {
             if (dmPolicy === "pairing") {
-              const { code } = await upsertProviderPairingRequest({
+              const { code, created } = await upsertProviderPairingRequest({
                 provider: "whatsapp",
                 id: candidate,
                 meta: {
@@ -268,21 +268,23 @@ export async function monitorWebInbox(options: {
               logVerbose(
                 `whatsapp pairing request sender=${candidate} name=${msg.pushName ?? "unknown"} code=${code}`,
               );
-              try {
-                await sock.sendMessage(remoteJid, {
-                  text: [
-                    "Clawdbot: access not configured.",
-                    "",
-                    `Pairing code: ${code}`,
-                    "",
-                    "Ask the bot owner to approve with:",
-                    "clawdbot pairing approve --provider whatsapp <code>",
-                  ].join("\n"),
-                });
-              } catch (err) {
-                logVerbose(
-                  `whatsapp pairing reply failed for ${candidate}: ${String(err)}`,
-                );
+              if (created) {
+                try {
+                  await sock.sendMessage(remoteJid, {
+                    text: [
+                      "Clawdbot: access not configured.",
+                      "",
+                      `Pairing code: ${code}`,
+                      "",
+                      "Ask the bot owner to approve with:",
+                      "clawdbot pairing approve --provider whatsapp <code>",
+                    ].join("\n"),
+                  });
+                } catch (err) {
+                  logVerbose(
+                    `whatsapp pairing reply failed for ${candidate}: ${String(err)}`,
+                  );
+                }
               }
             } else {
               logVerbose(

@@ -1115,4 +1115,75 @@ describe("web monitor inbox", () => {
 
     await listener.close();
   });
+
+  it("only sends pairing message once for repeated unauthorized senders", async () => {
+    mockLoadConfig.mockReturnValue({
+      whatsapp: {
+        // Only self
+        allowFrom: ["+123"],
+      },
+      messages: {
+        messagePrefix: undefined,
+        responsePrefix: undefined,
+      },
+    });
+
+    const onMessage = vi.fn();
+    const listener = await monitorWebInbox({ verbose: false, onMessage });
+    const sock = await createWaSocket();
+
+    // First message from unauthorized sender: should send pairing message
+    upsertPairingRequestMock.mockResolvedValue({
+      code: "PAIRCODE",
+      created: true,
+    });
+    sock.ev.emit("messages.upsert", {
+      type: "notify",
+      messages: [
+        {
+          key: {
+            id: "msg1",
+            fromMe: false,
+            remoteJid: "999@s.whatsapp.net",
+          },
+          message: { conversation: "first message" },
+          messageTimestamp: 1_700_000_000,
+        },
+      ],
+    });
+    await new Promise((resolve) => setImmediate(resolve));
+
+    expect(sock.sendMessage).toHaveBeenCalledTimes(1);
+    expect(sock.sendMessage).toHaveBeenCalledWith("999@s.whatsapp.net", {
+      text: expect.stringContaining("Pairing code: PAIRCODE"),
+    });
+
+    // Second message from same sender: should NOT send pairing message again
+    sock.sendMessage.mockClear();
+    upsertPairingRequestMock.mockResolvedValue({
+      code: "PAIRCODE",
+      created: false, // Already exists
+    });
+    sock.ev.emit("messages.upsert", {
+      type: "notify",
+      messages: [
+        {
+          key: {
+            id: "msg2",
+            fromMe: false,
+            remoteJid: "999@s.whatsapp.net",
+          },
+          message: { conversation: "second message" },
+          messageTimestamp: 1_700_000_001,
+        },
+      ],
+    });
+    await new Promise((resolve) => setImmediate(resolve));
+
+    // Should NOT have sent another pairing message
+    expect(sock.sendMessage).not.toHaveBeenCalled();
+    expect(onMessage).not.toHaveBeenCalled();
+
+    await listener.close();
+  });
 });

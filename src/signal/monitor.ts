@@ -336,7 +336,7 @@ export async function monitorSignalProvider(
         if (!dmAllowed) {
           if (dmPolicy === "pairing") {
             const senderId = normalizeE164(sender);
-            const { code } = await upsertProviderPairingRequest({
+            const { code, created } = await upsertProviderPairingRequest({
               provider: "signal",
               id: senderId,
               meta: {
@@ -346,23 +346,25 @@ export async function monitorSignalProvider(
             logVerbose(
               `signal pairing request sender=${senderId} code=${code}`,
             );
-            try {
-              await sendMessageSignal(
-                senderId,
-                [
-                  "Clawdbot: access not configured.",
-                  "",
-                  `Pairing code: ${code}`,
-                  "",
-                  "Ask the bot owner to approve with:",
-                  "clawdbot pairing approve --provider signal <code>",
-                ].join("\n"),
-                { baseUrl, account, maxBytes: mediaMaxBytes },
-              );
-            } catch (err) {
-              logVerbose(
-                `signal pairing reply failed for ${senderId}: ${String(err)}`,
-              );
+            if (created) {
+              try {
+                await sendMessageSignal(
+                  senderId,
+                  [
+                    "Clawdbot: access not configured.",
+                    "",
+                    `Pairing code: ${code}`,
+                    "",
+                    "Ask the bot owner to approve with:",
+                    "clawdbot pairing approve --provider signal <code>",
+                  ].join("\n"),
+                  { baseUrl, account, maxBytes: mediaMaxBytes },
+                );
+              } catch (err) {
+                logVerbose(
+                  `signal pairing reply failed for ${senderId}: ${String(err)}`,
+                );
+              }
             }
           } else {
             logVerbose(

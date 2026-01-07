@@ -16,6 +16,7 @@
 - Groups: `whatsapp.groups`, `telegram.groups`, and `imessage.groups` now act as allowlists when set. Add `"*"` to keep allow-all behavior.
 
 ### Fixes
+- **SECURITY:** DM pairing now only sends pairing message on first request from unknown sender, preventing message spam when sender keeps messaging. Fixed across WhatsApp, Telegram, Signal, iMessage, Discord, and Slack.
 - Gateway/CLI: add daemon runtime selection (Node recommended; Bun optional) and document WhatsApp/Baileys Bun WebSocket instability on reconnect.
 - CLI: add `clawdbot docs` live docs search with pretty output.
 - Agent: treat compaction retry AbortError as a fallback trigger without swallowing non-abort errors. Thanks @erikpr1994 for PR #341.
