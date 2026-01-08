@@ -440,6 +440,11 @@ export async function handleCommands(params: {
       ? (normalizeGroupActivation(sessionEntry?.groupActivation) ??
         defaultGroupActivation())
       : undefined;
+    const statusProviderCapabilities = resolveProviderCapabilities({
+      cfg,
+      provider: command.provider,
+      accountId: ctx.AccountId,
+    });
     const statusText = buildStatusMessage({
       agent: {
         ...cfg.agent,
@@ -472,6 +477,8 @@ export async function handleCommands(params: {
         showDetails: queueOverrides,
       },
       includeTranscriptUsage: false,
+      provider: command.provider,
+      providerCapabilities: statusProviderCapabilities,
     });
     return { shouldContinue: false, reply: { text: statusText } };
   }
