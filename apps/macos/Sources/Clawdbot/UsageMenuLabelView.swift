@@ -30,7 +30,7 @@ struct UsageMenuLabelView: View {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(self.row.titleText)
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(self.primaryTextColor)
+                    .foregroundStyle(primaryTextColor)
                     .lineLimit(1)
                     .truncationMode(.middle)
                     .layoutPriority(1)
