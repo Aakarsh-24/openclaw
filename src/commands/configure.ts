@@ -16,6 +16,12 @@ import {
   type OAuthCredentials,
   type OAuthProvider,
 } from "@mariozechner/pi-ai";
+import {
+  CLAUDE_CLI_PROFILE_ID,
+  CODEX_CLI_PROFILE_ID,
+  ensureAuthProfileStore,
+} from "../agents/auth-profiles.js";
+import { createCliProgress } from "../cli/progress.js";
 import type { ClawdbotConfig } from "../config/config.js";
 import {
   CONFIG_PATH_CLAWDBOT,
@@ -29,12 +35,14 @@ import { resolveGatewayService } from "../daemon/service.js";
 import { ensureControlUiAssetsBuilt } from "../infra/control-ui-assets.js";
 import type { RuntimeEnv } from "../runtime.js";
 import { defaultRuntime } from "../runtime.js";
+import { theme } from "../terminal/theme.js";
 import { resolveUserPath, sleep } from "../utils.js";
 import { createClackPrompter } from "../wizard/clack-prompter.js";
 import {
   isRemoteEnvironment,
   loginAntigravityVpsAware,
 } from "./antigravity-oauth.js";
+import { buildAuthChoiceOptions } from "./auth-choice-options.js";
 import {
   DEFAULT_GATEWAY_DAEMON_RUNTIME,
   GATEWAY_DAEMON_RUNTIME_OPTIONS,
@@ -82,6 +90,27 @@ type WizardSection =
 type ConfigureWizardParams = {
   command: "configure" | "update";
   sections?: WizardSection[];
+};
+
+const startOscSpinner = (label: string) => {
+  const spin = spinner();
+  spin.start(theme.accent(label));
+  const osc = createCliProgress({
+    label,
+    indeterminate: true,
+    enabled: true,
+    fallback: "none",
+  });
+  return {
+    update: (message: string) => {
+      spin.message(theme.accent(message));
+      osc.setLabel(message);
+    },
+    stop: (message: string) => {
+      osc.done();
+      spin.stop(message);
+    },
+  };
 };
 
 async function promptGatewayConfig(
@@ -254,20 +283,21 @@ async function promptAuthConfig(
   const authChoice = guardCancel(
     await select({
       message: "Model/auth choice",
-      options: [
-        { value: "oauth", label: "Anthropic OAuth (Claude Pro/Max)" },
-        { value: "openai-codex", label: "OpenAI Codex (ChatGPT OAuth)" },
-        {
-          value: "antigravity",
-          label: "Google Antigravity (Claude Opus 4.5, Gemini 3, etc.)",
-        },
-        { value: "apiKey", label: "Anthropic API key" },
-        { value: "minimax", label: "Minimax M2.1 (LM Studio)" },
-        { value: "skip", label: "Skip for now" },
-      ],
+      options: buildAuthChoiceOptions({
+        store: ensureAuthProfileStore(),
+        includeSkip: true,
+      }),
     }),
     runtime,
-  ) as "oauth" | "openai-codex" | "antigravity" | "apiKey" | "minimax" | "skip";
+  ) as
+    | "oauth"
+    | "claude-cli"
+    | "openai-codex"
+    | "codex-cli"
+    | "antigravity"
+    | "apiKey"
+    | "minimax"
+    | "skip";
 
   let next = cfg;
 
@@ -276,8 +306,7 @@ async function promptAuthConfig(
       "Browser will open. Paste the code shown after login (code#state).",
       "Anthropic OAuth",
     );
-    const spin = spinner();
-    spin.start("Waiting for authorization…");
+    const spin = startOscSpinner("Waiting for authorization…");
     let oauthCreds: OAuthCredentials | null = null;
     try {
       oauthCreds = await loginAnthropic(
@@ -312,6 +341,12 @@ async function promptAuthConfig(
       runtime.error(String(err));
       note("Trouble with OAuth? See https://docs.clawd.bot/start/faq", "OAuth");
     }
+  } else if (authChoice === "claude-cli") {
+    next = applyAuthProfileConfig(next, {
+      profileId: CLAUDE_CLI_PROFILE_ID,
+      provider: "anthropic",
+      mode: "oauth",
+    });
   } else if (authChoice === "openai-codex") {
     const isRemote = isRemoteEnvironment();
     note(
@@ -328,21 +363,20 @@ async function promptAuthConfig(
           ].join("\n"),
       "OpenAI Codex OAuth",
     );
-    const spin = spinner();
-    spin.start("Starting OAuth flow…");
+    const spin = startOscSpinner("Starting OAuth flow…");
     let manualCodePromise: Promise<string> | undefined;
     try {
       const creds = await loginOpenAICodex({
         onAuth: async ({ url }) => {
           if (isRemote) {
-            spin.message("OAuth URL ready (see below)…");
+            spin.update("OAuth URL ready (see below)…");
             runtime.log(`\nOpen this URL in your LOCAL browser:\n\n${url}\n`);
             manualCodePromise = text({
               message: "Paste the redirect URL (or authorization code)",
               validate: (value) => (value?.trim() ? undefined : "Required"),
             }).then((value) => String(guardCancel(value, runtime)));
           } else {
-            spin.message("Complete sign-in in browser…");
+            spin.update("Complete sign-in in browser…");
             await openUrl(url);
             runtime.log(`Open: ${url}`);
           }
@@ -359,7 +393,7 @@ async function promptAuthConfig(
           );
           return String(code);
         },
-        onProgress: (msg) => spin.message(msg),
+        onProgress: (msg) => spin.update(msg),
       });
       spin.stop("OpenAI OAuth complete");
       if (creds) {
@@ -386,6 +420,20 @@ async function promptAuthConfig(
       runtime.error(String(err));
       note("Trouble with OAuth? See https://docs.clawd.bot/start/faq", "OAuth");
     }
+  } else if (authChoice === "codex-cli") {
+    next = applyAuthProfileConfig(next, {
+      profileId: CODEX_CLI_PROFILE_ID,
+      provider: "openai-codex",
+      mode: "oauth",
+    });
+    const applied = applyOpenAICodexModelDefault(next);
+    next = applied.next;
+    if (applied.changed) {
+      note(
+        `Default model set to ${OPENAI_CODEX_DEFAULT_MODEL}`,
+        "Model configured",
+      );
+    }
   } else if (authChoice === "antigravity") {
     const isRemote = isRemoteEnvironment();
     note(
@@ -402,8 +450,7 @@ async function promptAuthConfig(
           ].join("\n"),
       "Google Antigravity OAuth",
     );
-    const spin = spinner();
-    spin.start("Starting OAuth flow…");
+    const spin = startOscSpinner("Starting OAuth flow…");
     let oauthCreds: OAuthCredentials | null = null;
     try {
       oauthCreds = await loginAntigravityVpsAware(
@@ -412,12 +459,12 @@ async function promptAuthConfig(
             spin.stop("OAuth URL ready");
             runtime.log(`\nOpen this URL in your LOCAL browser:\n\n${url}\n`);
           } else {
-            spin.message("Complete sign-in in browser…");
+            spin.update("Complete sign-in in browser…");
             await openUrl(url);
             runtime.log(`Open: ${url}`);
           }
         },
-        (msg) => spin.message(msg),
+        (msg) => spin.update(msg),
       );
       spin.stop("Antigravity OAuth complete");
       if (oauthCreds) {

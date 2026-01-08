@@ -19,6 +19,14 @@ An **agent** is a fully scoped brain with its own:
 
 The Gateway can host **one agent** (default) or **many agents** side-by-side.
 
+## Paths (quick map)
+
+- Config: `~/.clawdbot/clawdbot.json` (or `CLAWDBOT_CONFIG_PATH`)
+- State dir: `~/.clawdbot` (or `CLAWDBOT_STATE_DIR`)
+- Workspace: `~/clawd` (or `~/clawd-<agentId>`)
+- Agent dir: `~/.clawdbot/agents/<agentId>/agent` (or `routing.agents.<agentId>.agentDir`)
+- Sessions: `~/.clawdbot/agents/<agentId>/sessions`
+
 ### Single-agent mode (default)
 
 If you do nothing, Clawdbot runs a single agent:
@@ -27,6 +35,22 @@ If you do nothing, Clawdbot runs a single agent:
 - Sessions are keyed as `agent:main:<mainKey>`.
 - Workspace defaults to `~/clawd` (or `~/clawd-<profile>` when `CLAWDBOT_PROFILE` is set).
 - State defaults to `~/.clawdbot/agents/main/agent`.
+
+## Agent helper
+
+Use the agent wizard to add a new isolated agent:
+
+```bash
+clawdbot agents add work
+```
+
+Then add `routing.bindings` (or let the wizard do it) to route inbound messages.
+
+Verify with:
+
+```bash
+clawdbot agents list --bindings
+```
 
 ## Multiple agents = multiple people, multiple personalities
 
@@ -73,10 +97,12 @@ multiple phone numbers without mixing sessions.
 
     agents: {
       home: {
+        name: "Home",
         workspace: "~/clawd-home",
         agentDir: "~/.clawdbot/agents/home/agent",
       },
       work: {
+        name: "Work",
         workspace: "~/clawd-work",
         agentDir: "~/.clawdbot/agents/work/agent",
       },
@@ -119,3 +145,45 @@ multiple phone numbers without mixing sessions.
   },
 }
 ```
+
+## Per-Agent Sandbox and Tool Configuration
+
+Starting with v2026.1.6, each agent can have its own sandbox and tool restrictions:
+
+```js
+{
+  routing: {
+    agents: {
+      personal: {
+        workspace: "~/clawd-personal",
+        sandbox: {
+          mode: "off",  // No sandbox for personal agent
+        },
+        // No tool restrictions - all tools available
+      },
+      family: {
+        workspace: "~/clawd-family",
+        sandbox: {
+          mode: "all",     // Always sandboxed
+          scope: "agent",  // One container per agent
+          docker: {
+            // Optional one-time setup after container creation
+            setupCommand: "apt-get update && apt-get install -y git curl",
+          },
+        },
+        tools: {
+          allow: ["read"],                    // Only read tool
+          deny: ["bash", "write", "edit"],    // Deny others
+        },
+      },
+    },
+  },
+}
+```
+
+**Benefits:**
+- **Security isolation**: Restrict tools for untrusted agents
+- **Resource control**: Sandbox specific agents while keeping others on host
+- **Flexible policies**: Different permissions per agent
+
+See [Multi-Agent Sandbox & Tools](/multi-agent-sandbox-tools) for detailed examples.

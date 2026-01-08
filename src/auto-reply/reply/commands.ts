@@ -14,19 +14,29 @@ import {
 } from "../../agents/pi-embedded.js";
 import type { ClawdbotConfig } from "../../config/config.js";
 import {
-  resolveSessionTranscriptPath,
+  resolveSessionFilePath,
   type SessionEntry,
   type SessionScope,
   saveSessionStore,
 } from "../../config/sessions.js";
 import { logVerbose } from "../../globals.js";
-import { triggerClawdbotRestart } from "../../infra/restart.js";
+import {
+  formatUsageSummaryLine,
+  loadProviderUsageSummary,
+} from "../../infra/provider-usage.js";
+import {
+  scheduleGatewaySigusr1Restart,
+  triggerClawdbotRestart,
+} from "../../infra/restart.js";
 import { enqueueSystemEvent } from "../../infra/system-events.js";
 import { parseAgentSessionKey } from "../../routing/session-key.js";
 import { resolveSendPolicy } from "../../sessions/send-policy.js";
 import { normalizeE164 } from "../../utils.js";
 import { resolveCommandAuthorization } from "../command-auth.js";
-import { shouldHandleTextCommands } from "../commands-registry.js";
+import {
+  normalizeCommandBody,
+  shouldHandleTextCommands,
+} from "../commands-registry.js";
 import {
   normalizeGroupActivation,
   parseActivationCommand,
@@ -150,9 +160,9 @@ export function buildCommandContext(params: {
   const abortKey =
     sessionKey ?? (auth.from || undefined) ?? (auth.to || undefined);
   const rawBodyNormalized = triggerBodyNormalized;
-  const commandBodyNormalized = isGroup
-    ? stripMentions(rawBodyNormalized, ctx, cfg)
-    : rawBodyNormalized;
+  const commandBodyNormalized = normalizeCommandBody(
+    isGroup ? stripMentions(rawBodyNormalized, ctx, cfg) : rawBodyNormalized,
+  );
 
   return {
     surface,
@@ -353,11 +363,32 @@ export async function handleCommands(params: {
       );
       return { shouldContinue: false };
     }
+    const hasSigusr1Listener = process.listenerCount("SIGUSR1") > 0;
+    if (hasSigusr1Listener) {
+      scheduleGatewaySigusr1Restart({ reason: "/restart" });
+      return {
+        shouldContinue: false,
+        reply: {
+          text: "⚙️ Restarting clawdbot in-process (SIGUSR1); back in a few seconds.",
+        },
+      };
+    }
     const restartMethod = triggerClawdbotRestart();
+    if (!restartMethod.ok) {
+      const detail = restartMethod.detail
+        ? ` Details: ${restartMethod.detail}`
+        : "";
+      return {
+        shouldContinue: false,
+        reply: {
+          text: `⚠️ Restart failed (${restartMethod.method}).${detail}`,
+        },
+      };
+    }
     return {
       shouldContinue: false,
       reply: {
-        text: `⚙️ Restarting clawdbot via ${restartMethod}; give me a few seconds to come back online.`,
+        text: `⚙️ Restarting clawdbot via ${restartMethod.method}; give me a few seconds to come back online.`,
       },
     };
   }
@@ -382,6 +413,15 @@ export async function handleCommands(params: {
         `Ignoring /status from unauthorized sender: ${command.senderE164 || "<unknown>"}`,
       );
       return { shouldContinue: false };
+    }
+    let usageLine: string | null = null;
+    try {
+      const usageSummary = await loadProviderUsageSummary({
+        timeoutMs: 3500,
+      });
+      usageLine = formatUsageSummaryLine(usageSummary, { now: Date.now() });
+    } catch {
+      usageLine = null;
     }
     const queueSettings = resolveQueueSettings({
       cfg,
@@ -421,6 +461,7 @@ export async function handleCommands(params: {
       resolvedReasoning: resolvedReasoningLevel,
       resolvedElevated: resolvedElevatedLevel,
       modelAuth: resolveModelAuthLabel(provider, cfg),
+      usageLine: usageLine ?? undefined,
       queue: {
         mode: queueSettings.mode,
         depth: queueDepth,
@@ -495,7 +536,7 @@ export async function handleCommands(params: {
       sessionId,
       sessionKey,
       messageProvider: command.provider,
-      sessionFile: resolveSessionTranscriptPath(sessionId),
+      sessionFile: resolveSessionFilePath(sessionId, sessionEntry),
       workspaceDir,
       config: cfg,
       skillsSnapshot: sessionEntry.skillsSnapshot,

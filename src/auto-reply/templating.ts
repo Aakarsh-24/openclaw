@@ -15,10 +15,13 @@ export type MsgContext = {
   SessionKey?: string;
   /** Provider account id (multi-account). */
   AccountId?: string;
+  ParentSessionKey?: string;
   MessageSid?: string;
   ReplyToId?: string;
   ReplyToBody?: string;
   ReplyToSender?: string;
+  ThreadStarterBody?: string;
+  ThreadLabel?: string;
   MediaPath?: string;
   MediaUrl?: string;
   MediaType?: string;
@@ -31,6 +34,7 @@ export type MsgContext = {
   GroupRoom?: string;
   GroupSpace?: string;
   GroupMembers?: string;
+  GroupSystemPrompt?: string;
   SenderName?: string;
   SenderId?: string;
   SenderUsername?: string;

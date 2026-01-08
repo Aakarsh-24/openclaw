@@ -18,6 +18,7 @@ final class GatewayDiscoveryModel {
         var lanHost: String?
         var tailnetDns: String?
         var sshPort: Int
+        var gatewayPort: Int?
         var cliPath: String?
         var stableID: String
         var debugID: String
@@ -138,6 +139,7 @@ final class GatewayDiscoveryModel {
                 lanHost: parsedTXT.lanHost,
                 tailnetDns: parsedTXT.tailnetDns,
                 sshPort: parsedTXT.sshPort,
+                gatewayPort: parsedTXT.gatewayPort,
                 cliPath: parsedTXT.cliPath,
                 stableID: stableID,
                 debugID: BridgeEndpointID.prettyDescription(result.endpoint),
@@ -206,12 +208,19 @@ final class GatewayDiscoveryModel {
         return merged
     }
 
-    static func parseGatewayTXT(_ txt: [String: String])
-        -> (lanHost: String?, tailnetDns: String?, sshPort: Int, cliPath: String?)
-    {
+    struct GatewayTXT: Equatable {
+        var lanHost: String?
+        var tailnetDns: String?
+        var sshPort: Int
+        var gatewayPort: Int?
+        var cliPath: String?
+    }
+
+    static func parseGatewayTXT(_ txt: [String: String]) -> GatewayTXT {
         var lanHost: String?
         var tailnetDns: String?
         var sshPort = 22
+        var gatewayPort: Int?
         var cliPath: String?
 
         if let value = txt["lanHost"] {
@@ -228,12 +237,23 @@ final class GatewayDiscoveryModel {
         {
             sshPort = parsed
         }
+        if let value = txt["gatewayPort"],
+           let parsed = Int(value.trimmingCharacters(in: .whitespacesAndNewlines)),
+           parsed > 0
+        {
+            gatewayPort = parsed
+        }
         if let value = txt["cliPath"] {
             let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
             cliPath = trimmed.isEmpty ? nil : trimmed
         }
 
-        return (lanHost, tailnetDns, sshPort, cliPath)
+        return GatewayTXT(
+            lanHost: lanHost,
+            tailnetDns: tailnetDns,
+            sshPort: sshPort,
+            gatewayPort: gatewayPort,
+            cliPath: cliPath)
     }
 
     static func buildSSHTarget(user: String, host: String, port: Int) -> String {

@@ -21,6 +21,11 @@ import {
 
 installGatewayTestHooks();
 
+function expectProviders(call: Record<string, unknown>, provider: string) {
+  expect(call.provider).toBe(provider);
+  expect(call.messageProvider).toBe(provider);
+}
+
 describe("gateway server agent", () => {
   test("agent falls back to allowFrom when lastTo is stale", async () => {
     testState.allowFrom = ["+436769770569"];
@@ -57,13 +62,50 @@ describe("gateway server agent", () => {
 
     const spy = vi.mocked(agentCommand);
     const call = spy.mock.calls.at(-1)?.[0] as Record<string, unknown>;
-    expect(call.provider).toBe("whatsapp");
+    expectProviders(call, "whatsapp");
     expect(call.to).toBe("+436769770569");
     expect(call.sessionId).toBe("sess-main-stale");
 
     ws.close();
     await server.close();
     testState.allowFrom = undefined;
+  });
+
+  test("agent forwards sessionKey to agentCommand", async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-gw-"));
+    testState.sessionStorePath = path.join(dir, "sessions.json");
+    await fs.writeFile(
+      testState.sessionStorePath,
+      JSON.stringify(
+        {
+          "agent:main:subagent:abc": {
+            sessionId: "sess-sub",
+            updatedAt: Date.now(),
+          },
+        },
+        null,
+        2,
+      ),
+      "utf-8",
+    );
+
+    const { server, ws } = await startServerWithClient();
+    await connectOk(ws);
+
+    const res = await rpcReq(ws, "agent", {
+      message: "hi",
+      sessionKey: "agent:main:subagent:abc",
+      idempotencyKey: "idem-agent-subkey",
+    });
+    expect(res.ok).toBe(true);
+
+    const spy = vi.mocked(agentCommand);
+    const call = spy.mock.calls.at(-1)?.[0] as Record<string, unknown>;
+    expect(call.sessionKey).toBe("agent:main:subagent:abc");
+    expect(call.sessionId).toBe("sess-sub");
+
+    ws.close();
+    await server.close();
   });
 
   test("agent routes main last-channel whatsapp", async () => {
@@ -100,7 +142,8 @@ describe("gateway server agent", () => {
 
     const spy = vi.mocked(agentCommand);
     const call = spy.mock.calls.at(-1)?.[0] as Record<string, unknown>;
-    expect(call.provider).toBe("whatsapp");
+    expectProviders(call, "whatsapp");
+    expect(call.messageProvider).toBe("whatsapp");
     expect(call.to).toBe("+1555");
     expect(call.deliver).toBe(true);
     expect(call.bestEffortDeliver).toBe(true);
@@ -144,7 +187,7 @@ describe("gateway server agent", () => {
 
     const spy = vi.mocked(agentCommand);
     const call = spy.mock.calls.at(-1)?.[0] as Record<string, unknown>;
-    expect(call.provider).toBe("telegram");
+    expectProviders(call, "telegram");
     expect(call.to).toBe("123");
     expect(call.deliver).toBe(true);
     expect(call.bestEffortDeliver).toBe(true);
@@ -188,7 +231,7 @@ describe("gateway server agent", () => {
 
     const spy = vi.mocked(agentCommand);
     const call = spy.mock.calls.at(-1)?.[0] as Record<string, unknown>;
-    expect(call.provider).toBe("discord");
+    expectProviders(call, "discord");
     expect(call.to).toBe("channel:discord-123");
     expect(call.deliver).toBe(true);
     expect(call.bestEffortDeliver).toBe(true);
@@ -232,7 +275,7 @@ describe("gateway server agent", () => {
 
     const spy = vi.mocked(agentCommand);
     const call = spy.mock.calls.at(-1)?.[0] as Record<string, unknown>;
-    expect(call.provider).toBe("signal");
+    expectProviders(call, "signal");
     expect(call.to).toBe("+15551234567");
     expect(call.deliver).toBe(true);
     expect(call.bestEffortDeliver).toBe(true);
@@ -277,7 +320,7 @@ describe("gateway server agent", () => {
 
     const spy = vi.mocked(agentCommand);
     const call = spy.mock.calls.at(-1)?.[0] as Record<string, unknown>;
-    expect(call.provider).toBe("whatsapp");
+    expectProviders(call, "whatsapp");
     expect(call.to).toBe("+1555");
     expect(call.deliver).toBe(true);
     expect(call.bestEffortDeliver).toBe(true);

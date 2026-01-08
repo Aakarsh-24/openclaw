@@ -1,5 +1,9 @@
 import path from "node:path";
-
+import {
+  CLAUDE_CLI_PROFILE_ID,
+  CODEX_CLI_PROFILE_ID,
+  ensureAuthProfileStore,
+} from "../agents/auth-profiles.js";
 import {
   type ClawdbotConfig,
   CONFIG_PATH_CLAWDBOT,
@@ -29,11 +33,8 @@ import {
   ensureWorkspaceAndSessions,
   randomToken,
 } from "./onboard-helpers.js";
-import type {
-  AuthChoice,
-  OnboardMode,
-  OnboardOptions,
-} from "./onboard-types.js";
+import type { AuthChoice, OnboardOptions } from "./onboard-types.js";
+import { applyOpenAICodexModelDefault } from "./openai-codex-model-default.js";
 import { ensureSystemdUserLingerNonInteractive } from "./systemd-linger.js";
 
 export async function runNonInteractiveOnboarding(
@@ -42,7 +43,12 @@ export async function runNonInteractiveOnboarding(
 ) {
   const snapshot = await readConfigFileSnapshot();
   const baseConfig: ClawdbotConfig = snapshot.valid ? snapshot.config : {};
-  const mode: OnboardMode = opts.mode ?? "local";
+  const mode = opts.mode ?? "local";
+  if (mode !== "local" && mode !== "remote") {
+    runtime.error(`Invalid --mode "${String(mode)}" (use local|remote).`);
+    runtime.exit(1);
+    return;
+  }
 
   if (mode === "remote") {
     const remoteUrl = opts.remoteUrl?.trim();
@@ -111,6 +117,33 @@ export async function runNonInteractiveOnboarding(
       provider: "anthropic",
       mode: "api_key",
     });
+  } else if (authChoice === "claude-cli") {
+    const store = ensureAuthProfileStore();
+    if (!store.profiles[CLAUDE_CLI_PROFILE_ID]) {
+      runtime.error(
+        "No Claude CLI credentials found at ~/.claude/.credentials.json",
+      );
+      runtime.exit(1);
+      return;
+    }
+    nextConfig = applyAuthProfileConfig(nextConfig, {
+      profileId: CLAUDE_CLI_PROFILE_ID,
+      provider: "anthropic",
+      mode: "oauth",
+    });
+  } else if (authChoice === "codex-cli") {
+    const store = ensureAuthProfileStore();
+    if (!store.profiles[CODEX_CLI_PROFILE_ID]) {
+      runtime.error("No Codex CLI credentials found at ~/.codex/auth.json");
+      runtime.exit(1);
+      return;
+    }
+    nextConfig = applyAuthProfileConfig(nextConfig, {
+      profileId: CODEX_CLI_PROFILE_ID,
+      provider: "openai-codex",
+      mode: "oauth",
+    });
+    nextConfig = applyOpenAICodexModelDefault(nextConfig).next;
   } else if (authChoice === "minimax") {
     nextConfig = applyMinimaxConfig(nextConfig);
   } else if (

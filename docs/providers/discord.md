@@ -5,7 +5,7 @@ read_when:
 ---
 # Discord (Bot API)
 
-Updated: 2025-12-07
+Updated: 2026-01-07
 
 Status: ready for DM and guild text channels via the official Discord bot gateway.
 
@@ -106,6 +106,8 @@ Or via config:
 }
 ```
 
+Multi-account support: use `discord.accounts` with per-account tokens and optional `name`. See [`gateway/configuration`](/gateway/configuration#telegramaccounts--discordaccounts--slackaccounts--signalaccounts--imessageaccounts) for the shared pattern.
+
 #### Allowlist + channel routing
 Example “single server, only allow me, only allow #help”:
 
@@ -122,6 +124,12 @@ Example “single server, only allow me, only allow #help”:
           help: { allow: true, requireMention: true }
         }
       }
+    },
+    retry: {
+      attempts: 3,
+      minDelayMs: 500,
+      maxDelayMs: 30000,
+      jitter: 0.1
     }
   }
 }
@@ -148,11 +156,14 @@ Notes:
 
 ## Capabilities & limits
 - DMs and guild text channels (threads are treated as separate channels; voice not supported).
-- Typing indicators sent best-effort; message chunking honors Discord’s 2k character limit.
+- Typing indicators sent best-effort; message chunking uses `discord.textChunkLimit` (default 2000) and splits tall replies by line count (`discord.maxLinesPerMessage`, default 17).
 - File uploads supported up to the configured `discord.mediaMaxMb` (default 8 MB).
 - Mention-gated guild replies by default to avoid noisy bots.
 - Reply context is injected when a message references another message (quoted content + ids).
 - Native reply threading is **off by default**; enable with `discord.replyToMode` and reply tags.
+
+## Retry policy
+Outbound Discord API calls retry on rate limits (429) using Discord `retry_after` when available, with exponential backoff and jitter. Configure via `discord.retry`. See [Retry policy](/concepts/retry).
 
 ## Config
 
@@ -197,7 +208,13 @@ Notes:
         users: ["987654321098765432", "steipete"],
         channels: {
           general: { allow: true },
-          help: { allow: true, requireMention: true }
+          help: {
+            allow: true,
+            requireMention: true,
+            users: ["987654321098765432"],
+            skills: ["search", "docs"],
+            systemPrompt: "Keep answers short."
+          }
         }
       }
     }
@@ -218,11 +235,20 @@ Ack reactions are controlled globally via `messages.ackReaction` +
 - `guilds."*"`: default per-guild settings applied when no explicit entry exists.
 - `guilds.<id>.slug`: optional friendly slug used for display names.
 - `guilds.<id>.users`: optional per-guild user allowlist (ids or names).
+- `guilds.<id>.channels.<channel>.allow`: allow/deny the channel when `groupPolicy="allowlist"`.
+- `guilds.<id>.channels.<channel>.requireMention`: mention gating for the channel.
+- `guilds.<id>.channels.<channel>.users`: optional per-channel user allowlist.
+- `guilds.<id>.channels.<channel>.skills`: skill filter (omit = all skills, empty = none).
+- `guilds.<id>.channels.<channel>.systemPrompt`: extra system prompt for the channel (combined with channel topic).
+- `guilds.<id>.channels.<channel>.enabled`: set `false` to disable the channel.
 - `guilds.<id>.channels`: channel rules (keys are channel slugs or ids).
 - `guilds.<id>.requireMention`: per-guild mention requirement (overridable per channel).
 - `guilds.<id>.reactionNotifications`: reaction system event mode (`off`, `own`, `all`, `allowlist`).
+- `textChunkLimit`: outbound text chunk size (chars). Default: 2000.
+- `maxLinesPerMessage`: soft max line count per message. Default: 17.
 - `mediaMaxMb`: clamp inbound media saved to disk.
 - `historyLimit`: number of recent guild messages to include as context when replying to a mention (default 20, `0` disables).
+- `retry`: retry policy for outbound Discord API calls (attempts, minDelayMs, maxDelayMs, jitter).
 - `actions`: per-action tool gates; omit to allow all (set `false` to disable).
   - `reactions` (covers react + read reactions)
   - `stickers`, `polls`, `permissions`, `messages`, `threads`, `pins`, `search`

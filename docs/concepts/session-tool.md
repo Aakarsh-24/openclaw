@@ -126,15 +126,23 @@ Spawn a sub-agent run in an isolated session and announce the result back to the
 Parameters:
 - `task` (required)
 - `label?` (optional; used for logs/UI)
+- `agentId?` (optional; spawn under another agent id if allowed)
 - `model?` (optional; overrides the sub-agent model; invalid values error)
-- `timeoutSeconds?` (optional; omit for long-running jobs; if set, Clawdbot aborts the sub-agent when the timeout elapses)
+- `runTimeoutSeconds?` (default 0; when set, aborts the sub-agent run after N seconds)
 - `cleanup?` (`delete|keep`, default `keep`)
 
+Allowlist:
+- `routing.agents.<agentId>.subagents.allowAgents`: list of agent ids allowed via `agentId` (`["*"]` to allow any). Default: only the requester agent.
+
+Discovery:
+- Use `agents_list` to discover which agent ids are allowed for `sessions_spawn`.
+
 Behavior:
-- Starts a new `agent:<id>:subagent:<uuid>` session with `deliver: false`.
+- Starts a new `agent:<agentId>:subagent:<uuid>` session with `deliver: false`.
 - Sub-agents default to the full tool set **minus session tools** (configurable via `agent.subagents.tools`).
 - Sub-agents are not allowed to call `sessions_spawn` (no sub-agent → sub-agent spawning).
-- After completion (or best-effort wait), Clawdbot runs a sub-agent **announce step** and posts the result to the requester chat provider.
+- Always non-blocking: returns `{ status: "accepted", runId, childSessionKey }` immediately.
+- After completion, Clawdbot runs a sub-agent **announce step** and posts the result to the requester chat provider.
 - Reply exactly `ANNOUNCE_SKIP` during the announce step to stay silent.
 - Sub-agent sessions are auto-archived after `agent.subagents.archiveAfterMinutes` (default: 60).
 - Announce replies include a stats line (runtime, tokens, sessionKey/sessionId, transcript path, and optional cost).

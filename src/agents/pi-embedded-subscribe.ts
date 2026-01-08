@@ -1,13 +1,14 @@
 import type { AgentEvent, AgentMessage } from "@mariozechner/pi-agent-core";
 import type { AssistantMessage } from "@mariozechner/pi-ai";
 import type { AgentSession } from "@mariozechner/pi-coding-agent";
-
+import type { ReasoningLevel } from "../auto-reply/thinking.js";
 import { formatToolAggregate } from "../auto-reply/tool-meta.js";
 import { emitAgentEvent } from "../infra/agent-events.js";
 import { createSubsystemLogger } from "../logging.js";
 import { splitMediaFromOutput } from "../media/parse.js";
 import type { BlockReplyChunking } from "./pi-embedded-block-chunker.js";
 import { EmbeddedBlockChunker } from "./pi-embedded-block-chunker.js";
+import { isMessagingToolDuplicate } from "./pi-embedded-helpers.js";
 import {
   extractAssistantText,
   extractAssistantThinking,
@@ -18,10 +19,19 @@ import {
 const THINKING_TAG_RE = /<\s*\/?\s*think(?:ing)?\s*>/gi;
 const THINKING_OPEN_RE = /<\s*think(?:ing)?\s*>/i;
 const THINKING_CLOSE_RE = /<\s*\/\s*think(?:ing)?\s*>/i;
+const THINKING_OPEN_GLOBAL_RE = /<\s*think(?:ing)?\s*>/gi;
+const THINKING_CLOSE_GLOBAL_RE = /<\s*\/\s*think(?:ing)?\s*>/gi;
 const TOOL_RESULT_MAX_CHARS = 8000;
 const log = createSubsystemLogger("agent/embedded");
 
 export type { BlockReplyChunking } from "./pi-embedded-block-chunker.js";
+
+type MessagingToolSend = {
+  tool: string;
+  provider: string;
+  accountId?: string;
+  to?: string;
+};
 
 function truncateToolText(text: string): string {
   if (text.length <= TOOL_RESULT_MAX_CHARS) return text;
@@ -83,13 +93,138 @@ function stripUnpairedThinkingTags(text: string): string {
   return text;
 }
 
+function normalizeSlackTarget(raw: string): string | undefined {
+  const trimmed = raw.trim();
+  if (!trimmed) return undefined;
+  const mentionMatch = trimmed.match(/^<@([A-Z0-9]+)>$/i);
+  if (mentionMatch) return `user:${mentionMatch[1]}`;
+  if (trimmed.startsWith("user:")) {
+    const id = trimmed.slice(5).trim();
+    return id ? `user:${id}` : undefined;
+  }
+  if (trimmed.startsWith("channel:")) {
+    const id = trimmed.slice(8).trim();
+    return id ? `channel:${id}` : undefined;
+  }
+  if (trimmed.startsWith("slack:")) {
+    const id = trimmed.slice(6).trim();
+    return id ? `user:${id}` : undefined;
+  }
+  if (trimmed.startsWith("@")) {
+    const id = trimmed.slice(1).trim();
+    return id ? `user:${id}` : undefined;
+  }
+  if (trimmed.startsWith("#")) {
+    const id = trimmed.slice(1).trim();
+    return id ? `channel:${id}` : undefined;
+  }
+  return `channel:${trimmed}`;
+}
+
+function normalizeDiscordTarget(raw: string): string | undefined {
+  const trimmed = raw.trim();
+  if (!trimmed) return undefined;
+  const mentionMatch = trimmed.match(/^<@!?(\d+)>$/);
+  if (mentionMatch) return `user:${mentionMatch[1]}`;
+  if (trimmed.startsWith("user:")) {
+    const id = trimmed.slice(5).trim();
+    return id ? `user:${id}` : undefined;
+  }
+  if (trimmed.startsWith("channel:")) {
+    const id = trimmed.slice(8).trim();
+    return id ? `channel:${id}` : undefined;
+  }
+  if (trimmed.startsWith("discord:")) {
+    const id = trimmed.slice(8).trim();
+    return id ? `user:${id}` : undefined;
+  }
+  if (trimmed.startsWith("@")) {
+    const id = trimmed.slice(1).trim();
+    return id ? `user:${id}` : undefined;
+  }
+  return `channel:${trimmed}`;
+}
+
+function normalizeTelegramTarget(raw: string): string | undefined {
+  const trimmed = raw.trim();
+  if (!trimmed) return undefined;
+  let normalized = trimmed;
+  if (normalized.startsWith("telegram:")) {
+    normalized = normalized.slice("telegram:".length).trim();
+  } else if (normalized.startsWith("tg:")) {
+    normalized = normalized.slice("tg:".length).trim();
+  } else if (normalized.startsWith("group:")) {
+    normalized = normalized.slice("group:".length).trim();
+  }
+  if (!normalized) return undefined;
+  const tmeMatch =
+    /^https?:\/\/t\.me\/([A-Za-z0-9_]+)$/i.exec(normalized) ??
+    /^t\.me\/([A-Za-z0-9_]+)$/i.exec(normalized);
+  if (tmeMatch?.[1]) normalized = `@${tmeMatch[1]}`;
+  if (!normalized) return undefined;
+  return `telegram:${normalized}`;
+}
+
+function extractMessagingToolSend(
+  toolName: string,
+  args: Record<string, unknown>,
+): MessagingToolSend | undefined {
+  const action = typeof args.action === "string" ? args.action.trim() : "";
+  const accountIdRaw =
+    typeof args.accountId === "string" ? args.accountId.trim() : undefined;
+  const accountId = accountIdRaw ? accountIdRaw : undefined;
+  if (toolName === "slack") {
+    if (action !== "sendMessage") return undefined;
+    const toRaw = typeof args.to === "string" ? args.to : undefined;
+    if (!toRaw) return undefined;
+    const to = normalizeSlackTarget(toRaw);
+    return to
+      ? { tool: toolName, provider: "slack", accountId, to }
+      : undefined;
+  }
+  if (toolName === "discord") {
+    if (action === "sendMessage") {
+      const toRaw = typeof args.to === "string" ? args.to : undefined;
+      if (!toRaw) return undefined;
+      const to = normalizeDiscordTarget(toRaw);
+      return to
+        ? { tool: toolName, provider: "discord", accountId, to }
+        : undefined;
+    }
+    if (action === "threadReply") {
+      const channelId =
+        typeof args.channelId === "string" ? args.channelId.trim() : "";
+      if (!channelId) return undefined;
+      const to = normalizeDiscordTarget(`channel:${channelId}`);
+      return to
+        ? { tool: toolName, provider: "discord", accountId, to }
+        : undefined;
+    }
+    return undefined;
+  }
+  if (toolName === "telegram") {
+    if (action !== "sendMessage") return undefined;
+    const toRaw = typeof args.to === "string" ? args.to : undefined;
+    if (!toRaw) return undefined;
+    const to = normalizeTelegramTarget(toRaw);
+    return to
+      ? { tool: toolName, provider: "telegram", accountId, to }
+      : undefined;
+  }
+  return undefined;
+}
+
 export function subscribeEmbeddedPiSession(params: {
   session: AgentSession;
   runId: string;
   verboseLevel?: "off" | "on";
-  includeReasoning?: boolean;
+  reasoningMode?: ReasoningLevel;
   shouldEmitToolResult?: () => boolean;
   onToolResult?: (payload: {
+    text?: string;
+    mediaUrls?: string[];
+  }) => void | Promise<void>;
+  onReasoningStream?: (payload: {
     text?: string;
     mediaUrls?: string[];
   }) => void | Promise<void>;
@@ -114,9 +249,15 @@ export function subscribeEmbeddedPiSession(params: {
   const toolMetaById = new Map<string, string | undefined>();
   const toolSummaryById = new Set<string>();
   const blockReplyBreak = params.blockReplyBreak ?? "text_end";
+  const reasoningMode = params.reasoningMode ?? "off";
+  const includeReasoning = reasoningMode === "on";
+  const streamReasoning =
+    reasoningMode === "stream" &&
+    typeof params.onReasoningStream === "function";
   let deltaBuffer = "";
   let blockBuffer = "";
   let lastStreamedAssistant: string | undefined;
+  let lastStreamedReasoning: string | undefined;
   let lastBlockReplyText: string | undefined;
   let assistantTextBaseline = 0;
   let compactionInFlight = false;
@@ -124,6 +265,23 @@ export function subscribeEmbeddedPiSession(params: {
   let compactionRetryResolve: (() => void) | undefined;
   let compactionRetryPromise: Promise<void> | null = null;
   let lastReasoningSent: string | undefined;
+
+  // ── Messaging tool duplicate detection ──────────────────────────────────────
+  // Track texts sent via messaging tools to suppress duplicate block replies.
+  // Only committed (successful) texts are checked - pending texts are tracked
+  // to support commit logic but not used for suppression (avoiding lost messages on tool failure).
+  // These tools can send messages via sendMessage/threadReply actions (or sessions_send with message).
+  const MESSAGING_TOOLS = new Set([
+    "telegram",
+    "whatsapp",
+    "discord",
+    "slack",
+    "sessions_send",
+  ]);
+  const messagingToolSentTexts: string[] = [];
+  const messagingToolSentTargets: MessagingToolSend[] = [];
+  const pendingMessagingTexts = new Map<string, string>();
+  const pendingMessagingTargets = new Map<string, MessagingToolSend>();
 
   const ensureCompactionPromise = () => {
     if (!compactionRetryPromise) {
@@ -209,6 +367,16 @@ export function subscribeEmbeddedPiSession(params: {
     const chunk = strippedText.trimEnd();
     if (!chunk) return;
     if (chunk === lastBlockReplyText) return;
+
+    // Only check committed (successful) messaging tool texts - checking pending texts
+    // is risky because if the tool fails after suppression, the user gets no response
+    if (isMessagingToolDuplicate(chunk, messagingToolSentTexts)) {
+      log.debug(
+        `Skipping block reply - already sent via messaging tool: ${chunk.slice(0, 50)}...`,
+      );
+      return;
+    }
+
     lastBlockReplyText = chunk;
     assistantTexts.push(chunk);
     if (!params.onBlockReply) return;
@@ -238,15 +406,53 @@ export function subscribeEmbeddedPiSession(params: {
     return result.trim();
   };
 
+  const extractThinkingFromStream = (text: string): string => {
+    if (!text) return "";
+    const closed = extractThinkingFromText(text);
+    if (closed) return closed;
+    const openMatches = [...text.matchAll(THINKING_OPEN_GLOBAL_RE)];
+    if (openMatches.length === 0) return "";
+    const closeMatches = [...text.matchAll(THINKING_CLOSE_GLOBAL_RE)];
+    const lastOpen = openMatches[openMatches.length - 1];
+    const lastClose = closeMatches[closeMatches.length - 1];
+    if (lastClose && (lastClose.index ?? -1) > (lastOpen.index ?? -1)) {
+      return closed;
+    }
+    const start = (lastOpen.index ?? 0) + lastOpen[0].length;
+    return text.slice(start).trim();
+  };
+
+  const formatReasoningDraft = (text: string): string => {
+    const trimmed = text.trim();
+    if (!trimmed) return "";
+    return `Reasoning:\n${trimmed}`;
+  };
+
+  const emitReasoningStream = (text: string) => {
+    if (!streamReasoning || !params.onReasoningStream) return;
+    const formatted = formatReasoningDraft(text);
+    if (!formatted) return;
+    if (formatted === lastStreamedReasoning) return;
+    lastStreamedReasoning = formatted;
+    void params.onReasoningStream({
+      text: formatted,
+    });
+  };
+
   const resetForCompactionRetry = () => {
     assistantTexts.length = 0;
     toolMetas.length = 0;
     toolMetaById.clear();
     toolSummaryById.clear();
+    messagingToolSentTexts.length = 0;
+    messagingToolSentTargets.length = 0;
+    pendingMessagingTexts.clear();
+    pendingMessagingTargets.clear();
     deltaBuffer = "";
     blockBuffer = "";
     blockChunker?.reset();
     lastStreamedAssistant = undefined;
+    lastStreamedReasoning = undefined;
     lastBlockReplyText = undefined;
     assistantTextBaseline = 0;
   };
@@ -266,6 +472,7 @@ export function subscribeEmbeddedPiSession(params: {
           blockChunker?.reset();
           lastStreamedAssistant = undefined;
           lastBlockReplyText = undefined;
+          lastStreamedReasoning = undefined;
           lastReasoningSent = undefined;
           assistantTextBaseline = assistantTexts.length;
         }
@@ -307,6 +514,36 @@ export function subscribeEmbeddedPiSession(params: {
         ) {
           toolSummaryById.add(toolCallId);
           emitToolSummary(toolName, meta);
+        }
+
+        // Track messaging tool sends (pending until confirmed in tool_execution_end)
+        if (MESSAGING_TOOLS.has(toolName)) {
+          const argsRecord =
+            args && typeof args === "object"
+              ? (args as Record<string, unknown>)
+              : {};
+          const action =
+            typeof argsRecord.action === "string" ? argsRecord.action : "";
+          // Track send actions: sendMessage/threadReply for Discord/Slack, or sessions_send (no action field)
+          if (
+            action === "sendMessage" ||
+            action === "threadReply" ||
+            toolName === "sessions_send"
+          ) {
+            const sendTarget = extractMessagingToolSend(toolName, argsRecord);
+            if (sendTarget) {
+              pendingMessagingTargets.set(toolCallId, sendTarget);
+            }
+            // Field names vary by tool: Discord/Slack use "content", sessions_send uses "message"
+            const text =
+              (argsRecord.content as string) ?? (argsRecord.message as string);
+            if (text && typeof text === "string") {
+              pendingMessagingTexts.set(toolCallId, text);
+              log.debug(
+                `Tracking pending messaging text: tool=${toolName} action=${action} len=${text.length}`,
+              );
+            }
+          }
         }
       }
 
@@ -356,6 +593,25 @@ export function subscribeEmbeddedPiSession(params: {
         toolMetas.push({ toolName, meta });
         toolMetaById.delete(toolCallId);
         toolSummaryById.delete(toolCallId);
+
+        // Commit messaging tool text on success, discard on error
+        const pendingText = pendingMessagingTexts.get(toolCallId);
+        const pendingTarget = pendingMessagingTargets.get(toolCallId);
+        if (pendingText) {
+          pendingMessagingTexts.delete(toolCallId);
+          if (!isError) {
+            messagingToolSentTexts.push(pendingText);
+            log.debug(
+              `Committed messaging text: tool=${toolName} len=${pendingText.length}`,
+            );
+          }
+        }
+        if (pendingTarget) {
+          pendingMessagingTargets.delete(toolCallId);
+          if (!isError) {
+            messagingToolSentTargets.push(pendingTarget);
+          }
+        }
 
         emitAgentEvent({
           runId: params.runId,
@@ -436,6 +692,11 @@ export function subscribeEmbeddedPiSession(params: {
               }
             }
 
+            if (streamReasoning) {
+              // Handle partial <think> tags: stream whatever reasoning is visible so far.
+              emitReasoningStream(extractThinkingFromStream(deltaBuffer));
+            }
+
             const cleaned = params.enforceFinalTag
               ? stripThinkingSegments(stripUnpairedThinkingTags(deltaBuffer))
               : stripThinkingSegments(deltaBuffer);
@@ -502,17 +763,19 @@ export function subscribeEmbeddedPiSession(params: {
             params.enforceFinalTag && cleaned
               ? (extractFinalText(cleaned)?.trim() ?? cleaned)
               : cleaned;
-          const rawThinking = params.includeReasoning
-            ? extractAssistantThinking(assistantMessage) ||
-              extractThinkingFromText(rawText)
-            : "";
+          const rawThinking =
+            includeReasoning || streamReasoning
+              ? extractAssistantThinking(assistantMessage) ||
+                extractThinkingFromText(rawText)
+              : "";
           const formattedReasoning = rawThinking
             ? formatReasoningMarkdown(rawThinking)
             : "";
-          const text =
-            baseText && formattedReasoning
+          const text = includeReasoning
+            ? baseText && formattedReasoning
               ? `${formattedReasoning}\n\n${baseText}`
-              : formattedReasoning || baseText;
+              : formattedReasoning || baseText
+            : baseText;
 
           const addedDuringMessage =
             assistantTexts.length > assistantTextBaseline;
@@ -537,19 +800,27 @@ export function subscribeEmbeddedPiSession(params: {
               blockChunker.drain({ force: true, emit: emitBlockChunk });
               blockChunker.reset();
             } else if (text !== lastBlockReplyText) {
-              lastBlockReplyText = text;
-              const { text: cleanedText, mediaUrls } =
-                splitMediaFromOutput(text);
-              if (cleanedText || (mediaUrls && mediaUrls.length > 0)) {
-                void params.onBlockReply({
-                  text: cleanedText,
-                  mediaUrls: mediaUrls?.length ? mediaUrls : undefined,
-                });
+              // Check for duplicates before emitting (same logic as emitBlockChunk)
+              if (isMessagingToolDuplicate(text, messagingToolSentTexts)) {
+                log.debug(
+                  `Skipping message_end block reply - already sent via messaging tool: ${text.slice(0, 50)}...`,
+                );
+              } else {
+                lastBlockReplyText = text;
+                const { text: cleanedText, mediaUrls } =
+                  splitMediaFromOutput(text);
+                if (cleanedText || (mediaUrls && mediaUrls.length > 0)) {
+                  void params.onBlockReply({
+                    text: cleanedText,
+                    mediaUrls: mediaUrls?.length ? mediaUrls : undefined,
+                  });
+                }
               }
             }
           }
           const onBlockReply = params.onBlockReply;
           const shouldEmitReasoningBlock =
+            includeReasoning &&
             Boolean(formattedReasoning) &&
             Boolean(onBlockReply) &&
             formattedReasoning !== lastReasoningSent &&
@@ -557,6 +828,9 @@ export function subscribeEmbeddedPiSession(params: {
           if (shouldEmitReasoningBlock && formattedReasoning && onBlockReply) {
             lastReasoningSent = formattedReasoning;
             void onBlockReply({ text: formattedReasoning });
+          }
+          if (streamReasoning && rawThinking) {
+            emitReasoningStream(rawThinking);
           }
           deltaBuffer = "";
           blockBuffer = "";
@@ -647,6 +921,12 @@ export function subscribeEmbeddedPiSession(params: {
     toolMetas,
     unsubscribe,
     isCompacting: () => compactionInFlight || pendingCompactionRetry > 0,
+    getMessagingToolSentTexts: () => messagingToolSentTexts.slice(),
+    getMessagingToolSentTargets: () => messagingToolSentTargets.slice(),
+    // Returns true if any messaging tool successfully sent a message.
+    // Used to suppress agent's confirmation text (e.g., "Respondi no Telegram!")
+    // which is generated AFTER the tool sends the actual answer.
+    didSendViaMessagingTool: () => messagingToolSentTexts.length > 0,
     waitForCompactionRetry: () => {
       if (compactionInFlight || pendingCompactionRetry > 0) {
         ensureCompactionPromise();
