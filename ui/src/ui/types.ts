@@ -4,6 +4,7 @@ export type ProvidersStatusSnapshot = {
   telegram: TelegramStatus;
   discord?: DiscordStatus | null;
   slack?: SlackStatus | null;
+  rocketchat?: RocketChatStatus | null;
   signal?: SignalStatus | null;
   imessage?: IMessageStatus | null;
 };
@@ -118,6 +119,34 @@ export type SlackStatus = {
   lastStopAt?: number | null;
   lastError?: string | null;
   probe?: SlackProbe | null;
+  lastProbeAt?: number | null;
+};
+
+export type RocketChatUser = {
+  id?: string | null;
+  username?: string | null;
+  name?: string | null;
+};
+
+export type RocketChatProbe = {
+  ok: boolean;
+  status?: number | null;
+  error?: string | null;
+  elapsedMs?: number | null;
+  user?: RocketChatUser | null;
+};
+
+export type RocketChatStatus = {
+  configured: boolean;
+  baseUrl?: string | null;
+  baseUrlSource?: string | null;
+  authTokenSource?: string | null;
+  userIdSource?: string | null;
+  running: boolean;
+  lastStartAt?: number | null;
+  lastStopAt?: number | null;
+  lastError?: string | null;
+  probe?: RocketChatProbe | null;
   lastProbeAt?: number | null;
 };
 
@@ -380,20 +409,3 @@ export type SkillStatusReport = {
 export type StatusSummary = Record<string, unknown>;
 
 export type HealthSnapshot = Record<string, unknown>;
-
-export type LogLevel =
-  | "trace"
-  | "debug"
-  | "info"
-  | "warn"
-  | "error"
-  | "fatal";
-
-export type LogEntry = {
-  raw: string;
-  time?: string | null;
-  level?: LogLevel | null;
-  subsystem?: string | null;
-  message?: string | null;
-  meta?: Record<string, unknown> | null;
-};

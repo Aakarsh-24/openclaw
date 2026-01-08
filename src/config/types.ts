@@ -85,6 +85,7 @@ export type AgentElevatedAllowFromConfig = {
   telegram?: Array<string | number>;
   discord?: Array<string | number>;
   slack?: Array<string | number>;
+  rocketchat?: Array<string | number>;
   signal?: Array<string | number>;
   imessage?: Array<string | number>;
   webchat?: Array<string | number>;
@@ -92,7 +93,6 @@ export type AgentElevatedAllowFromConfig = {
 
 export type WhatsAppActionConfig = {
   reactions?: boolean;
-  sendMessage?: boolean;
 };
 
 export type WhatsAppConfig = {
@@ -129,8 +129,6 @@ export type WhatsAppConfig = {
 };
 
 export type WhatsAppAccountConfig = {
-  /** Optional display name for this account (used in CLI/UI lists). */
-  name?: string;
   /** If false, do not start this WhatsApp account provider. Default: true. */
   enabled?: boolean;
   /** Override auth directory (Baileys multi-file auth state). */
@@ -213,11 +211,10 @@ export type HookMappingConfig = {
     | "telegram"
     | "discord"
     | "slack"
+    | "rocketchat"
     | "signal"
     | "imessage";
   to?: string;
-  /** Override model for this hook (provider/model or alias). */
-  model?: string;
   thinking?: string;
   timeoutSeconds?: number;
   transform?: HookMappingTransform;
@@ -259,51 +256,6 @@ export type HooksConfig = {
 
 export type TelegramActionConfig = {
   reactions?: boolean;
-  sendMessage?: boolean;
-};
-
-export type TelegramAccountConfig = {
-  /** Optional display name for this account (used in CLI/UI lists). */
-  name?: string;
-  /**
-   * Controls how Telegram direct chats (DMs) are handled:
-   * - "pairing" (default): unknown senders get a pairing code; owner must approve
-   * - "allowlist": only allow senders in allowFrom (or paired allow store)
-   * - "open": allow all inbound DMs (requires allowFrom to include "*")
-   * - "disabled": ignore all inbound DMs
-   */
-  dmPolicy?: DmPolicy;
-  /** If false, do not start this Telegram account. Default: true. */
-  enabled?: boolean;
-  botToken?: string;
-  /** Path to file containing bot token (for secret managers like agenix). */
-  tokenFile?: string;
-  /** Control reply threading when reply tags are present (off|first|all). */
-  replyToMode?: ReplyToMode;
-  groups?: Record<string, TelegramGroupConfig>;
-  allowFrom?: Array<string | number>;
-  /** Optional allowlist for Telegram group senders (user ids or usernames). */
-  groupAllowFrom?: Array<string | number>;
-  /**
-   * Controls how group messages are handled:
-   * - "open" (default): groups bypass allowFrom, only mention-gating applies
-   * - "disabled": block all group messages entirely
-   * - "allowlist": only allow group messages from senders in groupAllowFrom/allowFrom
-   */
-  groupPolicy?: GroupPolicy;
-  /** Outbound text chunk size (chars). Default: 4000. */
-  textChunkLimit?: number;
-  /** Draft streaming mode for Telegram (off|partial|block). Default: partial. */
-  streamMode?: "off" | "partial" | "block";
-  mediaMaxMb?: number;
-  /** Retry policy for outbound Telegram API calls. */
-  retry?: OutboundRetryConfig;
-  proxy?: string;
-  webhookUrl?: string;
-  webhookSecret?: string;
-  webhookPath?: string;
-  /** Per-action tool gating (default: true for all). */
-  actions?: TelegramActionConfig;
 };
 
 export type TelegramTopicConfig = {
@@ -333,9 +285,46 @@ export type TelegramGroupConfig = {
 };
 
 export type TelegramConfig = {
-  /** Optional per-account Telegram configuration (multi-account). */
-  accounts?: Record<string, TelegramAccountConfig>;
-} & TelegramAccountConfig;
+  /**
+   * Controls how Telegram direct chats (DMs) are handled:
+   * - "pairing" (default): unknown senders get a pairing code; owner must approve
+   * - "allowlist": only allow senders in allowFrom (or paired allow store)
+   * - "open": allow all inbound DMs (requires allowFrom to include "*")
+   * - "disabled": ignore all inbound DMs
+   */
+  dmPolicy?: DmPolicy;
+  /** If false, do not start the Telegram provider. Default: true. */
+  enabled?: boolean;
+  botToken?: string;
+  /** Path to file containing bot token (for secret managers like agenix) */
+  tokenFile?: string;
+  /** Control reply threading when reply tags are present (off|first|all). */
+  replyToMode?: ReplyToMode;
+  groups?: Record<string, TelegramGroupConfig>;
+  allowFrom?: Array<string | number>;
+  /** Optional allowlist for Telegram group senders (user ids or usernames). */
+  groupAllowFrom?: Array<string | number>;
+  /**
+   * Controls how group messages are handled:
+   * - "open" (default): groups bypass allowFrom, only mention-gating applies
+   * - "disabled": block all group messages entirely
+   * - "allowlist": only allow group messages from senders in groupAllowFrom/allowFrom
+   */
+  groupPolicy?: GroupPolicy;
+  /** Outbound text chunk size (chars). Default: 4000. */
+  textChunkLimit?: number;
+  /** Draft streaming mode for Telegram (off|partial|block). Default: partial. */
+  streamMode?: "off" | "partial" | "block";
+  mediaMaxMb?: number;
+  /** Retry policy for outbound Telegram API calls. */
+  retry?: OutboundRetryConfig;
+  proxy?: string;
+  webhookUrl?: string;
+  webhookSecret?: string;
+  webhookPath?: string;
+  /** Per-action tool gating (default: true for all). */
+  actions?: TelegramActionConfig;
+};
 
 export type DiscordDmConfig = {
   /** If false, ignore all incoming Discord DMs. Default: true. */
@@ -398,10 +387,8 @@ export type DiscordActionConfig = {
   stickerUploads?: boolean;
 };
 
-export type DiscordAccountConfig = {
-  /** Optional display name for this account (used in CLI/UI lists). */
-  name?: string;
-  /** If false, do not start this Discord account. Default: true. */
+export type DiscordConfig = {
+  /** If false, do not start the Discord provider. Default: true. */
   enabled?: boolean;
   token?: string;
   /**
@@ -413,12 +400,6 @@ export type DiscordAccountConfig = {
   groupPolicy?: GroupPolicy;
   /** Outbound text chunk size (chars). Default: 2000. */
   textChunkLimit?: number;
-  /**
-   * Soft max line count per Discord message.
-   * Discord clients can clip/collapse very tall messages; splitting by lines
-   * keeps replies readable in-channel. Default: 17.
-   */
-  maxLinesPerMessage?: number;
   mediaMaxMb?: number;
   historyLimit?: number;
   /** Retry policy for outbound Discord API calls. */
@@ -431,11 +412,6 @@ export type DiscordAccountConfig = {
   /** New per-guild config keyed by guild id or slug. */
   guilds?: Record<string, DiscordGuildEntry>;
 };
-
-export type DiscordConfig = {
-  /** Optional per-account Discord configuration (multi-account). */
-  accounts?: Record<string, DiscordAccountConfig>;
-} & DiscordAccountConfig;
 
 export type SlackDmConfig = {
   /** If false, ignore all incoming Slack DMs. Default: true. */
@@ -457,8 +433,6 @@ export type SlackChannelConfig = {
   allow?: boolean;
   /** Require mentioning the bot to trigger replies. */
   requireMention?: boolean;
-  /** Allow bot-authored messages to trigger replies (default: false). */
-  allowBots?: boolean;
   /** Allowlist of users that can invoke the bot in this channel. */
   users?: Array<string | number>;
   /** Optional skill filter for this channel. */
@@ -491,15 +465,11 @@ export type SlackSlashCommandConfig = {
   ephemeral?: boolean;
 };
 
-export type SlackAccountConfig = {
-  /** Optional display name for this account (used in CLI/UI lists). */
-  name?: string;
-  /** If false, do not start this Slack account. Default: true. */
+export type SlackConfig = {
+  /** If false, do not start the Slack provider. Default: true. */
   enabled?: boolean;
   botToken?: string;
   appToken?: string;
-  /** Allow bot-authored messages to trigger replies (default: false). */
-  allowBots?: boolean;
   /**
    * Controls how channel messages are handled:
    * - "open" (default): channels bypass allowlists; mention-gating applies
@@ -513,23 +483,84 @@ export type SlackAccountConfig = {
   reactionNotifications?: SlackReactionNotificationMode;
   /** Allowlist for reaction notifications when mode is allowlist. */
   reactionAllowlist?: Array<string | number>;
-  /** Control reply threading when reply tags are present (off|first|all). */
-  replyToMode?: ReplyToMode;
   actions?: SlackActionConfig;
   slashCommand?: SlackSlashCommandConfig;
   dm?: SlackDmConfig;
   channels?: Record<string, SlackChannelConfig>;
 };
 
-export type SlackConfig = {
-  /** Optional per-account Slack configuration (multi-account). */
-  accounts?: Record<string, SlackAccountConfig>;
-} & SlackAccountConfig;
+export type RocketChatRoomConfig = {
+  /** If false, disable the bot in this room. (Alias for allow: false.) */
+  enabled?: boolean;
+  /** Legacy room allow toggle; prefer enabled. */
+  allow?: boolean;
+  /** Require mentioning the bot to trigger replies. */
+  requireMention?: boolean;
+  /** Allowlist of users that can invoke the bot in this room. */
+  users?: Array<string | number>;
+  /** Optional skill filter for this room. */
+  skills?: string[];
+  /** Optional system prompt for this room. */
+  systemPrompt?: string;
+};
 
-export type SignalAccountConfig = {
-  /** Optional display name for this account (used in CLI/UI lists). */
-  name?: string;
-  /** If false, do not start this Signal account. Default: true. */
+export type RocketChatWebhookConfig = {
+  /** Bind host for the outgoing webhook listener (default: 0.0.0.0). */
+  host?: string;
+  /** Bind port for the outgoing webhook listener (default: 8790). */
+  port?: number;
+  /** Path for the outgoing webhook listener (default: /rocketchat/outgoing). */
+  path?: string;
+  /** Shared secret token for outgoing webhook validation. */
+  token?: string;
+  /** Max inbound payload bytes (default: 1 MiB). */
+  maxBodyBytes?: number;
+};
+
+export type RocketChatConfig = {
+  /** If false, do not start the Rocket.Chat provider. Default: true. */
+  enabled?: boolean;
+  /** Rocket.Chat base URL (https://chat.example.com). */
+  baseUrl?: string;
+  /** Rocket.Chat auth token (X-Auth-Token). */
+  authToken?: string;
+  /** Rocket.Chat user id (X-User-Id). */
+  userId?: string;
+  /** Bot username (used to ignore self + detect mentions). */
+  botUsername?: string;
+  /** Optional alias (requires message-impersonate permission). */
+  alias?: string;
+  /** Optional avatar URL (requires message-impersonate permission). */
+  avatarUrl?: string;
+  /** Optional avatar emoji (requires message-impersonate permission). */
+  emoji?: string;
+  /**
+   * Controls how room messages are handled:
+   * - "open" (default): rooms bypass allowlists; mention-gating applies
+   * - "disabled": block all room messages
+   * - "allowlist": only allow rooms present in rocketchat.rooms
+   */
+  groupPolicy?: GroupPolicy;
+  /** Require mention by default in rooms (default: true). */
+  requireMention?: boolean;
+  /** Outbound text chunk size (chars). Default: 4000. */
+  textChunkLimit?: number;
+  /** Max media size in MB for outbound uploads. */
+  mediaMaxMb?: number;
+  /** Retry policy for outbound Rocket.Chat API calls. */
+  retry?: OutboundRetryConfig;
+  /** Direct message access policy (default: pairing). */
+  dmPolicy?: DmPolicy;
+  /** Allowlist for DM senders (ids or usernames). */
+  allowFrom?: Array<string | number>;
+  /** Per-room config keyed by room id or name. */
+  rooms?: Record<string, RocketChatRoomConfig>;
+  /** Outgoing webhook listener config. */
+  webhook?: RocketChatWebhookConfig;
+};
+
+export type SignalConfig = {
+  /** If false, do not start the Signal provider. Default: true. */
   enabled?: boolean;
   /** Optional explicit E.164 account for signal-cli. */
   account?: string;
@@ -564,15 +595,8 @@ export type SignalAccountConfig = {
   mediaMaxMb?: number;
 };
 
-export type SignalConfig = {
-  /** Optional per-account Signal configuration (multi-account). */
-  accounts?: Record<string, SignalAccountConfig>;
-} & SignalAccountConfig;
-
-export type IMessageAccountConfig = {
-  /** Optional display name for this account (used in CLI/UI lists). */
-  name?: string;
-  /** If false, do not start this iMessage account. Default: true. */
+export type IMessageConfig = {
+  /** If false, do not start the iMessage provider. Default: true. */
   enabled?: boolean;
   /** imsg CLI binary path (default: imsg). */
   cliPath?: string;
@@ -609,11 +633,6 @@ export type IMessageAccountConfig = {
   >;
 };
 
-export type IMessageConfig = {
-  /** Optional per-account iMessage configuration (multi-account). */
-  accounts?: Record<string, IMessageAccountConfig>;
-} & IMessageAccountConfig;
-
 export type QueueMode =
   | "steer"
   | "followup"
@@ -629,71 +648,10 @@ export type QueueModeByProvider = {
   telegram?: QueueMode;
   discord?: QueueMode;
   slack?: QueueMode;
+  rocketchat?: QueueMode;
   signal?: QueueMode;
   imessage?: QueueMode;
   webchat?: QueueMode;
-};
-
-export type SandboxDockerSettings = {
-  /** Docker image to use for sandbox containers. */
-  image?: string;
-  /** Prefix for sandbox container names. */
-  containerPrefix?: string;
-  /** Container workdir mount path (default: /workspace). */
-  workdir?: string;
-  /** Run container rootfs read-only. */
-  readOnlyRoot?: boolean;
-  /** Extra tmpfs mounts for read-only containers. */
-  tmpfs?: string[];
-  /** Container network mode (bridge|none|custom). */
-  network?: string;
-  /** Container user (uid:gid). */
-  user?: string;
-  /** Drop Linux capabilities. */
-  capDrop?: string[];
-  /** Extra environment variables for sandbox exec. */
-  env?: Record<string, string>;
-  /** Optional setup command run once after container creation. */
-  setupCommand?: string;
-  /** Limit container PIDs (0 = Docker default). */
-  pidsLimit?: number;
-  /** Limit container memory (e.g. 512m, 2g, or bytes as number). */
-  memory?: string | number;
-  /** Limit container memory swap (same format as memory). */
-  memorySwap?: string | number;
-  /** Limit container CPU shares (e.g. 0.5, 1, 2). */
-  cpus?: number;
-  /**
-   * Set ulimit values by name (e.g. nofile, nproc).
-   * Use "soft:hard" string, a number, or { soft, hard }.
-   */
-  ulimits?: Record<string, string | number | { soft?: number; hard?: number }>;
-  /** Seccomp profile (path or profile name). */
-  seccompProfile?: string;
-  /** AppArmor profile name. */
-  apparmorProfile?: string;
-  /** DNS servers (e.g. ["1.1.1.1", "8.8.8.8"]). */
-  dns?: string[];
-  /** Extra host mappings (e.g. ["api.local:10.0.0.2"]). */
-  extraHosts?: string[];
-};
-
-export type SandboxBrowserSettings = {
-  enabled?: boolean;
-  image?: string;
-  containerPrefix?: string;
-  cdpPort?: number;
-  vncPort?: number;
-  noVncPort?: number;
-  headless?: boolean;
-  enableNoVnc?: boolean;
-};
-
-export type SandboxPruneSettings = {
-  /** Prune if idle for more than N hours (0 disables). */
-  idleHours?: number;
-  /** Prune if older than N days (0 disables). */
-  maxAgeDays?: number;
 };
 
 export type GroupChatConfig = {
@@ -723,10 +681,6 @@ export type RoutingConfig = {
       workspace?: string;
       agentDir?: string;
       model?: string;
-      subagents?: {
-        /** Allow spawning sub-agents under other agent ids. Use "*" to allow any. */
-        allowAgents?: string[];
-      };
       sandbox?: {
         mode?: "off" | "non-main" | "all";
         /** Agent workspace access inside the sandbox. */
@@ -736,17 +690,11 @@ export type RoutingConfig = {
         /** Legacy alias for scope ("session" when true, "shared" when false). */
         perSession?: boolean;
         workspaceRoot?: string;
-        /** Docker-specific sandbox overrides for this agent. */
-        docker?: SandboxDockerSettings;
-        /** Optional sandboxed browser overrides for this agent. */
-        browser?: SandboxBrowserSettings;
         /** Tool allow/deny policy for sandboxed sessions (deny wins). */
         tools?: {
           allow?: string[];
           deny?: string[];
         };
-        /** Auto-prune overrides for this agent. */
-        prune?: SandboxPruneSettings;
       };
       tools?: {
         allow?: string[];
@@ -992,8 +940,6 @@ export type AuthConfig = {
 
 export type AgentModelEntryConfig = {
   alias?: string;
-  /** Provider-specific API parameters (e.g., GLM-4.7 thinking mode). */
-  params?: Record<string, unknown>;
 };
 
 export type AgentModelListConfig = {
@@ -1108,6 +1054,7 @@ export type ClawdbotConfig = {
         | "telegram"
         | "discord"
         | "slack"
+        | "rocketchat"
         | "signal"
         | "imessage"
         | "none";
@@ -1172,16 +1119,75 @@ export type ClawdbotConfig = {
       /** Root directory for sandbox workspaces. */
       workspaceRoot?: string;
       /** Docker-specific sandbox settings. */
-      docker?: SandboxDockerSettings;
+      docker?: {
+        /** Docker image to use for sandbox containers. */
+        image?: string;
+        /** Prefix for sandbox container names. */
+        containerPrefix?: string;
+        /** Container workdir mount path (default: /workspace). */
+        workdir?: string;
+        /** Run container rootfs read-only. */
+        readOnlyRoot?: boolean;
+        /** Extra tmpfs mounts for read-only containers. */
+        tmpfs?: string[];
+        /** Container network mode (bridge|none|custom). */
+        network?: string;
+        /** Container user (uid:gid). */
+        user?: string;
+        /** Drop Linux capabilities. */
+        capDrop?: string[];
+        /** Extra environment variables for sandbox exec. */
+        env?: Record<string, string>;
+        /** Optional setup command run once after container creation. */
+        setupCommand?: string;
+        /** Limit container PIDs (0 = Docker default). */
+        pidsLimit?: number;
+        /** Limit container memory (e.g. 512m, 2g, or bytes as number). */
+        memory?: string | number;
+        /** Limit container memory swap (same format as memory). */
+        memorySwap?: string | number;
+        /** Limit container CPU shares (e.g. 0.5, 1, 2). */
+        cpus?: number;
+        /**
+         * Set ulimit values by name (e.g. nofile, nproc).
+         * Use "soft:hard" string, a number, or { soft, hard }.
+         */
+        ulimits?: Record<
+          string,
+          string | number | { soft?: number; hard?: number }
+        >;
+        /** Seccomp profile (path or profile name). */
+        seccompProfile?: string;
+        /** AppArmor profile name. */
+        apparmorProfile?: string;
+        /** DNS servers (e.g. ["1.1.1.1", "8.8.8.8"]). */
+        dns?: string[];
+        /** Extra host mappings (e.g. ["api.local:10.0.0.2"]). */
+        extraHosts?: string[];
+      };
       /** Optional sandboxed browser settings. */
-      browser?: SandboxBrowserSettings;
+      browser?: {
+        enabled?: boolean;
+        image?: string;
+        containerPrefix?: string;
+        cdpPort?: number;
+        vncPort?: number;
+        noVncPort?: number;
+        headless?: boolean;
+        enableNoVnc?: boolean;
+      };
       /** Tool allow/deny policy (deny wins). */
       tools?: {
         allow?: string[];
         deny?: string[];
       };
       /** Auto-prune sandbox containers. */
-      prune?: SandboxPruneSettings;
+      prune?: {
+        /** Prune if idle for more than N hours (0 disables). */
+        idleHours?: number;
+        /** Prune if older than N days (0 disables). */
+        maxAgeDays?: number;
+      };
     };
     /** Global tool allow/deny policy for all providers (deny wins). */
     tools?: {
@@ -1198,6 +1204,7 @@ export type ClawdbotConfig = {
   telegram?: TelegramConfig;
   discord?: DiscordConfig;
   slack?: SlackConfig;
+  rocketchat?: RocketChatConfig;
   signal?: SignalConfig;
   imessage?: IMessageConfig;
   cron?: CronConfig;

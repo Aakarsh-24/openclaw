@@ -74,6 +74,7 @@ describe("resolveTextChunkLimit", () => {
     expect(resolveTextChunkLimit(undefined, "whatsapp")).toBe(4000);
     expect(resolveTextChunkLimit(undefined, "telegram")).toBe(4000);
     expect(resolveTextChunkLimit(undefined, "slack")).toBe(4000);
+    expect(resolveTextChunkLimit(undefined, "rocketchat")).toBe(4000);
     expect(resolveTextChunkLimit(undefined, "signal")).toBe(4000);
     expect(resolveTextChunkLimit(undefined, "imessage")).toBe(4000);
     expect(resolveTextChunkLimit(undefined, "discord")).toBe(2000);
@@ -83,20 +84,6 @@ describe("resolveTextChunkLimit", () => {
     const cfg = { telegram: { textChunkLimit: 1234 } };
     expect(resolveTextChunkLimit(cfg, "whatsapp")).toBe(4000);
     expect(resolveTextChunkLimit(cfg, "telegram")).toBe(1234);
-  });
-
-  it("prefers account overrides when provided", () => {
-    const cfg = {
-      telegram: {
-        textChunkLimit: 2000,
-        accounts: {
-          default: { textChunkLimit: 1234 },
-          primary: { textChunkLimit: 777 },
-        },
-      },
-    };
-    expect(resolveTextChunkLimit(cfg, "telegram", "primary")).toBe(777);
-    expect(resolveTextChunkLimit(cfg, "telegram", "default")).toBe(1234);
   });
 
   it("uses the matching provider override", () => {

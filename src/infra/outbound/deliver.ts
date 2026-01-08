@@ -7,10 +7,11 @@ import type { ReplyPayload } from "../../auto-reply/types.js";
 import type { ClawdbotConfig } from "../../config/config.js";
 import { sendMessageDiscord } from "../../discord/send.js";
 import { sendMessageIMessage } from "../../imessage/send.js";
-import { normalizeAccountId } from "../../routing/session-key.js";
+import { sendMessageRocketChat } from "../../rocketchat/send.js";
 import { sendMessageSignal } from "../../signal/send.js";
 import { sendMessageSlack } from "../../slack/send.js";
 import { sendMessageTelegram } from "../../telegram/send.js";
+import { resolveTelegramToken } from "../../telegram/token.js";
 import { sendMessageWhatsApp } from "../../web/outbound.js";
 import type { NormalizedOutboundPayload } from "./payloads.js";
 import { normalizeOutboundPayloads } from "./payloads.js";
@@ -26,6 +27,7 @@ export type OutboundSendDeps = {
   sendTelegram?: typeof sendMessageTelegram;
   sendDiscord?: typeof sendMessageDiscord;
   sendSlack?: typeof sendMessageSlack;
+  sendRocketChat?: typeof sendMessageRocketChat;
   sendSignal?: typeof sendMessageSignal;
   sendIMessage?: typeof sendMessageIMessage;
 };
@@ -35,6 +37,7 @@ export type OutboundDeliveryResult =
   | { provider: "telegram"; messageId: string; chatId: string }
   | { provider: "discord"; messageId: string; channelId: string }
   | { provider: "slack"; messageId: string; channelId: string }
+  | { provider: "rocketchat"; messageId: string; roomId: string }
   | { provider: "signal"; messageId: string; timestamp?: number }
   | { provider: "imessage"; messageId: string };
 
@@ -48,6 +51,7 @@ const providerCaps: Record<
   telegram: { chunker: chunkMarkdownText },
   discord: { chunker: null },
   slack: { chunker: null },
+  rocketchat: { chunker: chunkMarkdownText },
   signal: { chunker: chunkText },
   imessage: { chunker: chunkText },
 };
@@ -64,15 +68,9 @@ type ProviderHandler = {
 function resolveMediaMaxBytes(
   cfg: ClawdbotConfig,
   provider: "signal" | "imessage",
-  accountId?: string | null,
 ): number | undefined {
-  const normalizedAccountId = normalizeAccountId(accountId);
   const providerLimit =
-    provider === "signal"
-      ? (cfg.signal?.accounts?.[normalizedAccountId]?.mediaMaxMb ??
-        cfg.signal?.mediaMaxMb)
-      : (cfg.imessage?.accounts?.[normalizedAccountId]?.mediaMaxMb ??
-        cfg.imessage?.mediaMaxMb);
+    provider === "signal" ? cfg.signal?.mediaMaxMb : cfg.imessage?.mediaMaxMb;
   if (providerLimit) return providerLimit * MB;
   if (cfg.agent?.mediaMaxMb) return cfg.agent.mediaMaxMb * MB;
   return undefined;
@@ -82,18 +80,20 @@ function createProviderHandler(params: {
   cfg: ClawdbotConfig;
   provider: Exclude<OutboundProvider, "none">;
   to: string;
-  accountId?: string;
   deps: Required<OutboundSendDeps>;
 }): ProviderHandler {
   const { cfg, to, deps } = params;
-  const accountId = normalizeAccountId(params.accountId);
+  const telegramToken =
+    params.provider === "telegram"
+      ? resolveTelegramToken(cfg).token || undefined
+      : undefined;
   const signalMaxBytes =
     params.provider === "signal"
-      ? resolveMediaMaxBytes(cfg, "signal", accountId)
+      ? resolveMediaMaxBytes(cfg, "signal")
       : undefined;
   const imessageMaxBytes =
     params.provider === "imessage"
-      ? resolveMediaMaxBytes(cfg, "imessage", accountId)
+      ? resolveMediaMaxBytes(cfg, "imessage")
       : undefined;
 
   const handlers: Record<Exclude<OutboundProvider, "none">, ProviderHandler> = {
@@ -101,17 +101,13 @@ function createProviderHandler(params: {
       chunker: providerCaps.whatsapp.chunker,
       sendText: async (text) => ({
         provider: "whatsapp",
-        ...(await deps.sendWhatsApp(to, text, {
-          verbose: false,
-          accountId,
-        })),
+        ...(await deps.sendWhatsApp(to, text, { verbose: false })),
       }),
       sendMedia: async (caption, mediaUrl) => ({
         provider: "whatsapp",
         ...(await deps.sendWhatsApp(to, caption, {
           verbose: false,
           mediaUrl,
-          accountId,
         })),
       }),
     },
@@ -121,7 +117,7 @@ function createProviderHandler(params: {
         provider: "telegram",
         ...(await deps.sendTelegram(to, text, {
           verbose: false,
-          accountId,
+          token: telegramToken,
         })),
       }),
       sendMedia: async (caption, mediaUrl) => ({
@@ -129,7 +125,7 @@ function createProviderHandler(params: {
         ...(await deps.sendTelegram(to, caption, {
           verbose: false,
           mediaUrl,
-          accountId,
+          token: telegramToken,
         })),
       }),
     },
@@ -137,17 +133,13 @@ function createProviderHandler(params: {
       chunker: providerCaps.discord.chunker,
       sendText: async (text) => ({
         provider: "discord",
-        ...(await deps.sendDiscord(to, text, {
-          verbose: false,
-          accountId,
-        })),
+        ...(await deps.sendDiscord(to, text, { verbose: false })),
       }),
       sendMedia: async (caption, mediaUrl) => ({
         provider: "discord",
         ...(await deps.sendDiscord(to, caption, {
           verbose: false,
           mediaUrl,
-          accountId,
         })),
       }),
     },
@@ -155,33 +147,35 @@ function createProviderHandler(params: {
       chunker: providerCaps.slack.chunker,
       sendText: async (text) => ({
         provider: "slack",
-        ...(await deps.sendSlack(to, text, {
-          accountId,
-        })),
+        ...(await deps.sendSlack(to, text)),
       }),
       sendMedia: async (caption, mediaUrl) => ({
         provider: "slack",
-        ...(await deps.sendSlack(to, caption, {
-          mediaUrl,
-          accountId,
-        })),
+        ...(await deps.sendSlack(to, caption, { mediaUrl })),
+      }),
+    },
+    rocketchat: {
+      chunker: providerCaps.rocketchat.chunker,
+      sendText: async (text) => ({
+        provider: "rocketchat",
+        ...(await deps.sendRocketChat(to, text)),
+      }),
+      sendMedia: async (caption, mediaUrl) => ({
+        provider: "rocketchat",
+        ...(await deps.sendRocketChat(to, caption, { mediaUrl })),
       }),
     },
     signal: {
       chunker: providerCaps.signal.chunker,
       sendText: async (text) => ({
         provider: "signal",
-        ...(await deps.sendSignal(to, text, {
-          maxBytes: signalMaxBytes,
-          accountId,
-        })),
+        ...(await deps.sendSignal(to, text, { maxBytes: signalMaxBytes })),
       }),
       sendMedia: async (caption, mediaUrl) => ({
         provider: "signal",
         ...(await deps.sendSignal(to, caption, {
           mediaUrl,
           maxBytes: signalMaxBytes,
-          accountId,
         })),
       }),
     },
@@ -189,17 +183,13 @@ function createProviderHandler(params: {
       chunker: providerCaps.imessage.chunker,
       sendText: async (text) => ({
         provider: "imessage",
-        ...(await deps.sendIMessage(to, text, {
-          maxBytes: imessageMaxBytes,
-          accountId,
-        })),
+        ...(await deps.sendIMessage(to, text, { maxBytes: imessageMaxBytes })),
       }),
       sendMedia: async (caption, mediaUrl) => ({
         provider: "imessage",
         ...(await deps.sendIMessage(to, caption, {
           mediaUrl,
           maxBytes: imessageMaxBytes,
-          accountId,
         })),
       }),
     },
@@ -212,7 +202,6 @@ export async function deliverOutboundPayloads(params: {
   cfg: ClawdbotConfig;
   provider: Exclude<OutboundProvider, "none">;
   to: string;
-  accountId?: string;
   payloads: ReplyPayload[];
   deps?: OutboundSendDeps;
   bestEffort?: boolean;
@@ -220,12 +209,12 @@ export async function deliverOutboundPayloads(params: {
   onPayload?: (payload: NormalizedOutboundPayload) => void;
 }): Promise<OutboundDeliveryResult[]> {
   const { cfg, provider, to, payloads } = params;
-  const accountId = normalizeAccountId(params.accountId);
   const deps = {
     sendWhatsApp: params.deps?.sendWhatsApp ?? sendMessageWhatsApp,
     sendTelegram: params.deps?.sendTelegram ?? sendMessageTelegram,
     sendDiscord: params.deps?.sendDiscord ?? sendMessageDiscord,
     sendSlack: params.deps?.sendSlack ?? sendMessageSlack,
+    sendRocketChat: params.deps?.sendRocketChat ?? sendMessageRocketChat,
     sendSignal: params.deps?.sendSignal ?? sendMessageSignal,
     sendIMessage: params.deps?.sendIMessage ?? sendMessageIMessage,
   };
@@ -235,10 +224,9 @@ export async function deliverOutboundPayloads(params: {
     provider,
     to,
     deps,
-    accountId,
   });
   const textLimit = handler.chunker
-    ? resolveTextChunkLimit(cfg, provider, accountId)
+    ? resolveTextChunkLimit(cfg, provider)
     : undefined;
 
   const sendTextChunks = async (text: string) => {

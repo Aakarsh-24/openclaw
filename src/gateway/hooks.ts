@@ -1,7 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { IncomingMessage } from "node:http";
 import type { ClawdbotConfig } from "../config/config.js";
-import { normalizeMessageProvider } from "../utils/message-provider.js";
 import {
   type HookMappingResolved,
   resolveHookMappings,
@@ -144,10 +143,10 @@ export type HookAgentPayload = {
     | "telegram"
     | "discord"
     | "slack"
+    | "rocketchat"
     | "signal"
     | "imessage";
   to?: string;
-  model?: string;
   thinking?: string;
   timeoutSeconds?: number;
 };
@@ -176,40 +175,31 @@ export function normalizeAgentPayload(
       ? sessionKeyRaw.trim()
       : `hook:${idFactory()}`;
   const providerRaw = payload.provider;
-  const providerNormalized =
-    typeof providerRaw === "string"
-      ? normalizeMessageProvider(providerRaw)
-      : undefined;
   const provider =
-    providerNormalized === "whatsapp" ||
-    providerNormalized === "telegram" ||
-    providerNormalized === "discord" ||
-    providerNormalized === "slack" ||
-    providerNormalized === "signal" ||
-    providerNormalized === "imessage" ||
-    providerNormalized === "last"
-      ? providerNormalized
-      : providerRaw === undefined
-        ? "last"
-        : null;
+    providerRaw === "whatsapp" ||
+    providerRaw === "telegram" ||
+    providerRaw === "discord" ||
+    providerRaw === "slack" ||
+    providerRaw === "rocketchat" ||
+    providerRaw === "signal" ||
+    providerRaw === "imessage" ||
+    providerRaw === "last"
+      ? providerRaw
+      : providerRaw === "imsg"
+        ? "imessage"
+        : providerRaw === undefined
+          ? "last"
+          : null;
   if (provider === null) {
     return {
       ok: false,
       error:
-        "provider must be last|whatsapp|telegram|discord|slack|signal|imessage",
+        "provider must be last|whatsapp|telegram|discord|slack|rocketchat|signal|imessage",
     };
   }
   const toRaw = payload.to;
   const to =
     typeof toRaw === "string" && toRaw.trim() ? toRaw.trim() : undefined;
-  const modelRaw = payload.model;
-  const model =
-    typeof modelRaw === "string" && modelRaw.trim()
-      ? modelRaw.trim()
-      : undefined;
-  if (modelRaw !== undefined && !model) {
-    return { ok: false, error: "model required" };
-  }
   const deliver = payload.deliver === true;
   const thinkingRaw = payload.thinking;
   const thinking =
@@ -233,7 +223,6 @@ export function normalizeAgentPayload(
       deliver,
       provider,
       to,
-      model,
       thinking,
       timeoutSeconds,
     },

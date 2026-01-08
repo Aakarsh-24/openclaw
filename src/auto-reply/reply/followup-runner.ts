@@ -10,23 +10,21 @@ import { logVerbose } from "../../globals.js";
 import { registerAgentRunContext } from "../../infra/agent-events.js";
 import { defaultRuntime } from "../../runtime.js";
 import { stripHeartbeatToken } from "../heartbeat.js";
-import type { OriginatingChannelType } from "../templating.js";
 import { SILENT_REPLY_TOKEN } from "../tokens.js";
 import type { GetReplyOptions, ReplyPayload } from "../types.js";
 import type { FollowupRun } from "./queue.js";
-import {
-  applyReplyThreading,
-  filterMessagingToolDuplicates,
-  shouldSuppressMessagingToolReplies,
-} from "./reply-payloads.js";
-import {
-  createReplyToModeFilter,
-  resolveReplyToMode,
-} from "./reply-threading.js";
+import { extractReplyToTag } from "./reply-tags.js";
 import { isRoutableChannel, routeReply } from "./route-reply.js";
 import { incrementCompactionCount } from "./session-updates.js";
 import type { TypingController } from "./typing.js";
 import { createTypingSignaler } from "./typing-mode.js";
+
+function splitThreadId(raw?: number | string) {
+  return {
+    threadId: typeof raw === "number" ? raw : undefined,
+    providerThreadId: typeof raw === "string" ? raw : undefined,
+  };
+}
 
 export function createFollowupRunner(params: {
   opts?: GetReplyOptions;
@@ -93,12 +91,16 @@ export function createFollowupRunner(params: {
 
       // Route to originating channel if set, otherwise fall back to dispatcher.
       if (shouldRouteToOriginating) {
+        const { threadId, providerThreadId } = splitThreadId(
+          queued.originatingThreadId,
+        );
         const result = await routeReply({
           payload,
           channel: originatingChannel,
           to: originatingTo,
           accountId: queued.originatingAccountId,
-          threadId: queued.originatingThreadId,
+          threadId,
+          providerThreadId,
           cfg: queued.run.config,
         });
         if (!result.ok) {
@@ -137,7 +139,6 @@ export function createFollowupRunner(params: {
               sessionId: queued.run.sessionId,
               sessionKey: queued.run.sessionKey,
               messageProvider: queued.run.messageProvider,
-              agentAccountId: queued.run.agentAccountId,
               sessionFile: queued.run.sessionFile,
               workspaceDir: queued.run.workspaceDir,
               config: queued.run.config,
@@ -189,33 +190,24 @@ export function createFollowupRunner(params: {
         if (stripped.shouldSkip && !hasMedia) return [];
         return [{ ...payload, text: stripped.text }];
       });
-      const replyToChannel =
-        queued.originatingChannel ??
-        (queued.run.messageProvider?.toLowerCase() as
-          | OriginatingChannelType
-          | undefined);
-      const applyReplyToMode = createReplyToModeFilter(
-        resolveReplyToMode(queued.run.config, replyToChannel),
-      );
 
-      const replyTaggedPayloads: ReplyPayload[] = applyReplyThreading({
-        payloads: sanitizedPayloads,
-        applyReplyToMode,
-      });
+      const replyTaggedPayloads: ReplyPayload[] = sanitizedPayloads
+        .map((payload) => {
+          const { cleaned, replyToId } = extractReplyToTag(payload.text);
+          return {
+            ...payload,
+            text: cleaned ? cleaned : undefined,
+            replyToId: replyToId ?? payload.replyToId,
+          };
+        })
+        .filter(
+          (payload) =>
+            payload.text ||
+            payload.mediaUrl ||
+            (payload.mediaUrls && payload.mediaUrls.length > 0),
+        );
 
-      const dedupedPayloads = filterMessagingToolDuplicates({
-        payloads: replyTaggedPayloads,
-        sentTexts: runResult.messagingToolSentTexts ?? [],
-      });
-      const suppressMessagingToolReplies = shouldSuppressMessagingToolReplies({
-        messageProvider: queued.run.messageProvider,
-        messagingToolSentTargets: runResult.messagingToolSentTargets,
-        originatingTo: queued.originatingTo,
-        accountId: queued.run.agentAccountId,
-      });
-      const finalPayloads = suppressMessagingToolReplies ? [] : dedupedPayloads;
-
-      if (finalPayloads.length === 0) return;
+      if (replyTaggedPayloads.length === 0) return;
 
       if (autoCompactionCompleted) {
         const count = await incrementCompactionCount({
@@ -226,7 +218,7 @@ export function createFollowupRunner(params: {
         });
         if (queued.run.verboseLevel === "on") {
           const suffix = typeof count === "number" ? ` (count ${count})` : "";
-          finalPayloads.unshift({
+          replyTaggedPayloads.unshift({
             text: `🧹 Auto-compaction complete${suffix}.`,
           });
         }
@@ -280,7 +272,7 @@ export function createFollowupRunner(params: {
         }
       }
 
-      await sendFollowupPayloads(finalPayloads, queued);
+      await sendFollowupPayloads(replyTaggedPayloads, queued);
     } finally {
       typing.markRunComplete();
     }

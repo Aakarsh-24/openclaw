@@ -5,15 +5,13 @@ import {
   DEFAULT_PROVIDER,
 } from "../agents/defaults.js";
 import { resolveConfiguredModelRef } from "../agents/model-selection.js";
-import { withProgress } from "../cli/progress.js";
-import { loadConfig, resolveGatewayPort } from "../config/config.js";
+import { loadConfig } from "../config/config.js";
 import {
   loadSessionStore,
   resolveStorePath,
   type SessionEntry,
 } from "../config/sessions.js";
-import { resolveGatewayService } from "../daemon/service.js";
-import { buildGatewayConnectionDetails, callGateway } from "../gateway/call.js";
+import { callGateway } from "../gateway/call.js";
 import { info } from "../globals.js";
 import { buildProviderSummary } from "../infra/provider-summary.js";
 import {
@@ -30,7 +28,6 @@ import {
   webAuthExists,
 } from "../web/session.js";
 import type { HealthSummary } from "./health.js";
-import { resolveControlUiLinks } from "./onboard-helpers.js";
 
 export type SessionStatus = {
   key: string;
@@ -202,38 +199,6 @@ const classifyKey = (
   return "direct";
 };
 
-const formatDaemonRuntimeShort = (runtime?: {
-  status?: string;
-  pid?: number;
-  state?: string;
-  detail?: string;
-}) => {
-  if (!runtime) return null;
-  const status = runtime.status ?? "unknown";
-  const details: string[] = [];
-  if (runtime.pid) details.push(`pid ${runtime.pid}`);
-  if (runtime.state && runtime.state.toLowerCase() !== status) {
-    details.push(`state ${runtime.state}`);
-  }
-  if (runtime.detail) details.push(runtime.detail);
-  return details.length > 0 ? `${status} (${details.join(", ")})` : status;
-};
-
-async function getDaemonShortLine(): Promise<string | null> {
-  try {
-    const service = resolveGatewayService();
-    const [loaded, runtime] = await Promise.all([
-      service.isLoaded({ env: process.env }).catch(() => false),
-      service.readRuntime(process.env).catch(() => undefined),
-    ]);
-    const loadedText = loaded ? service.loadedText : service.notLoadedText;
-    const runtimeShort = formatDaemonRuntimeShort(runtime);
-    return `Daemon: ${service.label} ${loadedText}${runtimeShort ? `, ${runtimeShort}` : ""}. Details: clawdbot daemon status`;
-  } catch {
-    return "Daemon: unknown. Details: clawdbot daemon status";
-  }
-}
-
 const buildFlags = (entry: SessionEntry): string[] => {
   const flags: string[] = [];
   const think = entry?.thinkingLevel;
@@ -257,41 +222,18 @@ const buildFlags = (entry: SessionEntry): string[] => {
 };
 
 export async function statusCommand(
-  opts: {
-    json?: boolean;
-    deep?: boolean;
-    usage?: boolean;
-    timeoutMs?: number;
-    verbose?: boolean;
-  },
+  opts: { json?: boolean; deep?: boolean; usage?: boolean; timeoutMs?: number },
   runtime: RuntimeEnv,
 ) {
-  const cfg = loadConfig();
   const summary = await getStatusSummary();
   const usage = opts.usage
-    ? await withProgress(
-        {
-          label: "Fetching usage snapshot…",
-          indeterminate: true,
-          enabled: opts.json !== true,
-        },
-        async () =>
-          await loadProviderUsageSummary({ timeoutMs: opts.timeoutMs }),
-      )
+    ? await loadProviderUsageSummary({ timeoutMs: opts.timeoutMs })
     : undefined;
   const health: HealthSummary | undefined = opts.deep
-    ? await withProgress(
-        {
-          label: "Checking gateway health…",
-          indeterminate: true,
-          enabled: opts.json !== true,
-        },
-        async () =>
-          await callGateway<HealthSummary>({
-            method: "health",
-            timeoutMs: opts.timeoutMs,
-          }),
-      )
+    ? await callGateway<HealthSummary>({
+        method: "health",
+        timeoutMs: opts.timeoutMs,
+      })
     : undefined;
 
   if (opts.json) {
@@ -305,42 +247,18 @@ export async function statusCommand(
     return;
   }
 
-  if (opts.verbose) {
-    const details = buildGatewayConnectionDetails();
-    runtime.log(info("Gateway connection:"));
-    for (const line of details.message.split("\n")) {
-      runtime.log(`  ${line}`);
-    }
-  }
-
-  const controlUiEnabled = cfg.gateway?.controlUi?.enabled ?? true;
-  if (!controlUiEnabled) {
-    runtime.log(info("Dashboard: disabled"));
-  } else {
-    const links = resolveControlUiLinks({
-      port: resolveGatewayPort(cfg),
-      bind: cfg.gateway?.bind,
-      basePath: cfg.gateway?.controlUi?.basePath,
-    });
-    runtime.log(info(`Dashboard: ${links.httpUrl}`));
-  }
   runtime.log(
     `Web session: ${summary.web.linked ? "linked" : "not linked"}${summary.web.linked ? ` (last refreshed ${formatAge(summary.web.authAgeMs)})` : ""}`,
   );
   if (summary.web.linked) {
+    const cfg = loadConfig();
     const account = resolveWhatsAppAccount({ cfg });
     logWebSelfId(account.authDir, runtime, true);
   }
-  runtime.log("");
   runtime.log(info("System:"));
   for (const line of summary.providerSummary) {
     runtime.log(`  ${line}`);
   }
-  const daemonLine = await getDaemonShortLine();
-  if (daemonLine) {
-    runtime.log(info(daemonLine));
-  }
-  runtime.log("");
   if (health) {
     runtime.log(info("Gateway health: reachable"));
 
@@ -364,10 +282,18 @@ export async function statusCommand(
         : `Discord: failed (${health.discord.probe?.status ?? "unknown"})${health.discord.probe?.error ? ` - ${health.discord.probe.error}` : ""}`
       : info("Discord: not configured");
     runtime.log(discordLine);
+
+    const rocketchatLine = health.rocketchat.configured
+      ? health.rocketchat.probe?.ok
+        ? info(
+            `Rocket.Chat: ok${health.rocketchat.probe.user?.username ? ` (@${health.rocketchat.probe.user.username})` : ""} (${health.rocketchat.probe.elapsedMs}ms)`,
+          )
+        : `Rocket.Chat: failed (${health.rocketchat.probe?.status ?? "unknown"})${health.rocketchat.probe?.error ? ` - ${health.rocketchat.probe.error}` : ""}`
+      : info("Rocket.Chat: not configured");
+    runtime.log(rocketchatLine);
   } else {
     runtime.log(info("Provider probes: skipped (use --deep)"));
   }
-  runtime.log("");
   if (summary.queuedSystemEvents.length > 0) {
     const preview = summary.queuedSystemEvents.slice(0, 3).join(" | ");
     runtime.log(
@@ -396,13 +322,10 @@ export async function statusCommand(
   } else {
     runtime.log("No session activity yet.");
   }
-  runtime.log("");
 
   if (usage) {
     for (const line of formatUsageReportLines(usage)) {
       runtime.log(line);
     }
   }
-  runtime.log("FAQ: https://docs.clawd.bot/faq");
-  runtime.log("Troubleshooting: https://docs.clawd.bot/troubleshooting");
 }

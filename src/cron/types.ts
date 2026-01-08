@@ -11,8 +11,6 @@ export type CronPayload =
   | {
       kind: "agentTurn";
       message: string;
-      /** Optional model override (provider/model or alias). */
-      model?: string;
       thinking?: string;
       timeoutSeconds?: number;
       deliver?: boolean;
@@ -22,6 +20,7 @@ export type CronPayload =
         | "telegram"
         | "discord"
         | "slack"
+        | "rocketchat"
         | "signal"
         | "imessage";
       to?: string;

@@ -24,27 +24,13 @@ Follow‑up reconfiguration:
 clawdbot configure
 ```
 
-## QuickStart vs Advanced
-
-The wizard starts with **QuickStart** (defaults) vs **Advanced** (full control).
-
-**QuickStart** keeps the defaults:
-- Local gateway (loopback)
-- Workspace default (or existing workspace)
-- Gateway port **18789**
-- Gateway auth **Off** (loopback only)
-- Tailscale exposure **Off**
-- Telegram + WhatsApp DMs default to **allowlist** (you’ll be prompted for a number)
-
-**Advanced** exposes every step (mode, workspace, gateway, providers, daemon, skills).
-
 ## What the wizard does
 
 **Local mode (default)** walks you through:
 - Model/auth (Anthropic or OpenAI Codex OAuth recommended, API key optional, Minimax M2.1 via LM Studio)
 - Workspace location + bootstrap files
 - Gateway settings (port/bind/auth/tailscale)
-- Providers (Telegram, WhatsApp, Discord, Signal)
+- Providers (WhatsApp, Telegram, Discord, Signal)
 - Daemon install (LaunchAgent / systemd user unit)
 - Health check
 - Skills (recommended)
@@ -58,8 +44,6 @@ To add more isolated agents (separate workspace + sessions + auth), use:
 clawdbot agents add <name>
 ```
 
-Tip: `--json` does **not** imply non-interactive mode. Use `--non-interactive` (and `--workspace`) for scripts.
-
 ## Flow details (local)
 
 1) **Existing config detection**
@@ -70,9 +54,7 @@ Tip: `--json` does **not** imply non-interactive mode. Use `--non-interactive` (
      - Full reset (also removes workspace)
 
 2) **Model/Auth**
-   - **Anthropic OAuth (Claude CLI)**: if `~/.claude/.credentials.json` exists, the wizard can reuse it.
    - **Anthropic OAuth (recommended)**: browser flow; paste the `code#state`.
-   - **OpenAI Codex OAuth (Codex CLI)**: if `~/.codex/auth.json` exists, the wizard can reuse it.
    - **OpenAI Codex OAuth**: browser flow; paste the `code#state`.
      - Sets `agent.model` to `openai-codex/gpt-5.2` when model is unset or `openai/*`.
    - **API key**: stores the key for you.
@@ -80,7 +62,6 @@ Tip: `--json` does **not** imply non-interactive mode. Use `--non-interactive` (
    - **Skip**: no auth configured yet.
    - Wizard runs a model check and warns if the configured model is unknown or missing auth.
   - OAuth credentials live in `~/.clawdbot/credentials/oauth.json`; auth profiles live in `~/.clawdbot/agents/<agentId>/agent/auth-profiles.json` (API keys + OAuth).
-   - More detail: [/concepts/oauth](/concepts/oauth)
 
 3) **Workspace**
    - Default `~/clawd` (configurable).
@@ -96,9 +77,10 @@ Tip: `--json` does **not** imply non-interactive mode. Use `--non-interactive` (
    - WhatsApp: optional QR login.
    - Telegram: bot token.
    - Discord: bot token.
+   - Rocket.Chat: outgoing webhook + REST API token.
    - Signal: optional `signal-cli` install + account config.
    - iMessage: local `imsg` CLI path + DB access.
-  - DM security: default is pairing. First DM sends a code; approve via `clawdbot pairing approve --provider <provider> <code>` or use allowlists.
+   - DM security: default is pairing (unknown DMs get a pairing code). Approve via `clawdbot pairing approve --provider <provider> <code>`.
 
 6) **Daemon install**
    - macOS: LaunchAgent
@@ -110,7 +92,6 @@ Tip: `--json` does **not** imply non-interactive mode. Use `--non-interactive` (
 
 7) **Health check**
    - Starts the Gateway (if needed) and runs `clawdbot health`.
-   - Tip: `clawdbot status --deep` runs local provider probes without a gateway.
 
 8) **Skills (recommended)**
    - Reads the available skills and checks requirements.
@@ -119,8 +100,7 @@ Tip: `--json` does **not** imply non-interactive mode. Use `--non-interactive` (
 
 9) **Finish**
    - Summary + next steps, including iOS/Android/macOS apps for extra features.
-  - If no GUI is detected, the wizard prints SSH port-forward instructions for the Control UI instead of opening a browser.
-  - If the Control UI assets are missing, the wizard attempts to build them; fallback is `pnpm ui:install && pnpm ui:build`.
+   - If no GUI is detected, the wizard prints SSH port-forward instructions for the Control UI instead of opening a browser.
 
 ## Remote mode
 
@@ -150,7 +130,6 @@ What it sets:
 Notes:
 - Default workspaces follow `~/clawd-<agentId>`.
 - Add `routing.bindings` to route inbound messages (the wizard can do this).
- - Non-interactive flags: `--model`, `--agent-dir`, `--bind`, `--non-interactive`.
 
 ## Non‑interactive mode
 
@@ -173,12 +152,7 @@ Add `--json` for a machine‑readable summary.
 Add agent (non‑interactive) example:
 
 ```bash
-clawdbot agents add work \
-  --workspace ~/clawd-work \
-  --model openai/gpt-5.2 \
-  --bind whatsapp:biz \
-  --non-interactive \
-  --json
+clawdbot agents add work --workspace ~/clawd-work
 ```
 
 ## Gateway wizard RPC

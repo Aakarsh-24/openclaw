@@ -1,3 +1,4 @@
+import chalk from "chalk";
 import { Command } from "commander";
 import { agentCliCommand } from "../commands/agent-via-gateway.js";
 import {
@@ -14,6 +15,7 @@ import { sendCommand } from "../commands/send.js";
 import { sessionsCommand } from "../commands/sessions.js";
 import { setupCommand } from "../commands/setup.js";
 import { statusCommand } from "../commands/status.js";
+import { updateCommand } from "../commands/update.js";
 import {
   isNixMode,
   loadConfig,
@@ -23,12 +25,12 @@ import {
 } from "../config/config.js";
 import { danger, setVerbose } from "../globals.js";
 import { autoMigrateLegacyState } from "../infra/state-migrations.js";
+import { loginWeb, logoutWeb } from "../provider-web.js";
 import { defaultRuntime } from "../runtime.js";
-import { isRich, theme } from "../terminal/theme.js";
 import { VERSION } from "../version.js";
-import { emitCliBanner, formatCliBannerLine } from "./banner.js";
+import { resolveWhatsAppAccount } from "../web/accounts.js";
 import { registerBrowserCli } from "./browser-cli.js";
-import { hasExplicitOptions } from "./command-options.js";
+import { registerCanvasCli } from "./canvas-cli.js";
 import { registerCronCli } from "./cron-cli.js";
 import { registerDaemonCli } from "./daemon-cli.js";
 import { createDefaultDeps } from "./deps.js";
@@ -36,25 +38,20 @@ import { registerDnsCli } from "./dns-cli.js";
 import { registerDocsCli } from "./docs-cli.js";
 import { registerGatewayCli } from "./gateway-cli.js";
 import { registerHooksCli } from "./hooks-cli.js";
-import { registerLogsCli } from "./logs-cli.js";
 import { registerModelsCli } from "./models-cli.js";
 import { registerNodesCli } from "./nodes-cli.js";
 import { registerPairingCli } from "./pairing-cli.js";
 import { forceFreePort } from "./ports.js";
-import { runProviderLogin, runProviderLogout } from "./provider-auth.js";
-import { registerProvidersCli } from "./providers-cli.js";
-import { registerSkillsCli } from "./skills-cli.js";
+import { registerTelegramCli } from "./telegram-cli.js";
 import { registerTuiCli } from "./tui-cli.js";
 
 export { forceFreePort };
 
-function collectOption(value: string, previous: string[] = []): string[] {
-  return [...previous, value];
-}
-
 export function buildProgram() {
   const program = new Command();
   const PROGRAM_VERSION = VERSION;
+  const TAGLINE =
+    "Send, receive, and auto-reply on WhatsApp (web) and Telegram (bot).";
 
   program
     .name("clawdbot")
@@ -69,21 +66,28 @@ export function buildProgram() {
       "Use a named profile (isolates CLAWDBOT_STATE_DIR/CLAWDBOT_CONFIG_PATH under ~/.clawdbot-<name>)",
     );
 
+  const formatIntroLine = (version: string, rich = true) => {
+    const base = `📡 clawdbot ${version} — ${TAGLINE}`;
+    return rich && chalk.level > 0
+      ? `${chalk.bold.cyan("📡 clawdbot")} ${chalk.white(version)} ${chalk.gray("—")} ${chalk.green(TAGLINE)}`
+      : base;
+  };
+
   program.configureHelp({
-    optionTerm: (option) => theme.option(option.flags),
-    subcommandTerm: (cmd) => theme.command(cmd.name()),
+    optionTerm: (option) => chalk.yellow(option.flags),
+    subcommandTerm: (cmd) => chalk.green(cmd.name()),
   });
 
   program.configureOutput({
     writeOut: (str) => {
       const colored = str
-        .replace(/^Usage:/gm, theme.heading("Usage:"))
-        .replace(/^Options:/gm, theme.heading("Options:"))
-        .replace(/^Commands:/gm, theme.heading("Commands:"));
+        .replace(/^Usage:/gm, chalk.bold.cyan("Usage:"))
+        .replace(/^Options:/gm, chalk.bold.cyan("Options:"))
+        .replace(/^Commands:/gm, chalk.bold.cyan("Commands:"));
       process.stdout.write(colored);
     },
     writeErr: (str) => process.stderr.write(str),
-    outputError: (str, write) => write(theme.error(str)),
+    outputError: (str, write) => write(chalk.red(str)),
   });
 
   if (
@@ -95,13 +99,9 @@ export function buildProgram() {
     process.exit(0);
   }
 
-  program.addHelpText("beforeAll", () => {
-    const line = formatCliBannerLine(PROGRAM_VERSION, { richTty: isRich() });
-    return `\n${line}\n`;
-  });
+  program.addHelpText("beforeAll", `\n${formatIntroLine(PROGRAM_VERSION)}\n`);
 
   program.hook("preAction", async (_thisCommand, actionCommand) => {
-    emitCliBanner(PROGRAM_VERSION);
     if (actionCommand.name() === "doctor") return;
     const snapshot = await readConfigFileSnapshot();
     if (snapshot.legacyIssues.length === 0) return;
@@ -142,7 +142,7 @@ export function buildProgram() {
   });
   const examples = [
     [
-      "clawdbot providers login --verbose",
+      "clawdbot login --verbose",
       "Link personal WhatsApp Web and show QR + connection logs.",
     ],
     [
@@ -170,12 +170,12 @@ export function buildProgram() {
   ] as const;
 
   const fmtExamples = examples
-    .map(([cmd, desc]) => `  ${theme.command(cmd)}\n    ${theme.muted(desc)}`)
+    .map(([cmd, desc]) => `  ${chalk.green(cmd)}\n    ${chalk.gray(desc)}`)
     .join("\n");
 
   program.addHelpText(
     "afterAll",
-    `\n${theme.heading("Examples:")}\n${fmtExamples}\n`,
+    `\n${chalk.bold.cyan("Examples:")}\n${fmtExamples}\n`,
   );
 
   program
@@ -190,16 +190,9 @@ export function buildProgram() {
     .option("--mode <mode>", "Wizard mode: local|remote")
     .option("--remote-url <url>", "Remote Gateway WebSocket URL")
     .option("--remote-token <token>", "Remote Gateway token (optional)")
-    .action(async (opts, command) => {
+    .action(async (opts) => {
       try {
-        const hasWizardFlags = hasExplicitOptions(command, [
-          "wizard",
-          "nonInteractive",
-          "mode",
-          "remoteUrl",
-          "remoteToken",
-        ]);
-        if (opts.wizard || hasWizardFlags) {
+        if (opts.wizard) {
           await onboardCommand(
             {
               workspace: opts.workspace as string | undefined,
@@ -232,7 +225,7 @@ export function buildProgram() {
     .option("--mode <mode>", "Wizard mode: local|remote")
     .option(
       "--auth-choice <choice>",
-      "Auth: oauth|claude-cli|openai-codex|codex-cli|antigravity|apiKey|minimax|skip",
+      "Auth: oauth|openai-codex|antigravity|apiKey|minimax|skip",
     )
     .option("--anthropic-api-key <key>", "Anthropic API key")
     .option("--gateway-port <port>", "Gateway port")
@@ -259,9 +252,7 @@ export function buildProgram() {
             mode: opts.mode as "local" | "remote" | undefined,
             authChoice: opts.authChoice as
               | "oauth"
-              | "claude-cli"
               | "openai-codex"
-              | "codex-cli"
               | "antigravity"
               | "apiKey"
               | "minimax"
@@ -348,22 +339,34 @@ export function buildProgram() {
       }
     });
 
-  // Deprecated hidden aliases: use `clawdbot providers login/logout`. Remove in a future major.
   program
-    .command("login", { hidden: true })
+    .command("update")
+    .description("Audit and modernize the local configuration")
+    .action(async () => {
+      try {
+        await updateCommand(defaultRuntime);
+      } catch (err) {
+        defaultRuntime.error(String(err));
+        defaultRuntime.exit(1);
+      }
+    });
+
+  program
+    .command("login")
     .description("Link your personal WhatsApp via QR (web provider)")
     .option("--verbose", "Verbose connection logs", false)
     .option("--provider <provider>", "Provider alias (default: whatsapp)")
     .option("--account <id>", "WhatsApp account id (accountId)")
     .action(async (opts) => {
+      setVerbose(Boolean(opts.verbose));
       try {
-        await runProviderLogin(
-          {
-            provider: opts.provider as string | undefined,
-            account: opts.account as string | undefined,
-            verbose: Boolean(opts.verbose),
-          },
+        const provider = opts.provider ?? "whatsapp";
+        await loginWeb(
+          Boolean(opts.verbose),
+          provider,
+          undefined,
           defaultRuntime,
+          opts.account as string | undefined,
         );
       } catch (err) {
         defaultRuntime.error(danger(`Web login failed: ${String(err)}`));
@@ -372,19 +375,23 @@ export function buildProgram() {
     });
 
   program
-    .command("logout", { hidden: true })
-    .description("Log out of WhatsApp Web (keeps config)")
+    .command("logout")
+    .description("Clear cached WhatsApp Web credentials")
     .option("--provider <provider>", "Provider alias (default: whatsapp)")
     .option("--account <id>", "WhatsApp account id (accountId)")
     .action(async (opts) => {
       try {
-        await runProviderLogout(
-          {
-            provider: opts.provider as string | undefined,
-            account: opts.account as string | undefined,
-          },
-          defaultRuntime,
-        );
+        void opts.provider; // placeholder for future multi-provider; currently web only.
+        const cfg = loadConfig();
+        const account = resolveWhatsAppAccount({
+          cfg,
+          accountId: opts.account as string | undefined,
+        });
+        await logoutWeb({
+          runtime: defaultRuntime,
+          authDir: account.authDir,
+          isLegacyAuthDir: account.isLegacyAuthDir,
+        });
       } catch (err) {
         defaultRuntime.error(danger(`Logout failed: ${String(err)}`));
         defaultRuntime.exit(1);
@@ -394,11 +401,11 @@ export function buildProgram() {
   program
     .command("send")
     .description(
-      "Send a message (WhatsApp Web, Telegram bot, Discord, Slack, Signal, iMessage)",
+      "Send a message (WhatsApp Web, Telegram bot, Discord, Rocket.Chat, Signal, iMessage)",
     )
     .requiredOption(
       "-t, --to <number>",
-      "Recipient: E.164 for WhatsApp/Signal, Telegram chat id/@username, Discord channel/user, or iMessage handle/chat_id",
+      "Recipient: E.164 for WhatsApp/Signal, Telegram chat id/@username, Discord channel/user, Rocket.Chat room/#channel/@user, or iMessage handle/chat_id",
     )
     .requiredOption("-m, --message <text>", "Message body")
     .option(
@@ -412,7 +419,7 @@ export function buildProgram() {
     )
     .option(
       "--provider <provider>",
-      "Delivery provider: whatsapp|telegram|discord|slack|signal|imessage (default: whatsapp)",
+      "Delivery provider: whatsapp|telegram|discord|rocketchat|signal|imessage (default: whatsapp)",
     )
     .option("--account <id>", "WhatsApp account id (accountId)")
     .option("--dry-run", "Print payload and skip sending", false)
@@ -510,7 +517,7 @@ Examples:
     .option("--verbose <on|off>", "Persist agent verbose level for the session")
     .option(
       "--provider <provider>",
-      "Delivery provider: whatsapp|telegram|discord|slack|signal|imessage (default: whatsapp)",
+      "Delivery provider: whatsapp|telegram|discord|rocketchat|signal|imessage (default: whatsapp)",
     )
     .option(
       "--local",
@@ -559,13 +566,9 @@ Examples:
     .command("list")
     .description("List configured agents")
     .option("--json", "Output JSON instead of text", false)
-    .option("--bindings", "Include routing bindings", false)
     .action(async (opts) => {
       try {
-        await agentsListCommand(
-          { json: Boolean(opts.json), bindings: Boolean(opts.bindings) },
-          defaultRuntime,
-        );
+        await agentsListCommand({ json: Boolean(opts.json) }, defaultRuntime);
       } catch (err) {
         defaultRuntime.error(String(err));
         defaultRuntime.exit(1);
@@ -576,39 +579,16 @@ Examples:
     .command("add [name]")
     .description("Add a new isolated agent")
     .option("--workspace <dir>", "Workspace directory for the new agent")
-    .option("--model <id>", "Model id for this agent")
-    .option("--agent-dir <dir>", "Agent state directory for this agent")
-    .option(
-      "--bind <provider[:accountId]>",
-      "Route provider binding (repeatable)",
-      collectOption,
-      [],
-    )
-    .option("--non-interactive", "Disable prompts; requires --workspace", false)
     .option("--json", "Output JSON summary", false)
-    .action(async (name, opts, command) => {
+    .action(async (name, opts) => {
       try {
-        const hasFlags = hasExplicitOptions(command, [
-          "workspace",
-          "model",
-          "agentDir",
-          "bind",
-          "nonInteractive",
-        ]);
         await agentsAddCommand(
           {
             name: typeof name === "string" ? name : undefined,
             workspace: opts.workspace as string | undefined,
-            model: opts.model as string | undefined,
-            agentDir: opts.agentDir as string | undefined,
-            bind: Array.isArray(opts.bind)
-              ? (opts.bind as string[])
-              : undefined,
-            nonInteractive: Boolean(opts.nonInteractive),
             json: Boolean(opts.json),
           },
           defaultRuntime,
-          { hasFlags },
         );
       } catch (err) {
         defaultRuntime.error(String(err));
@@ -646,9 +626,9 @@ Examples:
     }
   });
 
+  registerCanvasCli(program);
   registerDaemonCli(program);
   registerGatewayCli(program);
-  registerLogsCli(program);
   registerModelsCli(program);
   registerNodesCli(program);
   registerTuiCli(program);
@@ -657,8 +637,7 @@ Examples:
   registerDocsCli(program);
   registerHooksCli(program);
   registerPairingCli(program);
-  registerProvidersCli(program);
-  registerSkillsCli(program);
+  registerTelegramCli(program);
 
   program
     .command("status")
@@ -667,12 +646,11 @@ Examples:
     .option("--usage", "Show provider usage/quota snapshots", false)
     .option(
       "--deep",
-      "Probe providers (WhatsApp Web + Telegram + Discord + Slack + Signal)",
+      "Probe providers (WhatsApp Web + Telegram + Discord + Rocket.Chat + Signal)",
       false,
     )
     .option("--timeout <ms>", "Probe timeout in milliseconds", "10000")
     .option("--verbose", "Verbose logging", false)
-    .option("--debug", "Alias for --verbose", false)
     .addHelpText(
       "after",
       `
@@ -680,13 +658,11 @@ Examples:
   clawdbot status                   # show linked account + session store summary
   clawdbot status --json            # machine-readable output
   clawdbot status --usage           # show provider usage/quota snapshots
-  clawdbot status --deep            # run provider probes (WA + Telegram + Discord + Slack + Signal)
-  clawdbot status --deep --timeout 5000 # tighten probe timeout
-  clawdbot providers status         # gateway provider runtime + probes`,
+  clawdbot status --deep            # run provider probes (WA + Telegram + Discord + Rocket.Chat + Signal)
+  clawdbot status --deep --timeout 5000 # tighten probe timeout`,
     )
     .action(async (opts) => {
-      const verbose = Boolean(opts.verbose || opts.debug);
-      setVerbose(verbose);
+      setVerbose(Boolean(opts.verbose));
       const timeout = opts.timeout
         ? Number.parseInt(String(opts.timeout), 10)
         : undefined;
@@ -704,7 +680,6 @@ Examples:
             deep: Boolean(opts.deep),
             usage: Boolean(opts.usage),
             timeoutMs: timeout,
-            verbose,
           },
           defaultRuntime,
         );
@@ -720,10 +695,8 @@ Examples:
     .option("--json", "Output JSON instead of text", false)
     .option("--timeout <ms>", "Connection timeout in milliseconds", "10000")
     .option("--verbose", "Verbose logging", false)
-    .option("--debug", "Alias for --verbose", false)
     .action(async (opts) => {
-      const verbose = Boolean(opts.verbose || opts.debug);
-      setVerbose(verbose);
+      setVerbose(Boolean(opts.verbose));
       const timeout = opts.timeout
         ? Number.parseInt(String(opts.timeout), 10)
         : undefined;
@@ -739,7 +712,6 @@ Examples:
           {
             json: Boolean(opts.json),
             timeoutMs: timeout,
-            verbose,
           },
           defaultRuntime,
         );

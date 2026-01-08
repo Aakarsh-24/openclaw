@@ -1,9 +1,7 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import {
   applyConfigSnapshot,
-  applyConfig,
-  runUpdate,
   updateConfigFormValue,
   type ConfigState,
 } from "./config";
@@ -12,6 +10,7 @@ import {
   defaultSlackActions,
   type DiscordForm,
   type IMessageForm,
+  type RocketChatForm,
   type SignalForm,
   type SlackForm,
   type TelegramForm,
@@ -66,6 +65,28 @@ const baseSlackForm: SlackForm = {
   channels: [],
 };
 
+const baseRocketChatForm: RocketChatForm = {
+  enabled: true,
+  baseUrl: "",
+  authToken: "",
+  userId: "",
+  botUsername: "",
+  alias: "",
+  avatarUrl: "",
+  emoji: "",
+  dmPolicy: "pairing",
+  allowFrom: "",
+  groupPolicy: "open",
+  requireMention: true,
+  rooms: "",
+  textChunkLimit: "",
+  mediaMaxMb: "",
+  webhookToken: "",
+  webhookHost: "",
+  webhookPort: "",
+  webhookPath: "",
+};
+
 const baseSignalForm: SignalForm = {
   enabled: true,
   account: "",
@@ -97,14 +118,11 @@ function createState(): ConfigState {
   return {
     client: null,
     connected: false,
-    applySessionKey: "main",
     configLoading: false,
     configRaw: "",
     configValid: null,
     configIssues: [],
     configSaving: false,
-    configApplying: false,
-    updateRunning: false,
     configSnapshot: null,
     configSchema: null,
     configSchemaVersion: null,
@@ -117,11 +135,13 @@ function createState(): ConfigState {
     telegramForm: { ...baseTelegramForm },
     discordForm: { ...baseDiscordForm },
     slackForm: { ...baseSlackForm },
+    rocketchatForm: { ...baseRocketChatForm },
     signalForm: { ...baseSignalForm },
     imessageForm: { ...baseIMessageForm },
     telegramConfigStatus: null,
     discordConfigStatus: null,
     slackConfigStatus: null,
+    rocketchatConfigStatus: null,
     signalConfigStatus: null,
     imessageConfigStatus: null,
   };
@@ -145,25 +165,6 @@ describe("applyConfigSnapshot", () => {
     expect(state.slackForm.botToken).toBe("");
     expect(state.slackForm.actions).toEqual(defaultSlackActions);
   });
-
-  it("does not clobber form edits while dirty", () => {
-    const state = createState();
-    state.configFormMode = "form";
-    state.configFormDirty = true;
-    state.configForm = { gateway: { mode: "local", port: 18789 } };
-    state.configRaw = "{\n}\n";
-
-    applyConfigSnapshot(state, {
-      config: { gateway: { mode: "remote", port: 9999 } },
-      valid: true,
-      issues: [],
-      raw: "{\n  \"gateway\": { \"mode\": \"remote\", \"port\": 9999 }\n}\n",
-    });
-
-    expect(state.configRaw).toBe(
-      "{\n  \"gateway\": {\n    \"mode\": \"local\",\n    \"port\": 18789\n  }\n}\n",
-    );
-  });
 });
 
 describe("updateConfigFormValue", () => {
@@ -182,57 +183,6 @@ describe("updateConfigFormValue", () => {
     expect(state.configForm).toEqual({
       telegram: { botToken: "t" },
       gateway: { mode: "local", port: 18789 },
-    });
-  });
-
-  it("keeps raw in sync while editing the form", () => {
-    const state = createState();
-    state.configSnapshot = {
-      config: { gateway: { mode: "local" } },
-      valid: true,
-      issues: [],
-      raw: "{\n}\n",
-    };
-
-    updateConfigFormValue(state, ["gateway", "port"], 18789);
-
-    expect(state.configRaw).toBe(
-      "{\n  \"gateway\": {\n    \"mode\": \"local\",\n    \"port\": 18789\n  }\n}\n",
-    );
-  });
-});
-
-describe("applyConfig", () => {
-  it("sends config.apply with raw and session key", async () => {
-    const request = vi.fn().mockResolvedValue({});
-    const state = createState();
-    state.connected = true;
-    state.client = { request } as unknown as ConfigState["client"];
-    state.applySessionKey = "agent:main:whatsapp:dm:+15555550123";
-    state.configFormMode = "raw";
-    state.configRaw = "{\n  agent: { workspace: \"~/clawd\" }\n}\n";
-
-    await applyConfig(state);
-
-    expect(request).toHaveBeenCalledWith("config.apply", {
-      raw: "{\n  agent: { workspace: \"~/clawd\" }\n}\n",
-      sessionKey: "agent:main:whatsapp:dm:+15555550123",
-    });
-  });
-});
-
-describe("runUpdate", () => {
-  it("sends update.run with session key", async () => {
-    const request = vi.fn().mockResolvedValue({});
-    const state = createState();
-    state.connected = true;
-    state.client = { request } as unknown as ConfigState["client"];
-    state.applySessionKey = "agent:main:whatsapp:dm:+15555550123";
-
-    await runUpdate(state);
-
-    expect(request).toHaveBeenCalledWith("update.run", {
-      sessionKey: "agent:main:whatsapp:dm:+15555550123",
     });
   });
 });

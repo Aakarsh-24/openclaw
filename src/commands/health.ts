@@ -1,8 +1,8 @@
-import { withProgress } from "../cli/progress.js";
 import { loadConfig } from "../config/config.js";
 import { loadSessionStore, resolveStorePath } from "../config/sessions.js";
 import { type DiscordProbe, probeDiscord } from "../discord/probe.js";
-import { buildGatewayConnectionDetails, callGateway } from "../gateway/call.js";
+import { type RocketChatProbe, probeRocketChat } from "../rocketchat/probe.js";
+import { callGateway } from "../gateway/call.js";
 import { info } from "../globals.js";
 import type { RuntimeEnv } from "../runtime.js";
 import { probeTelegram, type TelegramProbe } from "../telegram/probe.js";
@@ -41,6 +41,10 @@ export type HealthSummary = {
   discord: {
     configured: boolean;
     probe?: DiscordProbe;
+  };
+  rocketchat: {
+    configured: boolean;
+    probe?: RocketChatProbe;
   };
   heartbeatSeconds: number;
   sessions: {
@@ -92,6 +96,38 @@ export async function getHealthSnapshot(
     ? await probeDiscord(discordToken.trim(), cappedTimeout)
     : undefined;
 
+  const rocketchatEnabled = cfg.rocketchat?.enabled !== false;
+  const rocketchatBaseUrl =
+    process.env.ROCKETCHAT_BASE_URL?.trim() ||
+    cfg.rocketchat?.baseUrl?.trim() ||
+    "";
+  const rocketchatAuthToken =
+    process.env.ROCKETCHAT_AUTH_TOKEN?.trim() ||
+    cfg.rocketchat?.authToken?.trim() ||
+    "";
+  const rocketchatUserId =
+    process.env.ROCKETCHAT_USER_ID?.trim() ||
+    cfg.rocketchat?.userId?.trim() ||
+    "";
+  const rocketchatWebhookToken = cfg.rocketchat?.webhook?.token?.trim() || "";
+  const rocketchatConfigured =
+    rocketchatEnabled &&
+    Boolean(
+      rocketchatBaseUrl &&
+        rocketchatAuthToken &&
+        rocketchatUserId &&
+        rocketchatWebhookToken,
+    );
+  const rocketchatProbe = rocketchatConfigured
+    ? await probeRocketChat(
+        rocketchatBaseUrl,
+        rocketchatAuthToken,
+        rocketchatUserId,
+        cappedTimeout,
+        cfg.rocketchat?.retry,
+      )
+    : undefined;
+
   const summary: HealthSummary = {
     ok: true,
     ts: Date.now(),
@@ -99,6 +135,7 @@ export async function getHealthSnapshot(
     web: { linked, authAgeMs },
     telegram: { configured: telegramConfigured, probe: telegramProbe },
     discord: { configured: discordConfigured, probe: discordProbe },
+    rocketchat: { configured: rocketchatConfigured, probe: rocketchatProbe },
     heartbeatSeconds,
     sessions: {
       path: storePath,
@@ -111,39 +148,24 @@ export async function getHealthSnapshot(
 }
 
 export async function healthCommand(
-  opts: { json?: boolean; timeoutMs?: number; verbose?: boolean },
+  opts: { json?: boolean; timeoutMs?: number },
   runtime: RuntimeEnv,
 ) {
   // Always query the running gateway; do not open a direct Baileys socket here.
-  const summary = await withProgress(
-    {
-      label: "Checking gateway health…",
-      indeterminate: true,
-      enabled: opts.json !== true,
-    },
-    async () =>
-      await callGateway<HealthSummary>({
-        method: "health",
-        timeoutMs: opts.timeoutMs,
-      }),
-  );
+  const summary = await callGateway<HealthSummary>({
+    method: "health",
+    timeoutMs: opts.timeoutMs,
+  });
   // Gateway reachability defines success; provider issues are reported but not fatal here.
   const fatal = false;
 
   if (opts.json) {
     runtime.log(JSON.stringify(summary, null, 2));
   } else {
-    if (opts.verbose) {
-      const details = buildGatewayConnectionDetails();
-      runtime.log(info("Gateway connection:"));
-      for (const line of details.message.split("\n")) {
-        runtime.log(`  ${line}`);
-      }
-    }
     runtime.log(
       summary.web.linked
         ? `Web: linked (auth age ${summary.web.authAgeMs ? `${Math.round(summary.web.authAgeMs / 60000)}m` : "unknown"})`
-        : "Web: not linked (run clawdbot providers login)",
+        : "Web: not linked (run clawdbot login)",
     );
     if (summary.web.linked) {
       const cfg = loadConfig();

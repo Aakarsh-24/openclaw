@@ -8,11 +8,7 @@ import {
 import { loadModelCatalog } from "../agents/model-catalog.js";
 import { runWithModelFallback } from "../agents/model-fallback.js";
 import {
-  buildAllowedModelSet,
-  buildModelAliasIndex,
-  modelKey,
   resolveConfiguredModelRef,
-  resolveModelRefFromString,
   resolveThinkingDefault,
 } from "../agents/model-selection.js";
 import { runEmbeddedPiAgent } from "../agents/pi-embedded.js";
@@ -49,36 +45,6 @@ import { registerAgentRunContext } from "../infra/agent-events.js";
 import { resolveTelegramToken } from "../telegram/token.js";
 import { normalizeE164 } from "../utils.js";
 import type { CronJob } from "./types.js";
-
-/**
- * Parse a Telegram delivery target into chatId and optional topicId.
- * Supports formats:
- * - `chatId` (plain chat ID or @username)
- * - `chatId:topicId` (chat ID with topic/thread ID)
- * - `chatId:topic:topicId` (alternative format with explicit "topic" marker)
- */
-export function parseTelegramTarget(to: string): {
-  chatId: string;
-  topicId: number | undefined;
-} {
-  const trimmed = to.trim();
-
-  // Try format: chatId:topic:topicId
-  const topicMatch = /^(.+?):topic:(\d+)$/.exec(trimmed);
-  if (topicMatch) {
-    return { chatId: topicMatch[1], topicId: parseInt(topicMatch[2], 10) };
-  }
-
-  // Try format: chatId:topicId (where topicId is numeric)
-  // Be careful not to match @username or other non-numeric suffixes
-  const colonMatch = /^(.+):(\d+)$/.exec(trimmed);
-  if (colonMatch) {
-    return { chatId: colonMatch[1], topicId: parseInt(colonMatch[2], 10) };
-  }
-
-  // Plain chatId, no topic
-  return { chatId: trimmed, topicId: undefined };
-}
 
 export type RunCronAgentTurnResult = {
   status: "ok" | "error" | "skipped";
@@ -134,6 +100,7 @@ function resolveDeliveryTarget(
       | "telegram"
       | "discord"
       | "slack"
+      | "rocketchat"
       | "signal"
       | "imessage";
     to?: string;
@@ -164,6 +131,7 @@ function resolveDeliveryTarget(
       requestedProvider === "telegram" ||
       requestedProvider === "discord" ||
       requestedProvider === "slack" ||
+      requestedProvider === "rocketchat" ||
       requestedProvider === "signal" ||
       requestedProvider === "imessage"
     ) {
@@ -246,59 +214,11 @@ export async function runCronIsolatedAgentTurn(params: {
   });
   const workspaceDir = workspace.dir;
 
-  const resolvedDefault = resolveConfiguredModelRef({
+  const { provider, model } = resolveConfiguredModelRef({
     cfg: params.cfg,
     defaultProvider: DEFAULT_PROVIDER,
     defaultModel: DEFAULT_MODEL,
   });
-  let provider = resolvedDefault.provider;
-  let model = resolvedDefault.model;
-  let catalog: Awaited<ReturnType<typeof loadModelCatalog>> | undefined;
-  const loadCatalog = async () => {
-    if (!catalog) {
-      catalog = await loadModelCatalog({ config: params.cfg });
-    }
-    return catalog;
-  };
-  const modelOverrideRaw =
-    params.job.payload.kind === "agentTurn"
-      ? params.job.payload.model
-      : undefined;
-  if (modelOverrideRaw !== undefined) {
-    if (typeof modelOverrideRaw !== "string") {
-      return { status: "error", error: "invalid model: expected string" };
-    }
-    const trimmed = modelOverrideRaw.trim();
-    if (!trimmed) {
-      return { status: "error", error: "invalid model: empty" };
-    }
-    const aliasIndex = buildModelAliasIndex({
-      cfg: params.cfg,
-      defaultProvider: resolvedDefault.provider,
-    });
-    const resolvedOverride = resolveModelRefFromString({
-      raw: trimmed,
-      defaultProvider: resolvedDefault.provider,
-      aliasIndex,
-    });
-    if (!resolvedOverride) {
-      return { status: "error", error: `invalid model: ${trimmed}` };
-    }
-    const allowed = buildAllowedModelSet({
-      cfg: params.cfg,
-      catalog: await loadCatalog(),
-      defaultProvider: resolvedDefault.provider,
-    });
-    const key = modelKey(
-      resolvedOverride.ref.provider,
-      resolvedOverride.ref.model,
-    );
-    if (!allowed.allowAny && !allowed.allowedKeys.has(key)) {
-      return { status: "error", error: `model not allowed: ${key}` };
-    }
-    provider = resolvedOverride.ref.provider;
-    model = resolvedOverride.ref.model;
-  }
   const now = Date.now();
   const cronSession = resolveCronSession({
     cfg: params.cfg,
@@ -316,11 +236,12 @@ export async function runCronIsolatedAgentTurn(params: {
   );
   let thinkLevel = jobThink ?? thinkOverride;
   if (!thinkLevel) {
+    const catalog = await loadModelCatalog({ config: params.cfg });
     thinkLevel = resolveThinkingDefault({
       cfg: params.cfg,
       provider,
       model,
-      catalog: await loadCatalog(),
+      catalog,
     });
   }
 
@@ -517,7 +438,7 @@ export async function runCronIsolatedAgentTurn(params: {
           summary: "Delivery skipped (no Telegram chatId).",
         };
       }
-      const { chatId, topicId } = parseTelegramTarget(resolvedDelivery.to);
+      const chatId = resolvedDelivery.to;
       const textLimit = resolveTextChunkLimit(params.cfg, "telegram");
       try {
         for (const payload of payloads) {
@@ -531,7 +452,6 @@ export async function runCronIsolatedAgentTurn(params: {
               await params.deps.sendMessageTelegram(chatId, chunk, {
                 verbose: false,
                 token: telegramToken || undefined,
-                messageThreadId: topicId,
               });
             }
           } else {
@@ -543,7 +463,6 @@ export async function runCronIsolatedAgentTurn(params: {
                 verbose: false,
                 mediaUrl: url,
                 token: telegramToken || undefined,
-                messageThreadId: topicId,
               });
             }
           }
@@ -630,6 +549,49 @@ export async function runCronIsolatedAgentTurn(params: {
               const caption = first ? (payload.text ?? "") : "";
               first = false;
               await params.deps.sendMessageSlack(slackTarget, caption, {
+                mediaUrl: url,
+              });
+            }
+          }
+        }
+      } catch (err) {
+        if (!bestEffortDeliver)
+          return { status: "error", summary, error: String(err) };
+        return { status: "ok", summary };
+      }
+    } else if (resolvedDelivery.provider === "rocketchat") {
+      if (!resolvedDelivery.to) {
+        if (!bestEffortDeliver)
+          return {
+            status: "error",
+            summary,
+            error:
+              "Cron delivery to Rocket.Chat requires --provider rocketchat and --to <room:ID|#channel|@user|roomId>",
+          };
+        return {
+          status: "skipped",
+          summary: "Delivery skipped (no Rocket.Chat destination).",
+        };
+      }
+      const rocketchatTarget = resolvedDelivery.to;
+      const textLimit = resolveTextChunkLimit(params.cfg, "rocketchat");
+      try {
+        for (const payload of payloads) {
+          const mediaList =
+            payload.mediaUrls ?? (payload.mediaUrl ? [payload.mediaUrl] : []);
+          if (mediaList.length === 0) {
+            for (const chunk of chunkMarkdownText(
+              payload.text ?? "",
+              textLimit,
+            )) {
+              await params.deps.sendMessageRocketChat(rocketchatTarget, chunk);
+            }
+          } else {
+            let first = true;
+            for (const url of mediaList) {
+              const caption = first ? (payload.text ?? "") : "";
+              first = false;
+              await params.deps.sendMessageRocketChat(rocketchatTarget, caption, {
                 mediaUrl: url,
               });
             }

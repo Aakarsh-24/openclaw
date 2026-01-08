@@ -66,6 +66,7 @@ const GROUP_SURFACES = new Set([
   "whatsapp",
   "telegram",
   "discord",
+  "rocketchat",
   "signal",
   "imessage",
   "webchat",
@@ -121,6 +122,7 @@ export type SessionEntry = {
     | "telegram"
     | "discord"
     | "slack"
+    | "rocketchat"
     | "signal"
     | "imessage"
     | "webchat";
@@ -175,15 +177,28 @@ export const DEFAULT_RESET_TRIGGER = "/new";
 export const DEFAULT_RESET_TRIGGERS = ["/new", "/reset"];
 export const DEFAULT_IDLE_MINUTES = 60;
 
+function normalizeTopicToken(raw: string): string {
+  const cleaned = raw.trim();
+  if (!cleaned) return "";
+  const safe = cleaned
+    .replace(/[^a-zA-Z0-9._-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+  return safe || "thread";
+}
+
 export function resolveSessionTranscriptPath(
   sessionId: string,
   agentId?: string,
-  topicId?: number,
+  topicId?: number | string,
 ): string {
-  const fileName =
-    topicId !== undefined
-      ? `${sessionId}-topic-${topicId}.jsonl`
-      : `${sessionId}.jsonl`;
+  const topicToken =
+    topicId === undefined || topicId === null
+      ? ""
+      : normalizeTopicToken(String(topicId));
+  const fileName = topicToken
+    ? `${sessionId}-topic-${topicToken}.jsonl`
+    : `${sessionId}.jsonl`;
   return path.join(resolveAgentSessionsDir(agentId), fileName);
 }
 
@@ -202,14 +217,12 @@ export function resolveStorePath(store?: string, opts?: { agentId?: string }) {
   const agentId = normalizeAgentId(opts?.agentId ?? DEFAULT_AGENT_ID);
   if (!store) return resolveDefaultSessionStorePath(agentId);
   if (store.includes("{agentId}")) {
-    const expanded = store.replaceAll("{agentId}", agentId);
-    if (expanded.startsWith("~")) {
-      return path.resolve(expanded.replace(/^~(?=$|[\\/])/, os.homedir()));
-    }
-    return path.resolve(expanded);
+    return path.resolve(
+      store.replaceAll("{agentId}", agentId).replace("~", os.homedir()),
+    );
   }
   if (store.startsWith("~"))
-    return path.resolve(store.replace(/^~(?=$|[\\/])/, os.homedir()));
+    return path.resolve(store.replace("~", os.homedir()));
   return path.resolve(store);
 }
 

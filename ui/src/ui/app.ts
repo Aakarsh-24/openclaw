@@ -17,7 +17,6 @@ import {
   type ResolvedTheme,
   type ThemeMode,
 } from "./theme";
-import { truncateText } from "./format";
 import {
   startThemeTransition,
   type ThemeTransitionContext,
@@ -29,8 +28,6 @@ import type {
   CronRunLogEntry,
   CronStatus,
   HealthSnapshot,
-  LogEntry,
-  LogLevel,
   PresenceEntry,
   ProvidersStatusSnapshot,
   SessionsListResult,
@@ -43,6 +40,7 @@ import {
   type CronFormState,
   type DiscordForm,
   type IMessageForm,
+  type RocketChatForm,
   type SlackForm,
   type SignalForm,
   type TelegramForm,
@@ -64,6 +62,7 @@ import {
   logoutWhatsApp,
   saveDiscordConfig,
   saveIMessageConfig,
+  saveRocketChatConfig,
   saveSlackConfig,
   saveSignalConfig,
   saveTelegramConfig,
@@ -80,7 +79,6 @@ import {
   loadSkills,
 } from "./controllers/skills";
 import { loadDebug } from "./controllers/debug";
-import { loadLogs } from "./controllers/logs";
 
 type EventLogEntry = {
   ts: number;
@@ -89,16 +87,6 @@ type EventLogEntry = {
 };
 
 const TOOL_STREAM_LIMIT = 50;
-const TOOL_STREAM_THROTTLE_MS = 80;
-const TOOL_OUTPUT_CHAR_LIMIT = 120_000;
-const DEFAULT_LOG_LEVEL_FILTERS: Record<LogLevel, boolean> = {
-  trace: true,
-  debug: true,
-  info: true,
-  warn: true,
-  error: true,
-  fatal: true,
-};
 
 type AgentEventPayload = {
   runId: string;
@@ -141,25 +129,17 @@ function extractToolOutputText(value: unknown): string | null {
 
 function formatToolOutput(value: unknown): string | null {
   if (value === null || value === undefined) return null;
+  if (typeof value === "string") return value;
   if (typeof value === "number" || typeof value === "boolean") {
     return String(value);
   }
   const contentText = extractToolOutputText(value);
-  let text: string;
-  if (typeof value === "string") {
-    text = value;
-  } else if (contentText) {
-    text = contentText;
-  } else {
-    try {
-      text = JSON.stringify(value, null, 2);
-    } catch {
-      text = String(value);
-    }
+  if (contentText) return contentText;
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
   }
-  const truncated = truncateText(text, TOOL_OUTPUT_CHAR_LIMIT);
-  if (!truncated.truncated) return truncated.text;
-  return `${truncated.text}\n\n… truncated (${truncated.total} chars, showing first ${truncated.text.length}).`;
 }
 
 declare global {
@@ -201,7 +181,6 @@ export class ClawdbotApp extends LitElement {
   @state() lastError: string | null = null;
   @state() eventLog: EventLogEntry[] = [];
   private eventLogBuffer: EventLogEntry[] = [];
-  private toolStreamSyncTimer: number | null = null;
 
   @state() sessionKey = this.settings.sessionKey;
   @state() chatLoading = false;
@@ -213,7 +192,6 @@ export class ClawdbotApp extends LitElement {
   @state() chatStreamStartedAt: number | null = null;
   @state() chatRunId: string | null = null;
   @state() chatThinkingLevel: string | null = null;
-  @state() toolOutputExpanded = new Set<string>();
 
   @state() nodesLoading = false;
   @state() nodes: Array<Record<string, unknown>> = [];
@@ -223,9 +201,6 @@ export class ClawdbotApp extends LitElement {
   @state() configValid: boolean | null = null;
   @state() configIssues: unknown[] = [];
   @state() configSaving = false;
-  @state() configApplying = false;
-  @state() updateRunning = false;
-  @state() applySessionKey = this.settings.lastActiveSessionKey;
   @state() configSnapshot: ConfigSnapshot | null = null;
   @state() configSchema: unknown | null = null;
   @state() configSchemaVersion: string | null = null;
@@ -298,6 +273,32 @@ export class ClawdbotApp extends LitElement {
   @state() slackTokenLocked = false;
   @state() slackAppTokenLocked = false;
   @state() slackConfigStatus: string | null = null;
+  @state() rocketchatForm: RocketChatForm = {
+    enabled: true,
+    baseUrl: "",
+    authToken: "",
+    userId: "",
+    botUsername: "",
+    alias: "",
+    avatarUrl: "",
+    emoji: "",
+    dmPolicy: "pairing",
+    allowFrom: "",
+    groupPolicy: "open",
+    requireMention: true,
+    rooms: "",
+    textChunkLimit: "",
+    mediaMaxMb: "",
+    webhookToken: "",
+    webhookHost: "",
+    webhookPort: "",
+    webhookPath: "",
+  };
+  @state() rocketchatSaving = false;
+  @state() rocketchatBaseUrlLocked = false;
+  @state() rocketchatAuthLocked = false;
+  @state() rocketchatUserIdLocked = false;
+  @state() rocketchatConfigStatus: string | null = null;
   @state() signalForm: SignalForm = {
     enabled: true,
     account: "",
@@ -367,29 +368,11 @@ export class ClawdbotApp extends LitElement {
   @state() debugCallResult: string | null = null;
   @state() debugCallError: string | null = null;
 
-  @state() logsLoading = false;
-  @state() logsError: string | null = null;
-  @state() logsFile: string | null = null;
-  @state() logsEntries: LogEntry[] = [];
-  @state() logsFilterText = "";
-  @state() logsLevelFilters: Record<LogLevel, boolean> = {
-    ...DEFAULT_LOG_LEVEL_FILTERS,
-  };
-  @state() logsAutoFollow = true;
-  @state() logsTruncated = false;
-  @state() logsCursor: number | null = null;
-  @state() logsLastFetchAt: number | null = null;
-  @state() logsLimit = 500;
-  @state() logsMaxBytes = 250_000;
-  @state() logsAtBottom = true;
-
   client: GatewayBrowserClient | null = null;
   private chatScrollFrame: number | null = null;
   private chatScrollTimeout: number | null = null;
   private chatHasAutoScrolled = false;
   private nodesPollInterval: number | null = null;
-  private logsPollInterval: number | null = null;
-  private logsScrollFrame: number | null = null;
   private toolStreamById = new Map<string, ToolStreamEntry>();
   private toolStreamOrder: string[] = [];
   basePath = "";
@@ -412,7 +395,6 @@ export class ClawdbotApp extends LitElement {
     this.applySettingsFromUrl();
     this.connect();
     this.startNodesPolling();
-    if (this.tab === "logs") this.startLogsPolling();
   }
 
   protected firstUpdated() {
@@ -422,7 +404,6 @@ export class ClawdbotApp extends LitElement {
   disconnectedCallback() {
     window.removeEventListener("popstate", this.popStateHandler);
     this.stopNodesPolling();
-    this.stopLogsPolling();
     this.detachThemeListener();
     this.topbarObserver?.disconnect();
     this.topbarObserver = null;
@@ -444,14 +425,6 @@ export class ClawdbotApp extends LitElement {
         changed.get("chatLoading") === true &&
         this.chatLoading === false;
       this.scheduleChatScroll(forcedByTab || forcedByLoad || !this.chatHasAutoScrolled);
-    }
-    if (
-      this.tab === "logs" &&
-      (changed.has("logsEntries") || changed.has("logsAutoFollow") || changed.has("tab"))
-    ) {
-      if (this.logsAutoFollow && this.logsAtBottom) {
-        this.scheduleLogsScroll(changed.has("tab") || changed.has("logsAutoFollow"));
-      }
     }
   }
 
@@ -557,76 +530,14 @@ export class ClawdbotApp extends LitElement {
     this.nodesPollInterval = null;
   }
 
-  private startLogsPolling() {
-    if (this.logsPollInterval != null) return;
-    this.logsPollInterval = window.setInterval(() => {
-      if (this.tab !== "logs") return;
-      void loadLogs(this, { quiet: true });
-    }, 2000);
-  }
-
-  private stopLogsPolling() {
-    if (this.logsPollInterval == null) return;
-    clearInterval(this.logsPollInterval);
-    this.logsPollInterval = null;
-  }
-
-  private scheduleLogsScroll(force = false) {
-    if (this.logsScrollFrame) cancelAnimationFrame(this.logsScrollFrame);
-    void this.updateComplete.then(() => {
-      this.logsScrollFrame = requestAnimationFrame(() => {
-        this.logsScrollFrame = null;
-        const container = this.querySelector(".log-stream") as HTMLElement | null;
-        if (!container) return;
-        const distanceFromBottom =
-          container.scrollHeight - container.scrollTop - container.clientHeight;
-        const shouldStick = force || distanceFromBottom < 80;
-        if (!shouldStick) return;
-        container.scrollTop = container.scrollHeight;
-      });
-    });
-  }
-
-  handleLogsScroll(event: Event) {
-    const container = event.currentTarget as HTMLElement | null;
-    if (!container) return;
-    const distanceFromBottom =
-      container.scrollHeight - container.scrollTop - container.clientHeight;
-    this.logsAtBottom = distanceFromBottom < 80;
-  }
-
-  exportLogs(lines: string[], label: string) {
-    if (lines.length === 0) return;
-    const blob = new Blob([`${lines.join("\n")}\n`], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
-    anchor.href = url;
-    anchor.download = `clawdbot-logs-${label}-${stamp}.log`;
-    anchor.click();
-    URL.revokeObjectURL(url);
-  }
-
   resetToolStream() {
     this.toolStreamById.clear();
     this.toolStreamOrder = [];
     this.chatToolMessages = [];
-    this.toolOutputExpanded = new Set();
-    this.flushToolStreamSync();
   }
 
   resetChatScroll() {
     this.chatHasAutoScrolled = false;
-  }
-
-  toggleToolOutput(id: string, expanded: boolean) {
-    const next = new Set(this.toolOutputExpanded);
-    if (expanded) {
-      next.add(id);
-    } else {
-      next.delete(id);
-    }
-    this.toolOutputExpanded = next;
   }
 
   private trimToolStream() {
@@ -640,26 +551,6 @@ export class ClawdbotApp extends LitElement {
     this.chatToolMessages = this.toolStreamOrder
       .map((id) => this.toolStreamById.get(id)?.message)
       .filter((msg): msg is Record<string, unknown> => Boolean(msg));
-  }
-
-  private scheduleToolStreamSync(force = false) {
-    if (force) {
-      this.flushToolStreamSync();
-      return;
-    }
-    if (this.toolStreamSyncTimer != null) return;
-    this.toolStreamSyncTimer = window.setTimeout(
-      () => this.flushToolStreamSync(),
-      TOOL_STREAM_THROTTLE_MS,
-    );
-  }
-
-  private flushToolStreamSync() {
-    if (this.toolStreamSyncTimer != null) {
-      clearTimeout(this.toolStreamSyncTimer);
-      this.toolStreamSyncTimer = null;
-    }
-    this.syncToolStreamMessages();
   }
 
   private buildToolStreamMessage(entry: ToolStreamEntry): Record<string, unknown> {
@@ -734,7 +625,7 @@ export class ClawdbotApp extends LitElement {
 
     entry.message = this.buildToolStreamMessage(entry);
     this.trimToolStream();
-    this.scheduleToolStreamSync(phase === "result");
+    this.syncToolStreamMessages();
   }
 
   private onEvent(evt: GatewayEventFrame) {
@@ -753,9 +644,6 @@ export class ClawdbotApp extends LitElement {
 
     if (evt.event === "chat") {
       const payload = evt.payload as ChatEventPayload | undefined;
-      if (payload?.sessionKey) {
-        this.setLastActiveSessionKey(payload.sessionKey);
-      }
       const state = handleChatEvent(this, payload);
       if (state === "final" || state === "error" || state === "aborted") {
         this.resetToolStream();
@@ -792,25 +680,12 @@ export class ClawdbotApp extends LitElement {
   }
 
   applySettings(next: UiSettings) {
-    const normalized = {
-      ...next,
-      lastActiveSessionKey:
-        next.lastActiveSessionKey?.trim() || next.sessionKey.trim() || "main",
-    };
-    this.settings = normalized;
-    saveSettings(normalized);
+    this.settings = next;
+    saveSettings(next);
     if (next.theme !== this.theme) {
       this.theme = next.theme;
       this.applyResolvedTheme(resolveTheme(next.theme));
     }
-    this.applySessionKey = this.settings.lastActiveSessionKey;
-  }
-
-  private setLastActiveSessionKey(next: string) {
-    const trimmed = next.trim();
-    if (!trimmed) return;
-    if (this.settings.lastActiveSessionKey === trimmed) return;
-    this.applySettings({ ...this.settings, lastActiveSessionKey: trimmed });
   }
 
   private applySettingsFromUrl() {
@@ -847,8 +722,6 @@ export class ClawdbotApp extends LitElement {
   setTab(next: Tab) {
     if (this.tab !== next) this.tab = next;
     if (next === "chat") this.chatHasAutoScrolled = false;
-    if (next === "logs") this.startLogsPolling();
-    else this.stopLogsPolling();
     void this.refreshActiveTab();
     this.syncUrlWithTab(next, false);
   }
@@ -886,11 +759,6 @@ export class ClawdbotApp extends LitElement {
     if (this.tab === "debug") {
       await loadDebug(this);
       this.eventLog = this.eventLogBuffer;
-    }
-    if (this.tab === "logs") {
-      this.logsAtBottom = true;
-      await loadLogs(this, { reset: true });
-      this.scheduleLogsScroll(true);
     }
   }
 
@@ -965,8 +833,6 @@ export class ClawdbotApp extends LitElement {
   private setTabFromRoute(next: Tab) {
     if (this.tab !== next) this.tab = next;
     if (next === "chat") this.chatHasAutoScrolled = false;
-    if (next === "logs") this.startLogsPolling();
-    else this.stopLogsPolling();
     if (this.connected) void this.refreshActiveTab();
   }
 
@@ -1001,23 +867,10 @@ export class ClawdbotApp extends LitElement {
   async loadCron() {
     await Promise.all([loadCronStatus(this), loadCronJobs(this)]);
   }
-  async handleSendChat(
-    messageOverride?: string,
-    opts?: { restoreDraft?: boolean },
-  ) {
+  async handleSendChat() {
     if (!this.connected) return;
-    const previousDraft = this.chatMessage;
-    if (messageOverride != null) {
-      this.chatMessage = messageOverride;
-    }
     this.resetToolStream();
     const ok = await sendChat(this);
-    if (!ok && messageOverride != null) {
-      this.chatMessage = previousDraft;
-    }
-    if (ok) {
-      this.setLastActiveSessionKey(this.sessionKey);
-    }
     if (ok && this.chatRunId) {
       // chat.send returned (run finished), but we missed the chat final event.
       this.chatRunId = null;
@@ -1025,9 +878,6 @@ export class ClawdbotApp extends LitElement {
       this.chatStreamStartedAt = null;
       this.resetToolStream();
       void loadChatHistory(this);
-    }
-    if (ok && messageOverride != null && opts?.restoreDraft && previousDraft.trim()) {
-      this.chatMessage = previousDraft;
     }
     this.scheduleChatScroll();
   }
@@ -1061,6 +911,12 @@ export class ClawdbotApp extends LitElement {
 
   async handleSlackSave() {
     await saveSlackConfig(this);
+    await loadConfig(this);
+    await loadProviders(this, true);
+  }
+
+  async handleRocketChatSave() {
+    await saveRocketChatConfig(this);
     await loadConfig(this);
     await loadProviders(this, true);
   }

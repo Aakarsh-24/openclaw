@@ -12,6 +12,7 @@ import {
   type DiscordGuildChannelForm,
   type DiscordGuildForm,
   type IMessageForm,
+  type RocketChatForm,
   type SlackChannelForm,
   type SlackForm,
   type SignalForm,
@@ -21,14 +22,11 @@ import {
 export type ConfigState = {
   client: GatewayBrowserClient | null;
   connected: boolean;
-  applySessionKey: string;
   configLoading: boolean;
   configRaw: string;
   configValid: boolean | null;
   configIssues: unknown[];
   configSaving: boolean;
-  configApplying: boolean;
-  updateRunning: boolean;
   configSnapshot: ConfigSnapshot | null;
   configSchema: unknown | null;
   configSchemaVersion: string | null;
@@ -41,11 +39,13 @@ export type ConfigState = {
   telegramForm: TelegramForm;
   discordForm: DiscordForm;
   slackForm: SlackForm;
+  rocketchatForm: RocketChatForm;
   signalForm: SignalForm;
   imessageForm: IMessageForm;
   telegramConfigStatus: string | null;
   discordConfigStatus: string | null;
   slackConfigStatus: string | null;
+  rocketchatConfigStatus: string | null;
   signalConfigStatus: string | null;
   imessageConfigStatus: string | null;
 };
@@ -92,18 +92,10 @@ export function applyConfigSchema(
 
 export function applyConfigSnapshot(state: ConfigState, snapshot: ConfigSnapshot) {
   state.configSnapshot = snapshot;
-  const rawFromSnapshot =
-    typeof snapshot.raw === "string"
-      ? snapshot.raw
-      : snapshot.config && typeof snapshot.config === "object"
-        ? serializeConfigForm(snapshot.config as Record<string, unknown>)
-        : state.configRaw;
-  if (!state.configFormDirty || state.configFormMode === "raw") {
-    state.configRaw = rawFromSnapshot;
-  } else if (state.configForm) {
-    state.configRaw = serializeConfigForm(state.configForm);
-  } else {
-    state.configRaw = rawFromSnapshot;
+  if (typeof snapshot.raw === "string") {
+    state.configRaw = snapshot.raw;
+  } else if (snapshot.config && typeof snapshot.config === "object") {
+    state.configRaw = `${JSON.stringify(snapshot.config, null, 2).trimEnd()}\n`;
   }
   state.configValid = typeof snapshot.valid === "boolean" ? snapshot.valid : null;
   state.configIssues = Array.isArray(snapshot.issues) ? snapshot.issues : [];
@@ -112,6 +104,7 @@ export function applyConfigSnapshot(state: ConfigState, snapshot: ConfigSnapshot
   const telegram = (config.telegram ?? {}) as Record<string, unknown>;
   const discord = (config.discord ?? {}) as Record<string, unknown>;
   const slack = (config.slack ?? {}) as Record<string, unknown>;
+  const rocketchat = (config.rocketchat ?? {}) as Record<string, unknown>;
   const signal = (config.signal ?? {}) as Record<string, unknown>;
   const imessage = (config.imessage ?? {}) as Record<string, unknown>;
   const toList = (value: unknown) =>
@@ -334,6 +327,77 @@ export function applyConfigSnapshot(state: ConfigState, snapshot: ConfigSnapshot
         : [],
   };
 
+  const rocketchatWebhook =
+    rocketchat.webhook && typeof rocketchat.webhook === "object"
+      ? (rocketchat.webhook as Record<string, unknown>)
+      : {};
+  const rocketchatRooms =
+    rocketchat.rooms && typeof rocketchat.rooms === "object"
+      ? (rocketchat.rooms as Record<string, unknown>)
+      : {};
+  const rocketchatRoomList = Object.entries(rocketchatRooms)
+    .filter(([key, value]) => {
+      if (!key) return false;
+      if (value && typeof value === "object") {
+        const entry = value as Record<string, unknown>;
+        if (typeof entry.allow === "boolean") return entry.allow;
+        if (typeof entry.enabled === "boolean") return entry.enabled;
+      }
+      return true;
+    })
+    .map(([key]) => key)
+    .join(", ");
+  const rocketchatDmPolicy =
+    rocketchat.dmPolicy === "allowlist" ||
+    rocketchat.dmPolicy === "open" ||
+    rocketchat.dmPolicy === "disabled"
+      ? rocketchat.dmPolicy
+      : "pairing";
+  const rocketchatGroupPolicy =
+    rocketchat.groupPolicy === "allowlist" ||
+    rocketchat.groupPolicy === "disabled"
+      ? rocketchat.groupPolicy
+      : "open";
+  state.rocketchatForm = {
+    enabled: typeof rocketchat.enabled === "boolean" ? rocketchat.enabled : true,
+    baseUrl: typeof rocketchat.baseUrl === "string" ? rocketchat.baseUrl : "",
+    authToken:
+      typeof rocketchat.authToken === "string" ? rocketchat.authToken : "",
+    userId: typeof rocketchat.userId === "string" ? rocketchat.userId : "",
+    botUsername:
+      typeof rocketchat.botUsername === "string" ? rocketchat.botUsername : "",
+    alias: typeof rocketchat.alias === "string" ? rocketchat.alias : "",
+    avatarUrl:
+      typeof rocketchat.avatarUrl === "string" ? rocketchat.avatarUrl : "",
+    emoji: typeof rocketchat.emoji === "string" ? rocketchat.emoji : "",
+    dmPolicy: rocketchatDmPolicy,
+    allowFrom: toList(rocketchat.allowFrom),
+    groupPolicy: rocketchatGroupPolicy,
+    requireMention:
+      typeof rocketchat.requireMention === "boolean"
+        ? rocketchat.requireMention
+        : true,
+    rooms: rocketchatRoomList,
+    textChunkLimit:
+      typeof rocketchat.textChunkLimit === "number"
+        ? String(rocketchat.textChunkLimit)
+        : "",
+    mediaMaxMb:
+      typeof rocketchat.mediaMaxMb === "number"
+        ? String(rocketchat.mediaMaxMb)
+        : "",
+    webhookToken:
+      typeof rocketchatWebhook.token === "string" ? rocketchatWebhook.token : "",
+    webhookHost:
+      typeof rocketchatWebhook.host === "string" ? rocketchatWebhook.host : "",
+    webhookPort:
+      typeof rocketchatWebhook.port === "number"
+        ? String(rocketchatWebhook.port)
+        : "",
+    webhookPath:
+      typeof rocketchatWebhook.path === "string" ? rocketchatWebhook.path : "",
+  };
+
   state.signalForm = {
     enabled: typeof signal.enabled === "boolean" ? signal.enabled : true,
     account: typeof signal.account === "string" ? signal.account : "",
@@ -381,6 +445,7 @@ export function applyConfigSnapshot(state: ConfigState, snapshot: ConfigSnapshot
   state.telegramConfigStatus = configInvalid;
   state.discordConfigStatus = configInvalid;
   state.slackConfigStatus = configInvalid;
+  state.rocketchatConfigStatus = configInvalid;
   state.signalConfigStatus = configInvalid;
   state.imessageConfigStatus = configInvalid;
 
@@ -396,7 +461,7 @@ export async function saveConfig(state: ConfigState) {
   try {
     const raw =
       state.configFormMode === "form" && state.configForm
-        ? serializeConfigForm(state.configForm)
+        ? `${JSON.stringify(state.configForm, null, 2).trimEnd()}\n`
         : state.configRaw;
     await state.client.request("config.set", { raw });
     state.configFormDirty = false;
@@ -405,43 +470,6 @@ export async function saveConfig(state: ConfigState) {
     state.lastError = String(err);
   } finally {
     state.configSaving = false;
-  }
-}
-
-export async function applyConfig(state: ConfigState) {
-  if (!state.client || !state.connected) return;
-  state.configApplying = true;
-  state.lastError = null;
-  try {
-    const raw =
-      state.configFormMode === "form" && state.configForm
-        ? serializeConfigForm(state.configForm)
-        : state.configRaw;
-    await state.client.request("config.apply", {
-      raw,
-      sessionKey: state.applySessionKey,
-    });
-    state.configFormDirty = false;
-    await loadConfig(state);
-  } catch (err) {
-    state.lastError = String(err);
-  } finally {
-    state.configApplying = false;
-  }
-}
-
-export async function runUpdate(state: ConfigState) {
-  if (!state.client || !state.connected) return;
-  state.updateRunning = true;
-  state.lastError = null;
-  try {
-    await state.client.request("update.run", {
-      sessionKey: state.applySessionKey,
-    });
-  } catch (err) {
-    state.lastError = String(err);
-  } finally {
-    state.updateRunning = false;
   }
 }
 
@@ -456,9 +484,6 @@ export function updateConfigFormValue(
   setPathValue(base, path, value);
   state.configForm = base;
   state.configFormDirty = true;
-  if (state.configFormMode === "form") {
-    state.configRaw = serializeConfigForm(base);
-  }
 }
 
 export function removeConfigFormValue(
@@ -471,9 +496,6 @@ export function removeConfigFormValue(
   removePathValue(base, path);
   state.configForm = base;
   state.configFormDirty = true;
-  if (state.configFormMode === "form") {
-    state.configRaw = serializeConfigForm(base);
-  }
 }
 
 function cloneConfigObject<T>(value: T): T {
@@ -481,10 +503,6 @@ function cloneConfigObject<T>(value: T): T {
     return structuredClone(value);
   }
   return JSON.parse(JSON.stringify(value)) as T;
-}
-
-function serializeConfigForm(form: Record<string, unknown>): string {
-  return `${JSON.stringify(form, null, 2).trimEnd()}\n`;
 }
 
 function setPathValue(

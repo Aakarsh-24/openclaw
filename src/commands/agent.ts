@@ -1,8 +1,4 @@
 import crypto from "node:crypto";
-import {
-  resolveAgentDir,
-  resolveAgentWorkspaceDir,
-} from "../agents/agent-scope.js";
 import { ensureAuthProfileStore } from "../agents/auth-profiles.js";
 import { lookupContextTokens } from "../agents/context.js";
 import {
@@ -22,7 +18,10 @@ import { runEmbeddedPiAgent } from "../agents/pi-embedded.js";
 import { buildWorkspaceSkillSnapshot } from "../agents/skills.js";
 import { resolveAgentTimeoutMs } from "../agents/timeout.js";
 import { hasNonzeroUsage } from "../agents/usage.js";
-import { ensureAgentWorkspace } from "../agents/workspace.js";
+import {
+  DEFAULT_AGENT_WORKSPACE_DIR,
+  ensureAgentWorkspace,
+} from "../agents/workspace.js";
 import type { MsgContext } from "../auto-reply/templating.js";
 import {
   normalizeThinkLevel,
@@ -57,10 +56,6 @@ import {
 import { resolveOutboundTarget } from "../infra/outbound/targets.js";
 import { defaultRuntime, type RuntimeEnv } from "../runtime.js";
 import { resolveSendPolicy } from "../sessions/send-policy.js";
-import {
-  normalizeMessageProvider,
-  resolveMessageProvider,
-} from "../utils/message-provider.js";
 import { normalizeE164 } from "../utils.js";
 
 type AgentCommandOpts = {
@@ -181,9 +176,7 @@ export async function agentCommand(
 
   const cfg = loadConfig();
   const agentCfg = cfg.agent;
-  const sessionAgentId = resolveAgentIdFromSessionKey(opts.sessionKey?.trim());
-  const workspaceDirRaw = resolveAgentWorkspaceDir(cfg, sessionAgentId);
-  const agentDir = resolveAgentDir(cfg, sessionAgentId);
+  const workspaceDirRaw = cfg.agent?.workspace ?? DEFAULT_AGENT_WORKSPACE_DIR;
   const workspace = await ensureAgentWorkspace({
     dir: workspaceDirRaw,
     ensureBootstrapFiles: !cfg.agent?.skipBootstrap,
@@ -402,10 +395,13 @@ export async function agentCommand(
   let fallbackProvider = provider;
   let fallbackModel = model;
   try {
-    const messageProvider = resolveMessageProvider(
-      opts.messageProvider,
-      opts.provider,
-    );
+    const messageProvider =
+      opts.messageProvider?.trim().toLowerCase() ||
+      (() => {
+        const raw = opts.provider?.trim().toLowerCase();
+        if (!raw) return undefined;
+        return raw === "imsg" ? "imessage" : raw;
+      })();
     const fallbackResult = await runWithModelFallback({
       cfg,
       provider,
@@ -430,7 +426,6 @@ export async function agentCommand(
           lane: opts.lane,
           abortSignal: opts.abortSignal,
           extraSystemPrompt: opts.extraSystemPrompt,
-          agentDir,
           onAgentEvent: (evt) => {
             if (
               evt.stream === "lifecycle" &&
@@ -519,8 +514,9 @@ export async function agentCommand(
   const payloads = result.payloads ?? [];
   const deliver = opts.deliver === true;
   const bestEffortDeliver = opts.bestEffortDeliver === true;
+  const deliveryProviderRaw = (opts.provider ?? "whatsapp").toLowerCase();
   const deliveryProvider =
-    normalizeMessageProvider(opts.provider) ?? "whatsapp";
+    deliveryProviderRaw === "imsg" ? "imessage" : deliveryProviderRaw;
 
   const logDeliveryError = (err: unknown) => {
     const message = `Delivery failed (${deliveryProvider}${deliveryTarget ? ` to ${deliveryTarget}` : ""}): ${String(err)}`;
@@ -533,6 +529,7 @@ export async function agentCommand(
     deliveryProvider === "telegram" ||
     deliveryProvider === "discord" ||
     deliveryProvider === "slack" ||
+    deliveryProvider === "rocketchat" ||
     deliveryProvider === "signal" ||
     deliveryProvider === "imessage" ||
     deliveryProvider === "webchat";
@@ -609,14 +606,15 @@ export async function agentCommand(
         bestEffort: bestEffortDeliver,
         onError: (err) => logDeliveryError(err),
         onPayload: logPayload,
-        deps: {
-          sendWhatsApp: deps.sendMessageWhatsApp,
-          sendTelegram: deps.sendMessageTelegram,
-          sendDiscord: deps.sendMessageDiscord,
-          sendSlack: deps.sendMessageSlack,
-          sendSignal: deps.sendMessageSignal,
-          sendIMessage: deps.sendMessageIMessage,
-        },
+          deps: {
+            sendWhatsApp: deps.sendMessageWhatsApp,
+            sendTelegram: deps.sendMessageTelegram,
+            sendDiscord: deps.sendMessageDiscord,
+            sendSlack: deps.sendMessageSlack,
+            sendRocketChat: deps.sendMessageRocketChat,
+            sendSignal: deps.sendMessageSignal,
+            sendIMessage: deps.sendMessageIMessage,
+          },
       });
     }
   }

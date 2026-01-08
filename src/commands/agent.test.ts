@@ -266,7 +266,7 @@ describe("agentCommand", () => {
     });
   });
 
-  it("passes telegram account id when delivering", async () => {
+  it("passes telegram token when delivering", async () => {
     await withTempHome(async (home) => {
       const store = path.join(home, "sessions.json");
       mockConfig(home, store, undefined, undefined, { botToken: "t-1" });
@@ -276,6 +276,7 @@ describe("agentCommand", () => {
           .fn()
           .mockResolvedValue({ messageId: "t1", chatId: "123" }),
         sendMessageDiscord: vi.fn(),
+        sendMessageRocketChat: vi.fn(),
         sendMessageSignal: vi.fn(),
         sendMessageIMessage: vi.fn(),
       };
@@ -297,7 +298,7 @@ describe("agentCommand", () => {
         expect(deps.sendMessageTelegram).toHaveBeenCalledWith(
           "123",
           "ok",
-          expect.objectContaining({ accountId: "default", verbose: false }),
+          expect.objectContaining({ token: "t-1" }),
         );
       } finally {
         if (prevTelegramToken === undefined) {

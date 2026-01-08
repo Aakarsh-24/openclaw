@@ -4,36 +4,17 @@ import {
   readConfigFileSnapshot,
   writeConfigFile,
 } from "../../config/config.js";
-import {
-  listDiscordAccountIds,
-  resolveDefaultDiscordAccountId,
-  resolveDiscordAccount,
-} from "../../discord/accounts.js";
 import { type DiscordProbe, probeDiscord } from "../../discord/probe.js";
-import {
-  listIMessageAccountIds,
-  resolveDefaultIMessageAccountId,
-  resolveIMessageAccount,
-} from "../../imessage/accounts.js";
 import { type IMessageProbe, probeIMessage } from "../../imessage/probe.js";
-import {
-  listSignalAccountIds,
-  resolveDefaultSignalAccountId,
-  resolveSignalAccount,
-} from "../../signal/accounts.js";
 import { probeSignal, type SignalProbe } from "../../signal/probe.js";
-import {
-  listSlackAccountIds,
-  resolveDefaultSlackAccountId,
-  resolveSlackAccount,
-} from "../../slack/accounts.js";
 import { probeSlack, type SlackProbe } from "../../slack/probe.js";
 import {
-  listTelegramAccountIds,
-  resolveDefaultTelegramAccountId,
-  resolveTelegramAccount,
-} from "../../telegram/accounts.js";
+  resolveSlackAppToken,
+  resolveSlackBotToken,
+} from "../../slack/token.js";
 import { probeTelegram, type TelegramProbe } from "../../telegram/probe.js";
+import { resolveTelegramToken } from "../../telegram/token.js";
+import { probeRocketChat } from "../../rocketchat/probe.js";
 import {
   listEnabledWhatsAppAccounts,
   resolveDefaultWhatsAppAccountId,
@@ -70,193 +51,177 @@ export const providersHandlers: GatewayRequestHandlers = {
     const timeoutMs =
       typeof timeoutMsRaw === "number" ? Math.max(1000, timeoutMsRaw) : 10_000;
     const cfg = loadConfig();
-    const runtime = context.getRuntimeSnapshot();
+    const telegramCfg = cfg.telegram;
+    const telegramEnabled =
+      Boolean(telegramCfg) && telegramCfg?.enabled !== false;
+    const { token: telegramToken, source: tokenSource } = telegramEnabled
+      ? resolveTelegramToken(cfg)
+      : { token: "", source: "none" as const };
+    let telegramProbe: TelegramProbe | undefined;
+    let lastProbeAt: number | null = null;
+    if (probe && telegramToken && telegramEnabled) {
+      telegramProbe = await probeTelegram(
+        telegramToken,
+        timeoutMs,
+        telegramCfg?.proxy,
+      );
+      lastProbeAt = Date.now();
+    }
 
-    const defaultTelegramAccountId = resolveDefaultTelegramAccountId(cfg);
-    const defaultDiscordAccountId = resolveDefaultDiscordAccountId(cfg);
-    const defaultSlackAccountId = resolveDefaultSlackAccountId(cfg);
-    const defaultSignalAccountId = resolveDefaultSignalAccountId(cfg);
-    const defaultIMessageAccountId = resolveDefaultIMessageAccountId(cfg);
+    const discordCfg = cfg.discord;
+    const discordEnabled = Boolean(discordCfg) && discordCfg?.enabled !== false;
+    const discordEnvToken = discordEnabled
+      ? process.env.DISCORD_BOT_TOKEN?.trim()
+      : "";
+    const discordConfigToken = discordEnabled ? discordCfg?.token?.trim() : "";
+    const discordToken = discordEnvToken || discordConfigToken || "";
+    const discordTokenSource = discordEnvToken
+      ? "env"
+      : discordConfigToken
+        ? "config"
+        : "none";
+    let discordProbe: DiscordProbe | undefined;
+    let discordLastProbeAt: number | null = null;
+    if (probe && discordToken && discordEnabled) {
+      discordProbe = await probeDiscord(discordToken, timeoutMs);
+      discordLastProbeAt = Date.now();
+    }
 
-    const telegramAccounts = await Promise.all(
-      listTelegramAccountIds(cfg).map(async (accountId) => {
-        const account = resolveTelegramAccount({ cfg, accountId });
-        const rt =
-          runtime.telegramAccounts?.[account.accountId] ??
-          (account.accountId === defaultTelegramAccountId
-            ? runtime.telegram
-            : undefined);
-        const configured = Boolean(account.token);
-        let telegramProbe: TelegramProbe | undefined;
-        let lastProbeAt: number | null = null;
-        if (probe && configured && account.enabled) {
-          telegramProbe = await probeTelegram(
-            account.token,
-            timeoutMs,
-            account.config.proxy,
-          );
-          lastProbeAt = Date.now();
-        }
-        return {
-          accountId: account.accountId,
-          name: account.name,
-          enabled: account.enabled,
-          configured,
-          tokenSource: account.tokenSource,
-          running: rt?.running ?? false,
-          mode: rt?.mode ?? (account.config.webhookUrl ? "webhook" : "polling"),
-          lastStartAt: rt?.lastStartAt ?? null,
-          lastStopAt: rt?.lastStopAt ?? null,
-          lastError: rt?.lastError ?? null,
-          probe: telegramProbe,
-          lastProbeAt,
-        };
-      }),
-    );
-    const defaultTelegramAccount =
-      telegramAccounts.find(
-        (account) => account.accountId === defaultTelegramAccountId,
-      ) ?? telegramAccounts[0];
+    const slackCfg = cfg.slack;
+    const slackEnabled = slackCfg?.enabled !== false;
+    const slackBotEnvToken = slackEnabled
+      ? resolveSlackBotToken(process.env.SLACK_BOT_TOKEN)
+      : undefined;
+    const slackBotConfigToken = slackEnabled
+      ? resolveSlackBotToken(slackCfg?.botToken)
+      : undefined;
+    const slackBotToken = slackBotEnvToken ?? slackBotConfigToken ?? "";
+    const slackBotTokenSource = slackBotEnvToken
+      ? "env"
+      : slackBotConfigToken
+        ? "config"
+        : "none";
+    const slackAppEnvToken = slackEnabled
+      ? resolveSlackAppToken(process.env.SLACK_APP_TOKEN)
+      : undefined;
+    const slackAppConfigToken = slackEnabled
+      ? resolveSlackAppToken(slackCfg?.appToken)
+      : undefined;
+    const slackAppToken = slackAppEnvToken ?? slackAppConfigToken ?? "";
+    const slackAppTokenSource = slackAppEnvToken
+      ? "env"
+      : slackAppConfigToken
+        ? "config"
+        : "none";
+    const slackConfigured =
+      slackEnabled && Boolean(slackBotToken) && Boolean(slackAppToken);
+    let slackProbe: SlackProbe | undefined;
+    let slackLastProbeAt: number | null = null;
+    if (probe && slackConfigured) {
+      slackProbe = await probeSlack(slackBotToken, timeoutMs);
+      slackLastProbeAt = Date.now();
+    }
 
-    const discordAccounts = await Promise.all(
-      listDiscordAccountIds(cfg).map(async (accountId) => {
-        const account = resolveDiscordAccount({ cfg, accountId });
-        const rt =
-          runtime.discordAccounts?.[account.accountId] ??
-          (account.accountId === defaultDiscordAccountId
-            ? runtime.discord
-            : undefined);
-        const configured = Boolean(account.token);
-        let discordProbe: DiscordProbe | undefined;
-        let lastProbeAt: number | null = null;
-        if (probe && configured && account.enabled) {
-          discordProbe = await probeDiscord(account.token, timeoutMs);
-          lastProbeAt = Date.now();
-        }
-        return {
-          accountId: account.accountId,
-          name: account.name,
-          enabled: account.enabled,
-          configured,
-          tokenSource: account.tokenSource,
-          running: rt?.running ?? false,
-          lastStartAt: rt?.lastStartAt ?? null,
-          lastStopAt: rt?.lastStopAt ?? null,
-          lastError: rt?.lastError ?? null,
-          probe: discordProbe,
-          lastProbeAt,
-        };
-      }),
-    );
-    const defaultDiscordAccount =
-      discordAccounts.find(
-        (account) => account.accountId === defaultDiscordAccountId,
-      ) ?? discordAccounts[0];
+    const rocketchatCfg = cfg.rocketchat;
+    const rocketchatEnabled =
+      Boolean(rocketchatCfg) && rocketchatCfg?.enabled !== false;
+    const rocketchatBaseUrlEnv = rocketchatEnabled
+      ? process.env.ROCKETCHAT_BASE_URL?.trim() || ""
+      : "";
+    const rocketchatBaseUrlConfig = rocketchatEnabled
+      ? rocketchatCfg?.baseUrl?.trim() || ""
+      : "";
+    const rocketchatBaseUrl = rocketchatBaseUrlEnv || rocketchatBaseUrlConfig;
+    const rocketchatBaseUrlSource = rocketchatBaseUrlEnv
+      ? "env"
+      : rocketchatBaseUrlConfig
+        ? "config"
+        : "none";
 
-    const slackAccounts = await Promise.all(
-      listSlackAccountIds(cfg).map(async (accountId) => {
-        const account = resolveSlackAccount({ cfg, accountId });
-        const rt =
-          runtime.slackAccounts?.[account.accountId] ??
-          (account.accountId === defaultSlackAccountId
-            ? runtime.slack
-            : undefined);
-        const configured = Boolean(account.botToken && account.appToken);
-        let slackProbe: SlackProbe | undefined;
-        let lastProbeAt: number | null = null;
-        if (probe && configured && account.enabled && account.botToken) {
-          slackProbe = await probeSlack(account.botToken, timeoutMs);
-          lastProbeAt = Date.now();
-        }
-        return {
-          accountId: account.accountId,
-          name: account.name,
-          enabled: account.enabled,
-          configured,
-          botTokenSource: account.botTokenSource,
-          appTokenSource: account.appTokenSource,
-          running: rt?.running ?? false,
-          lastStartAt: rt?.lastStartAt ?? null,
-          lastStopAt: rt?.lastStopAt ?? null,
-          lastError: rt?.lastError ?? null,
-          probe: slackProbe,
-          lastProbeAt,
-        };
-      }),
-    );
-    const defaultSlackAccount =
-      slackAccounts.find(
-        (account) => account.accountId === defaultSlackAccountId,
-      ) ?? slackAccounts[0];
+    const rocketchatAuthTokenEnv = rocketchatEnabled
+      ? process.env.ROCKETCHAT_AUTH_TOKEN?.trim() || ""
+      : "";
+    const rocketchatAuthTokenConfig = rocketchatEnabled
+      ? rocketchatCfg?.authToken?.trim() || ""
+      : "";
+    const rocketchatAuthToken = rocketchatAuthTokenEnv || rocketchatAuthTokenConfig;
+    const rocketchatAuthTokenSource = rocketchatAuthTokenEnv
+      ? "env"
+      : rocketchatAuthTokenConfig
+        ? "config"
+        : "none";
 
-    const signalAccounts = await Promise.all(
-      listSignalAccountIds(cfg).map(async (accountId) => {
-        const account = resolveSignalAccount({ cfg, accountId });
-        const rt =
-          runtime.signalAccounts?.[account.accountId] ??
-          (account.accountId === defaultSignalAccountId
-            ? runtime.signal
-            : undefined);
-        const configured = account.configured;
-        let signalProbe: SignalProbe | undefined;
-        let lastProbeAt: number | null = null;
-        if (probe && configured && account.enabled) {
-          signalProbe = await probeSignal(account.baseUrl, timeoutMs);
-          lastProbeAt = Date.now();
-        }
-        return {
-          accountId: account.accountId,
-          name: account.name,
-          enabled: account.enabled,
-          configured,
-          baseUrl: account.baseUrl,
-          running: rt?.running ?? false,
-          lastStartAt: rt?.lastStartAt ?? null,
-          lastStopAt: rt?.lastStopAt ?? null,
-          lastError: rt?.lastError ?? null,
-          probe: signalProbe,
-          lastProbeAt,
-        };
-      }),
-    );
-    const defaultSignalAccount =
-      signalAccounts.find(
-        (account) => account.accountId === defaultSignalAccountId,
-      ) ?? signalAccounts[0];
+    const rocketchatUserIdEnv = rocketchatEnabled
+      ? process.env.ROCKETCHAT_USER_ID?.trim() || ""
+      : "";
+    const rocketchatUserIdConfig = rocketchatEnabled
+      ? rocketchatCfg?.userId?.trim() || ""
+      : "";
+    const rocketchatUserId = rocketchatUserIdEnv || rocketchatUserIdConfig;
+    const rocketchatUserIdSource = rocketchatUserIdEnv
+      ? "env"
+      : rocketchatUserIdConfig
+        ? "config"
+        : "none";
+    const rocketchatWebhookToken = rocketchatEnabled
+      ? rocketchatCfg?.webhook?.token?.trim() || ""
+      : "";
+    const rocketchatConfigured =
+      rocketchatEnabled &&
+      Boolean(
+        rocketchatBaseUrl &&
+          rocketchatAuthToken &&
+          rocketchatUserId &&
+          rocketchatWebhookToken,
+      );
+    let rocketchatProbe: Awaited<ReturnType<typeof probeRocketChat>> | undefined;
+    let rocketchatLastProbeAt: number | null = null;
+    if (probe && rocketchatConfigured) {
+      rocketchatProbe = await probeRocketChat(
+        rocketchatBaseUrl,
+        rocketchatAuthToken,
+        rocketchatUserId,
+        timeoutMs,
+        rocketchatCfg?.retry,
+      );
+      rocketchatLastProbeAt = Date.now();
+    }
 
-    const imessageBaseConfigured = Boolean(cfg.imessage);
+    const signalCfg = cfg.signal;
+    const signalEnabled = signalCfg?.enabled !== false;
+    const signalHost = signalCfg?.httpHost?.trim() || "127.0.0.1";
+    const signalPort = signalCfg?.httpPort ?? 8080;
+    const signalBaseUrl =
+      signalCfg?.httpUrl?.trim() || `http://${signalHost}:${signalPort}`;
+    const signalConfigured =
+      Boolean(signalCfg) &&
+      signalEnabled &&
+      Boolean(
+        signalCfg?.account?.trim() ||
+          signalCfg?.httpUrl?.trim() ||
+          signalCfg?.cliPath?.trim() ||
+          signalCfg?.httpHost?.trim() ||
+          typeof signalCfg?.httpPort === "number" ||
+          typeof signalCfg?.autoStart === "boolean",
+      );
+    let signalProbe: SignalProbe | undefined;
+    let signalLastProbeAt: number | null = null;
+    if (probe && signalConfigured) {
+      signalProbe = await probeSignal(signalBaseUrl, timeoutMs);
+      signalLastProbeAt = Date.now();
+    }
+
+    const imessageCfg = cfg.imessage;
+    const imessageEnabled = imessageCfg?.enabled !== false;
+    const imessageConfigured = Boolean(imessageCfg) && imessageEnabled;
     let imessageProbe: IMessageProbe | undefined;
     let imessageLastProbeAt: number | null = null;
-    if (probe && imessageBaseConfigured) {
+    if (probe && imessageConfigured) {
       imessageProbe = await probeIMessage(timeoutMs);
       imessageLastProbeAt = Date.now();
     }
-    const imessageAccounts = listIMessageAccountIds(cfg).map((accountId) => {
-      const account = resolveIMessageAccount({ cfg, accountId });
-      const rt =
-        runtime.imessageAccounts?.[account.accountId] ??
-        (account.accountId === defaultIMessageAccountId
-          ? runtime.imessage
-          : undefined);
-      return {
-        accountId: account.accountId,
-        name: account.name,
-        enabled: account.enabled,
-        configured: imessageBaseConfigured,
-        running: rt?.running ?? false,
-        lastStartAt: rt?.lastStartAt ?? null,
-        lastStopAt: rt?.lastStopAt ?? null,
-        lastError: rt?.lastError ?? null,
-        cliPath: rt?.cliPath ?? account.config.cliPath ?? null,
-        dbPath: rt?.dbPath ?? account.config.dbPath ?? null,
-        probe: imessageProbe,
-        lastProbeAt: imessageLastProbeAt,
-      };
-    });
-    const defaultIMessageAccount =
-      imessageAccounts.find(
-        (account) => account.accountId === defaultIMessageAccountId,
-      ) ?? imessageAccounts[0];
+
+    const runtime = context.getRuntimeSnapshot();
     const defaultWhatsAppAccountId = resolveDefaultWhatsAppAccountId(cfg);
     const enabledWhatsAppAccounts = listEnabledWhatsAppAccounts(cfg);
     const defaultWhatsAppAccount =
@@ -327,68 +292,71 @@ export const providersHandlers: GatewayRequestHandlers = {
         whatsappAccounts,
         whatsappDefaultAccountId: defaultWhatsAppAccountId,
         telegram: {
-          configured: defaultTelegramAccount?.configured ?? false,
-          tokenSource: defaultTelegramAccount?.tokenSource ?? "none",
-          running: defaultTelegramAccount?.running ?? false,
-          mode: defaultTelegramAccount?.mode ?? null,
-          lastStartAt: defaultTelegramAccount?.lastStartAt ?? null,
-          lastStopAt: defaultTelegramAccount?.lastStopAt ?? null,
-          lastError: defaultTelegramAccount?.lastError ?? null,
-          probe: defaultTelegramAccount?.probe,
-          lastProbeAt: defaultTelegramAccount?.lastProbeAt ?? null,
+          configured: telegramEnabled && Boolean(telegramToken),
+          tokenSource,
+          running: runtime.telegram.running,
+          mode: runtime.telegram.mode ?? null,
+          lastStartAt: runtime.telegram.lastStartAt ?? null,
+          lastStopAt: runtime.telegram.lastStopAt ?? null,
+          lastError: runtime.telegram.lastError ?? null,
+          probe: telegramProbe,
+          lastProbeAt,
         },
-        telegramAccounts,
-        telegramDefaultAccountId: defaultTelegramAccountId,
         discord: {
-          configured: defaultDiscordAccount?.configured ?? false,
-          tokenSource: defaultDiscordAccount?.tokenSource ?? "none",
-          running: defaultDiscordAccount?.running ?? false,
-          lastStartAt: defaultDiscordAccount?.lastStartAt ?? null,
-          lastStopAt: defaultDiscordAccount?.lastStopAt ?? null,
-          lastError: defaultDiscordAccount?.lastError ?? null,
-          probe: defaultDiscordAccount?.probe,
-          lastProbeAt: defaultDiscordAccount?.lastProbeAt ?? null,
+          configured: discordEnabled && Boolean(discordToken),
+          tokenSource: discordTokenSource,
+          running: runtime.discord.running,
+          lastStartAt: runtime.discord.lastStartAt ?? null,
+          lastStopAt: runtime.discord.lastStopAt ?? null,
+          lastError: runtime.discord.lastError ?? null,
+          probe: discordProbe,
+          lastProbeAt: discordLastProbeAt,
         },
-        discordAccounts,
-        discordDefaultAccountId: defaultDiscordAccountId,
         slack: {
-          configured: defaultSlackAccount?.configured ?? false,
-          botTokenSource: defaultSlackAccount?.botTokenSource ?? "none",
-          appTokenSource: defaultSlackAccount?.appTokenSource ?? "none",
-          running: defaultSlackAccount?.running ?? false,
-          lastStartAt: defaultSlackAccount?.lastStartAt ?? null,
-          lastStopAt: defaultSlackAccount?.lastStopAt ?? null,
-          lastError: defaultSlackAccount?.lastError ?? null,
-          probe: defaultSlackAccount?.probe,
-          lastProbeAt: defaultSlackAccount?.lastProbeAt ?? null,
+          configured: slackConfigured,
+          botTokenSource: slackBotTokenSource,
+          appTokenSource: slackAppTokenSource,
+          running: runtime.slack.running,
+          lastStartAt: runtime.slack.lastStartAt ?? null,
+          lastStopAt: runtime.slack.lastStopAt ?? null,
+          lastError: runtime.slack.lastError ?? null,
+          probe: slackProbe,
+          lastProbeAt: slackLastProbeAt,
         },
-        slackAccounts,
-        slackDefaultAccountId: defaultSlackAccountId,
+        rocketchat: {
+          configured: rocketchatConfigured,
+          baseUrl: rocketchatBaseUrl || null,
+          baseUrlSource: rocketchatBaseUrlSource,
+          authTokenSource: rocketchatAuthTokenSource,
+          userIdSource: rocketchatUserIdSource,
+          running: runtime.rocketchat.running,
+          lastStartAt: runtime.rocketchat.lastStartAt ?? null,
+          lastStopAt: runtime.rocketchat.lastStopAt ?? null,
+          lastError: runtime.rocketchat.lastError ?? null,
+          probe: rocketchatProbe,
+          lastProbeAt: rocketchatLastProbeAt,
+        },
         signal: {
-          configured: defaultSignalAccount?.configured ?? false,
-          baseUrl: defaultSignalAccount?.baseUrl ?? null,
-          running: defaultSignalAccount?.running ?? false,
-          lastStartAt: defaultSignalAccount?.lastStartAt ?? null,
-          lastStopAt: defaultSignalAccount?.lastStopAt ?? null,
-          lastError: defaultSignalAccount?.lastError ?? null,
-          probe: defaultSignalAccount?.probe,
-          lastProbeAt: defaultSignalAccount?.lastProbeAt ?? null,
+          configured: signalConfigured,
+          baseUrl: signalBaseUrl,
+          running: runtime.signal.running,
+          lastStartAt: runtime.signal.lastStartAt ?? null,
+          lastStopAt: runtime.signal.lastStopAt ?? null,
+          lastError: runtime.signal.lastError ?? null,
+          probe: signalProbe,
+          lastProbeAt: signalLastProbeAt,
         },
-        signalAccounts,
-        signalDefaultAccountId: defaultSignalAccountId,
         imessage: {
-          configured: defaultIMessageAccount?.configured ?? false,
-          running: defaultIMessageAccount?.running ?? false,
-          lastStartAt: defaultIMessageAccount?.lastStartAt ?? null,
-          lastStopAt: defaultIMessageAccount?.lastStopAt ?? null,
-          lastError: defaultIMessageAccount?.lastError ?? null,
-          cliPath: defaultIMessageAccount?.cliPath ?? null,
-          dbPath: defaultIMessageAccount?.dbPath ?? null,
-          probe: defaultIMessageAccount?.probe,
-          lastProbeAt: defaultIMessageAccount?.lastProbeAt ?? null,
+          configured: imessageConfigured,
+          running: runtime.imessage.running,
+          lastStartAt: runtime.imessage.lastStartAt ?? null,
+          lastStopAt: runtime.imessage.lastStopAt ?? null,
+          lastError: runtime.imessage.lastError ?? null,
+          cliPath: runtime.imessage.cliPath ?? null,
+          dbPath: runtime.imessage.dbPath ?? null,
+          probe: imessageProbe,
+          lastProbeAt: imessageLastProbeAt,
         },
-        imessageAccounts,
-        imessageDefaultAccountId: defaultIMessageAccountId,
       },
       undefined,
     );

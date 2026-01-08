@@ -17,7 +17,6 @@ Use these hubs to discover every page, including deep dives and reference docs t
 - [Dashboard (local Gateway)](http://127.0.0.1:18789/)
 - [FAQ](https://docs.clawd.bot/start/faq)
 - [Configuration](https://docs.clawd.bot/gateway/configuration)
-- [Configuration examples](https://docs.clawd.bot/gateway/configuration-examples)
 - [Clawd (personal assistant)](https://docs.clawd.bot/start/clawd)
 - [Showcase](https://docs.clawd.bot/start/showcase)
 - [Lore](https://docs.clawd.bot/start/lore)
@@ -54,7 +53,6 @@ Use these hubs to discover every page, including deep dives and reference docs t
 - [Groups](https://docs.clawd.bot/concepts/groups)
 - [Group messages](https://docs.clawd.bot/concepts/group-messages)
 - [Model failover](https://docs.clawd.bot/concepts/model-failover)
-- [OAuth](https://docs.clawd.bot/concepts/oauth)
 
 ## Providers + ingress
 
@@ -62,6 +60,7 @@ Use these hubs to discover every page, including deep dives and reference docs t
 - [Telegram](https://docs.clawd.bot/providers/telegram)
 - [Telegram (grammY notes)](https://docs.clawd.bot/providers/grammy)
 - [Slack](https://docs.clawd.bot/providers/slack)
+- [Rocket.Chat](https://docs.clawd.bot/providers/rocketchat)
 - [Discord](https://docs.clawd.bot/providers/discord)
 - [Signal](https://docs.clawd.bot/providers/signal)
 - [iMessage](https://docs.clawd.bot/providers/imessage)
