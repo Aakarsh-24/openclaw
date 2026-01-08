@@ -19,6 +19,7 @@ import {
   type SessionScope,
   saveSessionStore,
 } from "../../config/sessions.js";
+import { resolveProviderCapabilities } from "../../config/provider-capabilities.js";
 import { logVerbose } from "../../globals.js";
 import {
   formatUsageSummaryLine,
@@ -532,10 +533,18 @@ export async function handleCommands(params: {
       cfg,
       isGroup,
     });
+    const messageProvider = command.provider?.trim().toLowerCase();
+    const messageProviderCapabilities =
+      resolveProviderCapabilities({
+        cfg,
+        provider: messageProvider,
+        accountId: ctx.AccountId,
+      }) ?? (messageProvider ? [] : undefined);
     const result = await compactEmbeddedPiSession({
       sessionId,
       sessionKey,
-      messageProvider: command.provider,
+      messageProvider: messageProvider,
+      messageProviderCapabilities,
       sessionFile: resolveSessionFilePath(sessionId, sessionEntry),
       workspaceDir,
       config: cfg,
