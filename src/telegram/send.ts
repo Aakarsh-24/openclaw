@@ -105,7 +105,7 @@ function normalizeMessageId(raw: string | number): number {
   throw new Error("Message id is required for Telegram reactions");
 }
 
-function buildInlineKeyboard(
+export function buildInlineKeyboard(
   buttons?: TelegramSendOpts["buttons"],
 ): InlineKeyboardMarkup | undefined {
   if (!buttons?.length) return undefined;

@@ -95,7 +95,7 @@ type TelegramButton = {
   callback_data: string;
 };
 
-function readTelegramButtons(
+export function readTelegramButtons(
   params: Record<string, unknown>,
 ): TelegramButton[][] | undefined {
   const raw = params.buttons;
