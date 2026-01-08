@@ -238,6 +238,37 @@ export function isAuthAssistantError(
   return isAuthErrorMessage(msg.errorMessage ?? "");
 }
 
+/**
+ * Detect transient API errors that may resolve on retry.
+ * These include:
+ * - HTTP 500 (Internal Server Error)
+ * - HTTP 503 (Service Unavailable)
+ * - "api_error" type from Anthropic
+ * - "Internal server error" messages
+ * - "overloaded" errors
+ */
+export function isTransientApiErrorMessage(raw: string): boolean {
+  const value = raw.toLowerCase();
+  if (!value) return false;
+  return (
+    /\b500\b/.test(value) ||
+    /\b503\b/.test(value) ||
+    value.includes("internal server error") ||
+    value.includes("internal_server_error") ||
+    value.includes('"type":"api_error"') ||
+    value.includes("overloaded") ||
+    value.includes("temporarily unavailable") ||
+    value.includes("service unavailable")
+  );
+}
+
+export function isTransientApiError(
+  msg: AssistantMessage | undefined,
+): boolean {
+  if (!msg || msg.stopReason !== "error") return false;
+  return isTransientApiErrorMessage(msg.errorMessage ?? "");
+}
+
 function extractSupportedValues(raw: string): string[] {
   const match =
     raw.match(/supported values are:\s*([^\n.]+)/i) ??

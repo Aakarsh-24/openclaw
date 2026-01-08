@@ -62,6 +62,8 @@ import {
   isGoogleModelApi,
   isRateLimitAssistantError,
   isRateLimitErrorMessage,
+  isTransientApiError,
+  isTransientApiErrorMessage,
   pickFallbackThinkingLevel,
   sanitizeGoogleTurnOrdering,
   sanitizeSessionMessagesImages,
@@ -1064,6 +1066,8 @@ export async function runEmbeddedPiAgent(params: {
       const initialThinkLevel = params.thinkLevel ?? "off";
       let thinkLevel = initialThinkLevel;
       const attemptedThinking = new Set<ThinkLevel>();
+      let transientRetryCount = 0;
+      const TRANSIENT_BACKOFF_MS = [1000, 3000, 5000]; // Exponential backoff: 1s, 3s, 5s
       let apiKeyInfo: ApiKeyInfo | null = null;
       let lastProfileId: string | undefined;
 
@@ -1413,6 +1417,19 @@ export async function runEmbeddedPiAgent(params: {
             ) {
               continue;
             }
+            // Retry transient API errors (500, 503, api_error, overloaded) with exponential backoff
+            if (
+              isTransientApiErrorMessage(errorText) &&
+              transientRetryCount < TRANSIENT_BACKOFF_MS.length
+            ) {
+              const backoffMs = TRANSIENT_BACKOFF_MS[transientRetryCount];
+              transientRetryCount++;
+              log.warn(
+                `transient API error (attempt ${transientRetryCount}/${TRANSIENT_BACKOFF_MS.length}), retrying in ${backoffMs}ms: ${errorText.slice(0, 200)}`,
+              );
+              await new Promise((resolve) => setTimeout(resolve, backoffMs));
+              continue;
+            }
             const fallbackThinking = pickFallbackThinkingLevel({
               message: errorText,
               attempted: attemptedThinking,
@@ -1443,6 +1460,21 @@ export async function runEmbeddedPiAgent(params: {
               `unsupported thinking level for ${provider}/${modelId}; retrying with ${fallbackThinking}`,
             );
             thinkLevel = fallbackThinking;
+            continue;
+          }
+
+          // Retry transient API errors from lastAssistant with exponential backoff
+          if (
+            isTransientApiError(lastAssistant) &&
+            !aborted &&
+            transientRetryCount < TRANSIENT_BACKOFF_MS.length
+          ) {
+            const backoffMs = TRANSIENT_BACKOFF_MS[transientRetryCount];
+            transientRetryCount++;
+            log.warn(
+              `transient API error from assistant (attempt ${transientRetryCount}/${TRANSIENT_BACKOFF_MS.length}), retrying in ${backoffMs}ms: ${(lastAssistant?.errorMessage ?? "").slice(0, 200)}`,
+            );
+            await new Promise((resolve) => setTimeout(resolve, backoffMs));
             continue;
           }
 
