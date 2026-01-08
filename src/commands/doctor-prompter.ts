@@ -39,7 +39,6 @@ export function createDoctorPrompter(params: {
 
   const canPrompt = isTty && !yes && !nonInteractive;
   const confirmDefault = async (p: Parameters<typeof confirm>[0]) => {
-    if (nonInteractive) return false;
     if (shouldRepair) return true;
     if (!canPrompt) return Boolean(p.initialValue ?? false);
     return guardCancel(await confirm(p), params.runtime) === true;
