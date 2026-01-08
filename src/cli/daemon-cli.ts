@@ -29,6 +29,7 @@ import { resolveGatewayLogPaths } from "../daemon/launchd.js";
 import { findLegacyGatewayServices } from "../daemon/legacy.js";
 import { resolveGatewayProgramArguments } from "../daemon/program-args.js";
 import { resolveGatewayService } from "../daemon/service.js";
+import { buildServiceEnvironment } from "../daemon/service-env.js";
 import { callGateway } from "../gateway/call.js";
 import { resolveGatewayBindHost } from "../gateway/net.js";
 import {
@@ -798,19 +799,16 @@ export async function runDaemonInstall(opts: DaemonInstallOptions) {
       dev: devMode,
       runtime: runtimeRaw,
     });
-  const environment: Record<string, string | undefined> = {
-    PATH: process.env.PATH,
-    CLAWDBOT_PROFILE: process.env.CLAWDBOT_PROFILE,
-    CLAWDBOT_STATE_DIR: process.env.CLAWDBOT_STATE_DIR,
-    CLAWDBOT_CONFIG_PATH: process.env.CLAWDBOT_CONFIG_PATH,
-    CLAWDBOT_GATEWAY_PORT: String(port),
-    CLAWDBOT_GATEWAY_TOKEN:
+  const environment = buildServiceEnvironment({
+    env: process.env,
+    port,
+    token:
       opts.token ||
       cfg.gateway?.auth?.token ||
       process.env.CLAWDBOT_GATEWAY_TOKEN,
-    CLAWDBOT_LAUNCHD_LABEL:
+    launchdLabel:
       process.platform === "darwin" ? GATEWAY_LAUNCH_AGENT_LABEL : undefined,
-  };
+  });
 
   try {
     await service.install({

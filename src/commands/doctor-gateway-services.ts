@@ -15,6 +15,7 @@ import {
 } from "../daemon/legacy.js";
 import { resolveGatewayProgramArguments } from "../daemon/program-args.js";
 import { resolveGatewayService } from "../daemon/service.js";
+import { buildServiceEnvironment } from "../daemon/service-env.js";
 import type { RuntimeEnv } from "../runtime.js";
 import {
   DEFAULT_GATEWAY_DAEMON_RUNTIME,
@@ -96,13 +97,13 @@ export async function maybeMigrateLegacyGatewayService(
       dev: devMode,
       runtime: daemonRuntime,
     });
-  const environment: Record<string, string | undefined> = {
-    PATH: process.env.PATH,
-    CLAWDBOT_GATEWAY_TOKEN:
-      cfg.gateway?.auth?.token ?? process.env.CLAWDBOT_GATEWAY_TOKEN,
-    CLAWDBOT_LAUNCHD_LABEL:
+  const environment = buildServiceEnvironment({
+    env: process.env,
+    port,
+    token: cfg.gateway?.auth?.token ?? process.env.CLAWDBOT_GATEWAY_TOKEN,
+    launchdLabel:
       process.platform === "darwin" ? GATEWAY_LAUNCH_AGENT_LABEL : undefined,
-  };
+  });
   await service.install({
     env: process.env,
     stdout: process.stdout,

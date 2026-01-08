@@ -32,6 +32,7 @@ import {
 import { GATEWAY_LAUNCH_AGENT_LABEL } from "../daemon/constants.js";
 import { resolveGatewayProgramArguments } from "../daemon/program-args.js";
 import { resolveGatewayService } from "../daemon/service.js";
+import { buildServiceEnvironment } from "../daemon/service-env.js";
 import { ensureControlUiAssetsBuilt } from "../infra/control-ui-assets.js";
 import type { RuntimeEnv } from "../runtime.js";
 import { defaultRuntime } from "../runtime.js";
@@ -617,12 +618,13 @@ async function maybeInstallDaemon(params: {
         dev: devMode,
         runtime: daemonRuntime,
       });
-    const environment: Record<string, string | undefined> = {
-      PATH: process.env.PATH,
-      CLAWDBOT_GATEWAY_TOKEN: params.gatewayToken,
-      CLAWDBOT_LAUNCHD_LABEL:
+    const environment = buildServiceEnvironment({
+      env: process.env,
+      port: params.port,
+      token: params.gatewayToken,
+      launchdLabel:
         process.platform === "darwin" ? GATEWAY_LAUNCH_AGENT_LABEL : undefined,
-    };
+    });
     await service.install({
       env: process.env,
       stdout: process.stdout,

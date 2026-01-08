@@ -31,6 +31,29 @@ Doctor/daemon will show runtime state (PID/last exit) and log hints.
 - Linux systemd (if installed): `journalctl --user -u clawdbot-gateway.service -n 200 --no-pager`
 - Windows: `schtasks /Query /TN "Clawdbot Gateway" /V /FO LIST`
 
+### Service Environment (PATH)
+
+The gateway daemon uses a **minimal PATH** that includes only:
+- `~/.bun/bin` (bun runtime)
+- `/usr/local/bin`, `/usr/bin`, `/bin` (system tools: git, ssh, curl, chromium, etc.)
+
+This intentionally **excludes** version managers (nvm, fnm, volta) and package managers
+(pnpm, npm) since they're only needed at install time, not runtime. This keeps the
+service environment clean and avoids breaking when you upgrade Node or switch versions.
+
+**Runtime variables** like `DISPLAY` (for headless browser) should be set in the
+`.env` file (`~/.clawdbot/.env`), which is loaded early by the gateway.
+
+Example `.env`:
+```bash
+DISPLAY=:99
+TELEGRAM_BOT_TOKEN=your_token_here
+```
+
+If your gateway can't find a binary at runtime, check:
+1. Is it in `/usr/local/bin`, `/usr/bin`, or `/bin`?
+2. Or symlink it to one of those directories.
+
 ### Service Running but Port Not Listening
 
 If the service reports **running** but nothing is listening on the gateway port,

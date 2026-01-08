@@ -13,6 +13,7 @@ import { GATEWAY_LAUNCH_AGENT_LABEL } from "../daemon/constants.js";
 import { readLastGatewayErrorLine } from "../daemon/diagnostics.js";
 import { resolveGatewayProgramArguments } from "../daemon/program-args.js";
 import { resolveGatewayService } from "../daemon/service.js";
+import { buildServiceEnvironment } from "../daemon/service-env.js";
 import { buildGatewayConnectionDetails } from "../gateway/call.js";
 import { formatPortDiagnostics, inspectPortUsage } from "../infra/ports.js";
 import type { RuntimeEnv } from "../runtime.js";
@@ -272,19 +273,16 @@ export async function doctorCommand(
               dev: devMode,
               runtime: daemonRuntime,
             });
-          const environment: Record<string, string | undefined> = {
-            PATH: process.env.PATH,
-            CLAWDBOT_PROFILE: process.env.CLAWDBOT_PROFILE,
-            CLAWDBOT_STATE_DIR: process.env.CLAWDBOT_STATE_DIR,
-            CLAWDBOT_CONFIG_PATH: process.env.CLAWDBOT_CONFIG_PATH,
-            CLAWDBOT_GATEWAY_PORT: String(port),
-            CLAWDBOT_GATEWAY_TOKEN:
+          const environment = buildServiceEnvironment({
+            env: process.env,
+            port,
+            token:
               cfg.gateway?.auth?.token ?? process.env.CLAWDBOT_GATEWAY_TOKEN,
-            CLAWDBOT_LAUNCHD_LABEL:
+            launchdLabel:
               process.platform === "darwin"
                 ? GATEWAY_LAUNCH_AGENT_LABEL
                 : undefined,
-          };
+          });
           await service.install({
             env: process.env,
             stdout: process.stdout,
