@@ -464,7 +464,7 @@ JSON
 
   echo "🎨 Copying Pi theme payload (optional)"
   PI_ENTRY_URL="$(cd "$ROOT_DIR" && node --input-type=module -e "console.log(import.meta.resolve('@mariozechner/pi-coding-agent'))")"
-  PI_ENTRY="$(cd "$ROOT_DIR" && node --input-type=module -e "console.log(new URL(process.argv[1]).pathname)" "$PI_ENTRY_URL")"
+  PI_ENTRY="$(cd "$ROOT_DIR" && node --input-type=module -e "console.log(decodeURIComponent(new URL(process.argv[1]).pathname))" "$PI_ENTRY_URL")"
   PI_DIR="$(cd "$(dirname "$PI_ENTRY")/.." && pwd)"
   THEME_SRC="$PI_DIR/dist/modes/interactive/theme"
   if [ -d "$THEME_SRC" ]; then
