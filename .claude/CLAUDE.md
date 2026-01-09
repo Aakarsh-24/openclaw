@@ -10,13 +10,14 @@ For dev-specific git workflow (three-remote setup), see `.workflow/AGENTS.md`.
 ## Slash Commands (TDD Workflow)
 
 ```bash
-/gate              # Quality gate (lint, build, test) - run before commits
-/test [pattern]    # Run tests (--coverage for coverage report)
-/e2e [pattern]     # Run E2E tests
-/commit "msg" ...  # Safe commit using scripts/committer
-/tdd red|green|refactor [feature]  # TDD workflow phases
-/coverage [path]   # Analyze test coverage gaps
-/docs-review       # Review workflow docs for quality issues
+/dev:help          # List all dev commands
+/dev:gate          # Quality gate (lint, build, test) - run before commits
+/dev:test [pattern]    # Run tests (--coverage for coverage report)
+/dev:e2e [pattern]     # Run E2E tests
+/dev:commit "msg" ...  # Safe commit using scripts/committer
+/dev:tdd red|green|refactor [feature]  # TDD workflow phases
+/dev:coverage [path]   # Analyze test coverage gaps
+/dev:docs-review       # Review workflow docs for quality issues
 ```
 
 ## When to Read What
@@ -43,12 +44,12 @@ These workflow docs provide **patterns**, not inventories. This repo is kept in 
 ## Quick Commands (Manual)
 
 ```bash
-# Quality gate (or use /gate slash command)
+# Quality gate (or use /dev:gate slash command)
 pnpm lint && pnpm build && pnpm test
 
-# Safe commit (or use /commit slash command)
+# Safe commit (or use /dev:commit slash command)
 scripts/committer "<message>" <files...>
 
-# E2E tests (or use /e2e slash command)
+# E2E tests (or use /dev:e2e slash command)
 pnpm test:e2e
 ```
