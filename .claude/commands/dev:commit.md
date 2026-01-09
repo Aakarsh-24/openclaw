@@ -1,6 +1,6 @@
 ---
 description: Create a safe, scoped commit using scripts/committer
-allowed-tools: Bash(scripts/committer:*), Bash(git:status), Bash(git:diff), Bash(git:log)
+allowed-tools: Bash(scripts/committer:*), Bash(git status:*), Bash(git diff:*), Bash(git log:*)
 argument-hint: "<message>" <file1> [file2...]
 success-criteria: |
   - Files staged via scripts/committer
@@ -27,9 +27,10 @@ Create a commit using the repository's committer script.
 - Follow concise, action-oriented messages (e.g., "CLI: add verbose flag")
 - Group related changes; avoid bundling unrelated refactors
 
-**Example:**
+**Examples** (from steipete's commits):
 ```bash
-scripts/committer "feat: add TDD slash commands" .claude/commands/test.md .claude/commands/gate.md
+scripts/committer "fix: retry telegram poll conflicts" src/telegram/polling.ts src/telegram/polling.test.ts
+scripts/committer "feat: auto-install gateway in quickstart" src/onboarding/quickstart.ts
 ```
 
 If no files specified, show git status and list changed files.

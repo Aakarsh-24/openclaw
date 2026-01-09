@@ -17,6 +17,7 @@
       "Bash(ls:*)",
       "Bash(mkdir:*)",
       "Bash(cat:*)",
+      "Bash(gh:*)",
       "Read",
       "Write",
       "Edit",

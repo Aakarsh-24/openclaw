@@ -1,11 +1,11 @@
 # End-to-End Testing Guide
 
 > **Purpose**: Patterns for writing E2E tests in clawdbot.
-> This repo is synced with upstream - explore locally, this doc provides patterns.
+> **Source of truth**: `test/gateway.multi.e2e.test.ts` - explore this file for current implementations.
 
 ## Explore First
 
-Before starting, check current state locally (synced from upstream):
+Before starting, check current state locally:
 
 | Concern | Where to look |
 |---------|---------------|
@@ -21,9 +21,9 @@ Before starting, check current state locally (synced from upstream):
 
 | File | Purpose |
 |------|---------|
-| `vitest.e2e.config.ts` | E2E test config, includes `test/**/*.e2e.test.ts` |
+| `vitest.e2e.config.ts` | E2E test config |
 | `test/setup.ts` | Global setup (temp HOME isolation) |
-| `test/gateway.multi.e2e.test.ts` | Main E2E test (476 lines) |
+| `test/gateway.multi.e2e.test.ts` | Main E2E test - reference implementation |
 
 ### Run E2E Tests
 
@@ -43,12 +43,14 @@ pnpm test:e2e
 
 ---
 
-## E2E Patterns (from `test/gateway.multi.e2e.test.ts`)
+## Core E2E Patterns
+
+> These patterns are extracted from `test/gateway.multi.e2e.test.ts`.
+> Check that file for the current implementation - signatures may evolve.
 
 ### Pattern 1: Ephemeral Port Allocation
 
 ```typescript
-// From lines 41-51
 const getFreePort = async () => {
   const srv = net.createServer();
   await new Promise<void>((resolve) => srv.listen(0, "127.0.0.1", resolve));
@@ -65,7 +67,6 @@ const getFreePort = async () => {
 ### Pattern 2: Port Readiness Polling
 
 ```typescript
-// From lines 53-96
 const waitForPortOpen = async (
   proc: ChildProcessWithoutNullStreams,
   port: number,
@@ -73,23 +74,18 @@ const waitForPortOpen = async (
 ) => {
   const startedAt = Date.now();
   while (Date.now() - startedAt < timeoutMs) {
-    // Check if process exited early
     if (proc.exitCode !== null) {
       throw new Error(`process exited before listening`);
     }
-
     try {
       await new Promise<void>((resolve, reject) => {
         const socket = net.connect({ host: "127.0.0.1", port });
-        socket.once("connect", () => {
-          socket.destroy();
-          resolve();
-        });
+        socket.once("connect", () => { socket.destroy(); resolve(); });
         socket.once("error", reject);
       });
-      return; // Port is open
+      return;
     } catch {
-      await sleep(25); // Keep polling
+      await sleep(25);
     }
   }
   throw new Error(`timeout waiting for port ${port}`);
@@ -99,10 +95,8 @@ const waitForPortOpen = async (
 ### Pattern 3: Process Spawning with Isolation
 
 ```typescript
-// From lines 98-186
 const spawnGatewayInstance = async (name: string): Promise<GatewayInstance> => {
   const port = await getFreePort();
-  const bridgePort = await getFreePort();
 
   // Create isolated HOME directory
   const homeDir = await fs.mkdtemp(
@@ -112,34 +106,25 @@ const spawnGatewayInstance = async (name: string): Promise<GatewayInstance> => {
   // Create config in isolated HOME
   const configDir = path.join(homeDir, ".clawdbot");
   await fs.mkdir(configDir, { recursive: true });
-  const configPath = path.join(configDir, "clawdbot.json");
-  await fs.writeFile(configPath, JSON.stringify(config, null, 2), "utf8");
 
   // Spawn with isolated environment
-  const child = spawn(
-    "bun",
-    ["src/index.ts", "gateway", "--port", String(port)],
-    {
-      cwd: process.cwd(),
-      env: {
-        ...process.env,
-        HOME: homeDir,
-        CLAWDBOT_CONFIG_PATH: configPath,
-        CLAWDBOT_SKIP_PROVIDERS: "1",
-        CLAWDBOT_SKIP_BROWSER_CONTROL_SERVER: "1",
-      },
-      stdio: ["ignore", "pipe", "pipe"],
+  const child = spawn("bun", ["src/index.ts", "gateway", "--port", String(port)], {
+    cwd: process.cwd(),
+    env: {
+      ...process.env,
+      HOME: homeDir,
+      // See Environment Variables section for full list
     },
-  );
+    stdio: ["ignore", "pipe", "pipe"],
+  });
 
   // Capture stdout/stderr for debugging
-  child.stdout?.setEncoding("utf8");
-  child.stderr?.setEncoding("utf8");
+  const stdout: string[] = [];
+  const stderr: string[] = [];
   child.stdout?.on("data", (d) => stdout.push(String(d)));
   child.stderr?.on("data", (d) => stderr.push(String(d)));
 
   await waitForPortOpen(child, port, GATEWAY_START_TIMEOUT_MS);
-
   return { name, port, homeDir, child, stdout, stderr };
 };
 ```
@@ -147,7 +132,6 @@ const spawnGatewayInstance = async (name: string): Promise<GatewayInstance> => {
 ### Pattern 4: Graceful Cleanup
 
 ```typescript
-// From lines 188-211
 const stopGatewayInstance = async (inst: GatewayInstance) => {
   // Try SIGTERM first
   if (inst.child.exitCode === null && !inst.child.killed) {
@@ -187,11 +171,7 @@ describe("e2e tests", () => {
 ### Pattern 5: CLI JSON Output Testing
 
 ```typescript
-// From lines 213-249
-const runCliJson = async (
-  args: string[],
-  env: NodeJS.ProcessEnv,
-): Promise<unknown> => {
+const runCliJson = async (args: string[], env: NodeJS.ProcessEnv): Promise<unknown> => {
   const stdout: string[] = [];
   const stderr: string[] = [];
 
@@ -223,135 +203,11 @@ const health = await runCliJson(
 expect(health.ok).toBe(true);
 ```
 
-### Pattern 6: HTTP Endpoint Testing
-
-```typescript
-// From lines 251-291
-const postJson = async (url: string, body: unknown) => {
-  const payload = JSON.stringify(body);
-  const parsed = new URL(url);
-
-  return await new Promise<{ status: number; json: unknown }>(
-    (resolve, reject) => {
-      const req = httpRequest(
-        {
-          method: "POST",
-          hostname: parsed.hostname,
-          port: Number(parsed.port),
-          path: parsed.pathname,
-          headers: {
-            "Content-Type": "application/json",
-            "Content-Length": Buffer.byteLength(payload),
-          },
-        },
-        (res) => {
-          let data = "";
-          res.on("data", (chunk) => { data += chunk; });
-          res.on("end", () => {
-            resolve({
-              status: res.statusCode ?? 0,
-              json: data.trim() ? JSON.parse(data) : null,
-            });
-          });
-        },
-      );
-      req.on("error", reject);
-      req.write(payload);
-      req.end();
-    },
-  );
-};
-
-// Usage
-const hookRes = await postJson(
-  `http://127.0.0.1:${port}/hooks/wake?token=${token}`,
-  { text: "wake", mode: "now" }
-);
-expect(hookRes.status).toBe(200);
-```
-
----
-
-## E2E Test Template
-
-Use this template for new E2E tests:
-
-```typescript
-// test/my-feature.e2e.test.ts
-import { type ChildProcessWithoutNullStreams, spawn } from "node:child_process";
-import fs from "node:fs/promises";
-import net from "node:net";
-import os from "node:os";
-import path from "node:path";
-import { afterAll, describe, expect, it } from "vitest";
-
-const E2E_TIMEOUT_MS = 120_000;
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-// Copy getFreePort, waitForPortOpen from gateway.multi.e2e.test.ts
-
-type TestInstance = {
-  name: string;
-  port: number;
-  homeDir: string;
-  child: ChildProcessWithoutNullStreams;
-};
-
-const spawnInstance = async (name: string): Promise<TestInstance> => {
-  const port = await getFreePort();
-  const homeDir = await fs.mkdtemp(path.join(os.tmpdir(), `e2e-${name}-`));
-
-  // Setup config...
-
-  const child = spawn("bun", ["src/index.ts", "gateway", "--port", String(port)], {
-    env: { ...process.env, HOME: homeDir },
-  });
-
-  await waitForPortOpen(port, 30_000);
-  return { name, port, homeDir, child };
-};
-
-const stopInstance = async (inst: TestInstance) => {
-  inst.child.kill("SIGTERM");
-  await fs.rm(inst.homeDir, { recursive: true, force: true });
-};
-
-describe("my feature e2e", () => {
-  const instances: TestInstance[] = [];
-
-  afterAll(async () => {
-    for (const inst of instances) {
-      await stopInstance(inst);
-    }
-  });
-
-  it("does the expected thing", { timeout: E2E_TIMEOUT_MS }, async () => {
-    const inst = await spawnInstance("test");
-    instances.push(inst);
-
-    // Test assertions...
-
-    expect(true).toBe(true);
-  });
-});
-```
-
----
-
-## Recommended E2E Tests to Add
-
-| Test File | Purpose | Priority |
-|-----------|---------|----------|
-| `test/cli.e2e.test.ts` | Test CLI commands end-to-end | High |
-| `test/provider.e2e.test.ts` | Test provider message flows | Medium |
-| `test/webhook.e2e.test.ts` | Test webhook endpoints | Medium |
-| `test/recovery.e2e.test.ts` | Test reconnection/errors | Low |
-
 ---
 
 ## Environment Variables for E2E
 
-From `test/gateway.multi.e2e.test.ts:131-146`:
+See `test/gateway.multi.e2e.test.ts` for the full current list. Common ones:
 
 | Variable | Purpose |
 |----------|---------|

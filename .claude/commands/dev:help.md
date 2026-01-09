@@ -6,6 +6,13 @@ description: List available dev workflow commands
 
 Available commands in the `dev:` namespace:
 
+## Upstream Contributions
+| Command | Description |
+|---------|-------------|
+| `/dev:fix-issue <number>` | Fix an upstream issue with TDD workflow |
+| `/dev:pr-review <number>` | Review a PR (read-only) |
+| `/dev:pr-test <number>` | Test a PR locally before merging |
+
 ## Quality & Testing
 | Command | Description |
 |---------|-------------|
@@ -21,14 +28,14 @@ Available commands in the `dev:` namespace:
 | `/dev:tdd red\|green\|refactor` | TDD workflow phases |
 | `/dev:commit "msg" files...` | Safe commit using scripts/committer |
 | `/dev:docs-review` | Review workflow docs for quality issues |
+| `/dev:docs-update` | Review, fix, and commit doc issues |
 
 ## Getting Started
 
 **New to this codebase?** Start here:
-1. Read `CLAUDE.md` (root) for project guidelines
-2. Read `.claude/CLAUDE.md` for fork-specific workflow
-3. Run `/dev:gate` to verify your setup works
-4. Explore with the `clawdbot-guide` agent for questions
+1. Read `.workflow/AGENTS.md` for complete workflow guide
+2. Run `/dev:gate` to verify your setup works
+3. Explore `src/**/*.test.ts` for test patterns
 
 **Quick commands:**
 ```bash

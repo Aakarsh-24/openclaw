@@ -14,7 +14,7 @@ Before starting, check current state locally (synced from upstream):
 | Test helpers | `src/**/test-helpers.ts`, `test/mocks/` |
 | Existing test patterns | `src/**/*.test.ts` (colocated with source) |
 | E2E examples | `test/**/*.e2e.test.ts` |
-| Guidelines | `CLAUDE.md` |
+| Coding standards | `CLAUDE.md` (root) |
 
 ---
 
@@ -43,23 +43,6 @@ pnpm test:live         # Live API tests (requires env vars)
 | Port utilities | `src/gateway/test-helpers.ts` | `getFreePort()`, `occupyPort()` |
 | Baileys mock | `test/mocks/baileys.ts` | `createMockBaileys()` for WhatsApp |
 | Typing mock | `src/auto-reply/reply/test-helpers.ts` | `createMockTypingController()` |
-
----
-
-## Recommended: Watch Mode Script
-
-**Not in repo** - add to `package.json`:
-
-```json
-{
-  "scripts": {
-    "test:watch": "vitest --watch",
-    "test:watch:ui": "vitest --ui"
-  }
-}
-```
-
-This enables the core TDD feedback loop.
 
 ---
 
@@ -270,33 +253,20 @@ Before committing:
 
 ---
 
-## Recommended Enhancements
+## Watch Mode for TDD
 
-### Add to `package.json`
+For the core TDD feedback loop, add to `package.json`:
 
 ```json
 {
   "scripts": {
     "test:watch": "vitest --watch",
+    "test:watch:ui": "vitest --ui",
     "test:related": "vitest --watch --changed"
   }
 }
 ```
 
-### Pre-commit Hook (optional)
-
-Create `.git/hooks/pre-commit`:
-
-```bash
-#!/bin/bash
-pnpm test --run --bail || exit 1
-```
-
-### Test File Generator (future)
-
-Could add `scripts/scaffold-test.ts`:
-
-```bash
-pnpm tsx scripts/scaffold-test.ts src/my-module.ts
-# Generates src/my-module.test.ts with describe/it stubs
-```
+- `test:watch` - Re-runs on file changes
+- `test:watch:ui` - Browser UI for test results
+- `test:related` - Only tests affected by changes
