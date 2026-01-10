@@ -45,7 +45,7 @@ import {
 import { danger, logVerbose, shouldLogVerbose } from "../globals.js";
 import { enqueueSystemEvent } from "../infra/system-events.js";
 import { getChildLogger } from "../logging.js";
-import { detectMime } from "../media/mime.js";
+import { type FetchLike, fetchRemoteMedia } from "../media/fetch.js";
 import { saveMediaBuffer } from "../media/store.js";
 import { buildPairingReply } from "../pairing/pairing-messages.js";
 import {
@@ -59,7 +59,7 @@ import {
 } from "../routing/session-key.js";
 import type { RuntimeEnv } from "../runtime.js";
 import { resolveSlackAccount } from "./accounts.js";
-import { reactSlackMessage } from "./actions.js";
+import { reactSlackMessage, removeSlackReaction } from "./actions.js";
 import { sendMessageSlack } from "./send.js";
 import { resolveSlackThreadTargets } from "./threading.js";
 import { resolveSlackAppToken, resolveSlackBotToken } from "./token.js";
@@ -355,27 +355,28 @@ async function resolveSlackMedia(params: {
     const url = file.url_private_download ?? file.url_private;
     if (!url) continue;
     try {
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${params.token}` },
+      const fetchImpl: FetchLike = (input, init) => {
+        const headers = new Headers(init?.headers);
+        headers.set("Authorization", `Bearer ${params.token}`);
+        return fetch(input, { ...init, headers });
+      };
+      const fetched = await fetchRemoteMedia({
+        url,
+        fetchImpl,
+        filePathHint: file.name,
       });
-      if (!res.ok) continue;
-      const buffer = Buffer.from(await res.arrayBuffer());
-      if (buffer.byteLength > params.maxBytes) continue;
-      const contentType = await detectMime({
-        buffer,
-        headerMime: res.headers.get("content-type"),
-        filePath: file.name,
-      });
+      if (fetched.buffer.byteLength > params.maxBytes) continue;
       const saved = await saveMediaBuffer(
-        buffer,
-        contentType ?? file.mimetype,
+        fetched.buffer,
+        fetched.contentType ?? file.mimetype,
         "inbound",
         params.maxBytes,
       );
+      const label = fetched.fileName ?? file.name;
       return {
         path: saved.path,
         contentType: saved.contentType,
-        placeholder: file.name ? `[Slack file: ${file.name}]` : "[Slack file]",
+        placeholder: label ? `[Slack file: ${label}]` : "[Slack file]",
       };
     } catch {
       // Ignore download failures and fall through to the next file.
@@ -913,6 +914,8 @@ export async function monitorSlackProvider(opts: MonitorSlackOpts = {}) {
     const rawBody = (message.text ?? "").trim() || media?.placeholder || "";
     if (!rawBody) return;
     const ackReaction = resolveAckReaction(cfg, route.agentId);
+    const ackReactionValue = ackReaction ?? "";
+    const removeAckAfterReply = cfg.messages?.removeAckAfterReply ?? false;
     const shouldAckReaction = () => {
       if (!ackReaction) return false;
       if (ackReactionScope === "all") return true;
@@ -927,16 +930,27 @@ export async function monitorSlackProvider(opts: MonitorSlackOpts = {}) {
       }
       return false;
     };
-    if (shouldAckReaction() && message.ts) {
-      reactSlackMessage(message.channel, message.ts, ackReaction, {
-        token: botToken,
-        client: app.client,
-      }).catch((err) => {
-        logVerbose(
-          `slack react failed for channel ${message.channel}: ${String(err)}`,
-        );
-      });
-    }
+    const ackReactionMessageTs = message.ts;
+    const ackReactionPromise =
+      shouldAckReaction() && ackReactionMessageTs && ackReactionValue
+        ? reactSlackMessage(
+            message.channel,
+            ackReactionMessageTs,
+            ackReactionValue,
+            {
+              token: botToken,
+              client: app.client,
+            },
+          ).then(
+            () => true,
+            (err) => {
+              logVerbose(
+                `slack react failed for channel ${message.channel}: ${String(err)}`,
+              );
+              return false;
+            },
+          )
+        : null;
 
     const roomLabel = channelName ? `#${channelName}` : `#${message.channel}`;
 
@@ -1156,6 +1170,20 @@ export async function monitorSlackProvider(opts: MonitorSlackOpts = {}) {
       logVerbose(
         `slack: delivered ${finalCount} reply${finalCount === 1 ? "" : "ies"} to ${replyTarget}`,
       );
+    }
+    if (removeAckAfterReply && ackReactionPromise && ackReactionMessageTs) {
+      const messageTs = ackReactionMessageTs;
+      void ackReactionPromise.then((didAck) => {
+        if (!didAck) return;
+        removeSlackReaction(message.channel, messageTs, ackReactionValue, {
+          token: botToken,
+          client: app.client,
+        }).catch((err) => {
+          logVerbose(
+            `slack: failed to remove ack reaction from ${message.channel}/${message.ts}: ${String(err)}`,
+          );
+        });
+      });
     }
   };
 

@@ -1,6 +1,8 @@
+diff --git a/dist/src/classes/RequestClient.js b/dist/src/classes/RequestClient.js
+index 4a3357a3a71e993e49dbf4511be7f39aeec03755..cae09147c4016ff15ee09c7a0c679a6cd6e374e0 100644
 --- a/dist/src/classes/RequestClient.js
 +++ b/dist/src/classes/RequestClient.js
-@@ -86,6 +86,9 @@
+@@ -118,6 +118,9 @@ export class RequestClient {
              }
          }
          this.abortController = new AbortController();
@@ -10,7 +12,7 @@
          let body;
          if (data?.body &&
              typeof data.body === "object" &&
-@@ -146,12 +149,26 @@
+@@ -178,12 +181,26 @@ export class RequestClient {
                  body = JSON.stringify(data.body);
              }
          }
@@ -40,6 +42,6 @@
 +                clearTimeout(timeoutId);
 +            }
 +        }
-         if (response.status === 429) {
-             const responseBody = await response.json();
-             const rateLimitError = new RateLimitError(response, responseBody);
+         let rawBody = "";
+         let parsedBody;
+         try {

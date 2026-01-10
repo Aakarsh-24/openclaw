@@ -5,9 +5,9 @@ read_when:
 ---
 # Configuration 🔧
 
-CLAWDBOT reads an optional **JSON5** config from `~/.clawdbot/clawdbot.json` (comments + trailing commas allowed).
+Clawdbot reads an optional **JSON5** config from `~/.clawdbot/clawdbot.json` (comments + trailing commas allowed).
 
-If the file is missing, CLAWDBOT uses safe-ish defaults (embedded Pi agent + per-sender sessions + workspace `~/clawd`). You usually only need a config to:
+If the file is missing, Clawdbot uses safe-ish defaults (embedded Pi agent + per-sender sessions + workspace `~/clawd`). You usually only need a config to:
 - restrict who can trigger the bot (`whatsapp.allowFrom`, `telegram.allowFrom`, etc.)
 - control group allowlists + mention behavior (`whatsapp.groups`, `telegram.groups`, `discord.guilds`, `agents.list[].groupChat`)
 - customize message prefixes (`messages`)
@@ -86,7 +86,7 @@ To prevent the bot from responding to WhatsApp @-mentions in groups (only respon
 
 ### Env vars + `.env`
 
-CLAWDBOT reads env vars from the parent process (shell, launchd/systemd, CI, etc.).
+Clawdbot reads env vars from the parent process (shell, launchd/systemd, CI, etc.).
 
 Additionally, it loads:
 - `.env` from the current working directory (if present)
@@ -112,7 +112,7 @@ See [/environment](/environment) for full precedence and sources.
 
 ### `env.shellEnv` (optional)
 
-Opt-in convenience: if enabled and none of the expected keys are set yet, CLAWDBOT runs your login shell and imports only the missing expected keys (never overrides).
+Opt-in convenience: if enabled and none of the expected keys are set yet, Clawdbot runs your login shell and imports only the missing expected keys (never overrides).
 This effectively sources your shell profile.
 
 ```json5
@@ -182,7 +182,7 @@ rotation order used for failover.
 
 Optional per-agent identity used for defaults and UX. This is written by the macOS onboarding assistant.
 
-If set, CLAWDBOT derives defaults (only when you haven’t set them explicitly):
+If set, Clawdbot derives defaults (only when you haven’t set them explicitly):
 - `messages.ackReaction` from the **active agent**’s `identity.emoji` (falls back to 👀)
 - `agents.list[].groupChat.mentionPatterns` from the agent’s `identity.name`/`identity.emoji` (so “@Samantha” works in groups across Telegram/Slack/Discord/iMessage/WhatsApp)
 
@@ -948,7 +948,8 @@ See [Messages](/concepts/messages) for queueing, sessions, and streaming context
   messages: {
     responsePrefix: "🦞", // or "auto"
     ackReaction: "👀",
-    ackReactionScope: "group-mentions"
+    ackReactionScope: "group-mentions",
+    removeAckAfterReply: false
   }
 }
 ```
@@ -974,6 +975,9 @@ active agent’s `identity.emoji` when set, otherwise `"👀"`. Set it to `""` t
 - `group-all`: all group/room messages
 - `direct`: direct messages only
 - `all`: all messages
+
+`removeAckAfterReply` removes the bot’s ack reaction after a reply is sent
+(Slack/Discord/Telegram only). Default: `false`.
 
 ### `talk`
 
@@ -1194,7 +1198,7 @@ See [/concepts/typing-indicators](/concepts/typing-indicators) for behavior deta
 
 `agents.defaults.model.primary` should be set as `provider/model` (e.g. `anthropic/claude-opus-4-5`).
 Aliases come from `agents.defaults.models.*.alias` (e.g. `Opus`).
-If you omit the provider, CLAWDBOT currently assumes `anthropic` as a temporary
+If you omit the provider, Clawdbot currently assumes `anthropic` as a temporary
 deprecation fallback.
 Z.AI models are available as `zai/<model>` (e.g. `zai/glm-4.7`) and require
 `ZAI_API_KEY` (or legacy `Z_AI_API_KEY`) in the environment.
@@ -1350,7 +1354,9 @@ Legacy: `perSession` is still supported (`true` → `scope: "session"`,
           vncPort: 5900,
           noVncPort: 6080,
           headless: false,
-          enableNoVnc: true
+          enableNoVnc: true,
+          autoStart: true,
+          autoStartTimeoutMs: 12000
         },
         prune: {
           idleHours: 24,  // 0 disables idle pruning

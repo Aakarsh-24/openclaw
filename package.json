@@ -1,6 +1,6 @@
 {
   "name": "clawdbot",
-  "version": "2026.1.9",
+  "version": "2026.1.10",
   "description": "WhatsApp gateway CLI (Baileys web) with Pi RPC agent",
   "type": "module",
   "main": "dist/index.js",
@@ -25,6 +25,7 @@
     "dist/infra/**",
     "dist/macos/**",
     "dist/media/**",
+    "dist/msteams/**",
     "dist/process/**",
     "dist/sessions/**",
     "dist/providers/**",
@@ -48,7 +49,8 @@
     "dist/utils/**",
     "dist/logging/**",
     "dist/markdown/**",
-    "dist/pairing/**"
+    "dist/pairing/**",
+    "dist/whatsapp/**"
   ],
   "scripts": {
     "dev": "tsx src/entry.ts",
@@ -65,6 +67,10 @@
     "start": "tsx src/entry.ts",
     "clawdbot": "tsx src/entry.ts",
     "gateway:watch": "tsx watch src/entry.ts gateway --force",
+    "gateway:dev": "CLAWDBOT_PROFILE=dev tsx src/entry.ts gateway --dev",
+    "gateway:dev:reset": "CLAWDBOT_PROFILE=dev tsx src/entry.ts gateway --reset",
+    "tui": "tsx src/entry.ts tui",
+    "tui:dev": "CLAWDBOT_PROFILE=dev tsx src/entry.ts tui",
     "clawdbot:rpc": "tsx src/entry.ts agent --mode rpc --json",
     "ios:gen": "cd apps/ios && xcodegen generate",
     "ios:open": "cd apps/ios && xcodegen generate && open Clawdbot.xcodeproj",
@@ -92,6 +98,10 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "vitest run --config vitest.e2e.config.ts",
     "test:live": "vitest run --config vitest.live.config.ts",
+    "test:docker:onboard": "bash scripts/e2e/onboard-docker.sh",
+    "test:docker:gateway-network": "bash scripts/e2e/gateway-network-docker.sh",
+    "test:docker:live-models": "bash scripts/test-live-models-docker.sh",
+    "test:docker:live-gateway": "bash scripts/test-live-gateway-models-docker.sh",
     "test:docker:qr": "bash scripts/e2e/qr-import-docker.sh",
     "test:docker:doctor-switch": "bash scripts/e2e/doctor-install-switch-docker.sh",
     "protocol:gen": "tsx scripts/protocol-gen.ts",
@@ -112,10 +122,10 @@
     "@grammyjs/runner": "^2.0.3",
     "@grammyjs/transformer-throttler": "^1.2.1",
     "@homebridge/ciao": "^1.3.4",
-    "@mariozechner/pi-agent-core": "^0.42.1",
-    "@mariozechner/pi-ai": "^0.42.1",
-    "@mariozechner/pi-coding-agent": "^0.42.1",
-    "@mariozechner/pi-tui": "^0.42.1",
+    "@mariozechner/pi-agent-core": "^0.42.2",
+    "@mariozechner/pi-ai": "^0.42.2",
+    "@mariozechner/pi-coding-agent": "^0.42.2",
+    "@mariozechner/pi-tui": "^0.42.2",
     "@microsoft/agents-hosting": "^1.1.1",
     "@microsoft/agents-hosting-express": "^1.1.1",
     "@microsoft/agents-hosting-extensions-teams": "^1.1.1",
@@ -183,10 +193,12 @@
       "@sinclair/typebox": "0.34.47"
     },
     "patchedDependencies": {
-      "@buape/carbon": "patches/@buape__carbon.patch",
+      "@buape/carbon@0.0.0-beta-20260109194934": "patches/@buape__carbon@0.0.0-beta-20260109194934.patch",
       "@mariozechner/pi-agent-core": "patches/@mariozechner__pi-agent-core.patch",
+      "@mariozechner/pi-ai@0.42.2": "patches/@mariozechner__pi-ai@0.42.2.patch",
       "@mariozechner/pi-coding-agent": "patches/@mariozechner__pi-coding-agent.patch",
-      "@mariozechner/pi-ai": "patches/@mariozechner__pi-ai.patch"
+      "playwright-core@1.57.0": "patches/playwright-core@1.57.0.patch",
+      "qrcode-terminal": "patches/qrcode-terminal.patch"
     }
   },
   "vitest": {
@@ -220,13 +232,5 @@
       "apps/macos/.build/**",
       "dist/Clawdbot.app/**"
     ]
-  },
-  "patchedDependencies": {
-    "@buape/carbon": "patches/@buape__carbon.patch",
-    "@mariozechner/pi-agent-core": "patches/@mariozechner__pi-agent-core.patch",
-    "@mariozechner/pi-coding-agent": "patches/@mariozechner__pi-coding-agent.patch",
-    "@mariozechner/pi-ai": "patches/@mariozechner__pi-ai.patch",
-    "qrcode-terminal": "patches/qrcode-terminal.patch",
-    "playwright-core@1.57.0": "patches/playwright-core@1.57.0.patch"
   }
 }

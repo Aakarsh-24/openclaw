@@ -5,6 +5,10 @@ import type {
   GatewayMessageProvider,
 } from "../../utils/message-provider.js";
 import { normalizeE164 } from "../../utils.js";
+import {
+  isWhatsAppGroupJid,
+  normalizeWhatsAppTarget,
+} from "../../whatsapp/normalize.js";
 
 export type OutboundProvider = DeliverableMessageProvider | "none";
 
@@ -20,7 +24,7 @@ export type OutboundTargetResolution =
   | { ok: true; to: string }
   | { ok: false; error: Error };
 
-export function resolveOutboundTarget(params: {
+export function normalizeOutboundTarget(params: {
   provider: GatewayMessageProvider;
   to?: string;
   allowFrom?: string[];
@@ -28,16 +32,28 @@ export function resolveOutboundTarget(params: {
   const trimmed = params.to?.trim() || "";
   if (params.provider === "whatsapp") {
     if (trimmed) {
-      return { ok: true, to: normalizeE164(trimmed) };
+      const normalized = normalizeWhatsAppTarget(trimmed);
+      if (!normalized) {
+        return {
+          ok: false,
+          error: new Error(
+            "Delivering to WhatsApp requires --to <E.164|group JID> or whatsapp.allowFrom[0]",
+          ),
+        };
+      }
+      return { ok: true, to: normalized };
     }
     const fallback = params.allowFrom?.[0]?.trim();
     if (fallback) {
-      return { ok: true, to: fallback };
+      const normalized = normalizeWhatsAppTarget(fallback);
+      if (normalized) {
+        return { ok: true, to: normalized };
+      }
     }
     return {
       ok: false,
       error: new Error(
-        "Delivering to WhatsApp requires --to <E.164> or whatsapp.allowFrom[0]",
+        "Delivering to WhatsApp requires --to <E.164|group JID> or whatsapp.allowFrom[0]",
       ),
     };
   }
@@ -113,6 +129,14 @@ export function resolveOutboundTarget(params: {
   };
 }
 
+export function resolveOutboundTarget(params: {
+  provider: GatewayMessageProvider;
+  to?: string;
+  allowFrom?: string[];
+}): OutboundTargetResolution {
+  return normalizeOutboundTarget(params);
+}
+
 export function resolveHeartbeatDeliveryTarget(params: {
   cfg: ClawdbotConfig;
   entry?: SessionEntry;
@@ -178,14 +202,14 @@ export function resolveHeartbeatDeliveryTarget(params: {
   }
 
   if (provider !== "whatsapp") {
-    const resolved = resolveOutboundTarget({ provider, to });
+    const resolved = normalizeOutboundTarget({ provider, to });
     return resolved.ok
       ? { provider, to: resolved.to }
       : { provider: "none", reason: "no-target" };
   }
 
   const rawAllow = cfg.whatsapp?.allowFrom ?? [];
-  const resolved = resolveOutboundTarget({
+  const resolved = normalizeOutboundTarget({
     provider: "whatsapp",
     to,
     allowFrom: rawAllow,
@@ -194,6 +218,7 @@ export function resolveHeartbeatDeliveryTarget(params: {
     return { provider: "none", reason: "no-target" };
   }
   if (rawAllow.includes("*")) return { provider, to: resolved.to };
+  if (isWhatsAppGroupJid(resolved.to)) return { provider, to: resolved.to };
   const allowFrom = rawAllow
     .map((val) => normalizeE164(val))
     .filter((val) => val.length > 1);

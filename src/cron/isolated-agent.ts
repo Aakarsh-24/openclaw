@@ -49,6 +49,10 @@ import { registerAgentRunContext } from "../infra/agent-events.js";
 import { parseTelegramTarget } from "../telegram/targets.js";
 import { resolveTelegramToken } from "../telegram/token.js";
 import { normalizeE164, truncateUtf16Safe } from "../utils.js";
+import {
+  isWhatsAppGroupJid,
+  normalizeWhatsAppTarget,
+} from "../whatsapp/normalize.js";
 import type { CronJob } from "./types.js";
 
 export type RunCronAgentTurnResult = {
@@ -203,15 +207,22 @@ function resolveDeliveryTarget(
 
   const sanitizedWhatsappTo = (() => {
     if (provider !== "whatsapp") return rawTo;
+    if (rawTo && isWhatsAppGroupJid(rawTo)) {
+      return normalizeWhatsAppTarget(rawTo) ?? rawTo;
+    }
     const rawAllow = cfg.whatsapp?.allowFrom ?? [];
-    if (rawAllow.includes("*")) return rawTo;
+    if (rawAllow.includes("*")) {
+      return rawTo ? (normalizeWhatsAppTarget(rawTo) ?? rawTo) : rawTo;
+    }
     const allowFrom = rawAllow
       .map((val) => normalizeE164(val))
       .filter((val) => val.length > 1);
-    if (allowFrom.length === 0) return rawTo;
+    if (allowFrom.length === 0) {
+      return rawTo ? (normalizeWhatsAppTarget(rawTo) ?? rawTo) : rawTo;
+    }
     if (!rawTo) return allowFrom[0];
-    const normalized = normalizeE164(rawTo);
-    if (allowFrom.includes(normalized)) return normalized;
+    const normalized = normalizeWhatsAppTarget(rawTo);
+    if (normalized && allowFrom.includes(normalized)) return normalized;
     return allowFrom[0];
   })();
 
@@ -543,7 +554,8 @@ export async function runCronIsolatedAgentTurn(params: {
           summary: "Delivery skipped (no WhatsApp recipient).",
         };
       }
-      const to = normalizeE164(resolvedDelivery.to);
+      const rawTo = resolvedDelivery.to;
+      const to = normalizeWhatsAppTarget(rawTo) ?? rawTo;
       try {
         await deliverPayloadsWithMedia({
           payloads,

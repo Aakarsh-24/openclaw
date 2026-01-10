@@ -827,6 +827,13 @@ export type SandboxBrowserSettings = {
   noVncPort?: number;
   headless?: boolean;
   enableNoVnc?: boolean;
+  /**
+   * When true (default), sandboxed browser control will try to start/reattach to
+   * the sandbox browser container when a tool call needs it.
+   */
+  autoStart?: boolean;
+  /** Max time to wait for CDP to become reachable after auto-start (ms). */
+  autoStartTimeoutMs?: number;
 };
 
 export type SandboxPruneSettings = {
@@ -999,6 +1006,8 @@ export type MessagesConfig = {
   ackReaction?: string;
   /** When to send ack reactions. Default: "group-mentions". */
   ackReactionScope?: "group-mentions" | "group-all" | "direct" | "all";
+  /** Remove ack reaction after reply is sent (default: false). */
+  removeAckAfterReply?: boolean;
 };
 
 export type CommandsConfig = {

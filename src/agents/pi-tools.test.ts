@@ -31,35 +31,19 @@ describe("createClawdbotCodingTools", () => {
     expect(parameters.required ?? []).toContain("action");
   });
 
-  it("requires raw for gateway config.apply tool calls", () => {
+  it("exposes raw for gateway config.apply tool calls", () => {
     const tools = createClawdbotCodingTools();
     const gateway = tools.find((tool) => tool.name === "gateway");
     expect(gateway).toBeDefined();
 
     const parameters = gateway?.parameters as {
-      allOf?: Array<Record<string, unknown>>;
+      type?: unknown;
+      required?: string[];
+      properties?: Record<string, unknown>;
     };
-    const conditional = parameters.allOf?.find(
-      (entry) => "if" in entry && "then" in entry,
-    ) as
-      | { if?: Record<string, unknown>; then?: Record<string, unknown> }
-      | undefined;
-
-    expect(conditional).toBeDefined();
-    const thenRequired = conditional?.then?.required as string[] | undefined;
-    expect(thenRequired ?? []).toContain("raw");
-
-    const action = (
-      conditional?.if?.properties as Record<string, unknown> | undefined
-    )?.action as { const?: unknown; enum?: unknown[] } | undefined;
-    const values = new Set<string>();
-    if (typeof action?.const === "string") values.add(action.const);
-    if (Array.isArray(action?.enum)) {
-      for (const value of action.enum) {
-        if (typeof value === "string") values.add(value);
-      }
-    }
-    expect(values.has("config.apply")).toBe(true);
+    expect(parameters.type).toBe("object");
+    expect(parameters.properties?.raw).toBeDefined();
+    expect(parameters.required ?? []).not.toContain("raw");
   });
 
   it("flattens anyOf-of-literals to enum for provider compatibility", () => {
@@ -170,9 +154,20 @@ describe("createClawdbotCodingTools", () => {
 
   it("includes bash and process tools", () => {
     const tools = createClawdbotCodingTools();
-    // NOTE: bash/read/write/edit are capitalized to bypass Anthropic OAuth blocking
-    expect(tools.some((tool) => tool.name === "Bash")).toBe(true);
+    expect(tools.some((tool) => tool.name === "bash")).toBe(true);
     expect(tools.some((tool) => tool.name === "process")).toBe(true);
+  });
+
+  it("keeps canonical tool names for Anthropic OAuth (pi-ai remaps on the wire)", () => {
+    const tools = createClawdbotCodingTools({
+      modelProvider: "anthropic",
+      modelAuthMode: "oauth",
+    });
+    const names = new Set(tools.map((tool) => tool.name));
+    expect(names.has("bash")).toBe(true);
+    expect(names.has("read")).toBe(true);
+    expect(names.has("write")).toBe(true);
+    expect(names.has("edit")).toBe(true);
   });
 
   it("provides top-level object schemas for all tools", () => {
@@ -213,9 +208,8 @@ describe("createClawdbotCodingTools", () => {
     expect(names.has("sessions_send")).toBe(false);
     expect(names.has("sessions_spawn")).toBe(false);
 
-    // NOTE: bash/read/write/edit are capitalized to bypass Anthropic OAuth blocking
-    expect(names.has("Read")).toBe(true);
-    expect(names.has("Bash")).toBe(true);
+    expect(names.has("read")).toBe(true);
+    expect(names.has("bash")).toBe(true);
     expect(names.has("process")).toBe(true);
   });
 
@@ -234,14 +228,12 @@ describe("createClawdbotCodingTools", () => {
         },
       },
     });
-    // Tool names are capitalized for OAuth compatibility
-    expect(tools.map((tool) => tool.name)).toEqual(["Read"]);
+    expect(tools.map((tool) => tool.name)).toEqual(["read"]);
   });
 
   it("keeps read tool image metadata intact", async () => {
     const tools = createClawdbotCodingTools();
-    // NOTE: read is capitalized to bypass Anthropic OAuth blocking
-    const readTool = tools.find((tool) => tool.name === "Read");
+    const readTool = tools.find((tool) => tool.name === "read");
     expect(readTool).toBeDefined();
 
     const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-read-"));
@@ -281,8 +273,7 @@ describe("createClawdbotCodingTools", () => {
 
   it("returns text content without image blocks for text files", async () => {
     const tools = createClawdbotCodingTools();
-    // NOTE: read is capitalized to bypass Anthropic OAuth blocking
-    const readTool = tools.find((tool) => tool.name === "Read");
+    const readTool = tools.find((tool) => tool.name === "read");
     expect(readTool).toBeDefined();
 
     const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-read-"));
@@ -337,10 +328,8 @@ describe("createClawdbotCodingTools", () => {
       },
     };
     const tools = createClawdbotCodingTools({ sandbox });
-    // NOTE: bash/read are capitalized to bypass Anthropic OAuth blocking
-    // Policy matching is case-insensitive, so allow: ["bash"] matches tool named "Bash"
-    expect(tools.some((tool) => tool.name === "Bash")).toBe(true);
-    expect(tools.some((tool) => tool.name === "Read")).toBe(false);
+    expect(tools.some((tool) => tool.name === "bash")).toBe(true);
+    expect(tools.some((tool) => tool.name === "read")).toBe(false);
     expect(tools.some((tool) => tool.name === "browser")).toBe(false);
   });
 
@@ -370,18 +359,16 @@ describe("createClawdbotCodingTools", () => {
       },
     };
     const tools = createClawdbotCodingTools({ sandbox });
-    // NOTE: read/write/edit are capitalized to bypass Anthropic OAuth blocking
-    expect(tools.some((tool) => tool.name === "Read")).toBe(true);
-    expect(tools.some((tool) => tool.name === "Write")).toBe(false);
-    expect(tools.some((tool) => tool.name === "Edit")).toBe(false);
+    expect(tools.some((tool) => tool.name === "read")).toBe(true);
+    expect(tools.some((tool) => tool.name === "write")).toBe(false);
+    expect(tools.some((tool) => tool.name === "edit")).toBe(false);
   });
 
   it("filters tools by agent tool policy even without sandbox", () => {
     const tools = createClawdbotCodingTools({
       config: { tools: { deny: ["browser"] } },
     });
-    // NOTE: bash is capitalized to bypass Anthropic OAuth blocking
-    expect(tools.some((tool) => tool.name === "Bash")).toBe(true);
+    expect(tools.some((tool) => tool.name === "bash")).toBe(true);
     expect(tools.some((tool) => tool.name === "browser")).toBe(false);
   });
 

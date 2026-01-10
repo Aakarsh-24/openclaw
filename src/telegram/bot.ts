@@ -1,6 +1,4 @@
 // @ts-nocheck
-import { Buffer } from "node:buffer";
-
 import { sequentialize } from "@grammyjs/runner";
 import { apiThrottler } from "@grammyjs/transformer-throttler";
 import type { ApiClientOptions, Message } from "grammy";
@@ -22,12 +20,11 @@ import {
 } from "../auto-reply/commands-registry.js";
 import { formatAgentEnvelope } from "../auto-reply/envelope.js";
 import { resolveBlockStreamingChunking } from "../auto-reply/reply/block-streaming.js";
-import { dispatchReplyFromConfig } from "../auto-reply/reply/dispatch-from-config.js";
 import {
   buildMentionRegexes,
   matchesMentionPatterns,
 } from "../auto-reply/reply/mentions.js";
-import { createReplyDispatcherWithTyping } from "../auto-reply/reply/reply-dispatcher.js";
+import { dispatchReplyWithBufferedBlockDispatcher } from "../auto-reply/reply/provider-dispatcher.js";
 import { getReplyFromConfig } from "../auto-reply/reply.js";
 import type { ReplyPayload } from "../auto-reply/types.js";
 import type { ClawdbotConfig, ReplyToMode } from "../config/config.js";
@@ -46,7 +43,8 @@ import { formatErrorMessage } from "../infra/errors.js";
 import { recordProviderActivity } from "../infra/provider-activity.js";
 import { getChildLogger } from "../logging.js";
 import { mediaKindFromMime } from "../media/constants.js";
-import { detectMime, isGifMedia } from "../media/mime.js";
+import { fetchRemoteMedia } from "../media/fetch.js";
+import { isGifMedia } from "../media/mime.js";
 import { saveMediaBuffer } from "../media/store.js";
 import {
   formatLocationText,
@@ -64,7 +62,7 @@ import {
   readTelegramAllowFromStore,
   upsertTelegramPairingRequest,
 } from "./pairing-store.js";
-import { resolveTelegramVoiceDecision } from "./voice.js";
+import { resolveTelegramVoiceSend } from "./voice.js";
 
 const PARSE_ERR_RE =
   /can't parse entities|parse entities|find end of the entity/i;
@@ -577,6 +575,7 @@ export function createTelegramBot(opts: TelegramBotOptions) {
 
     // ACK reactions
     const ackReaction = resolveAckReaction(cfg, route.agentId);
+    const removeAckAfterReply = cfg.messages?.removeAckAfterReply ?? false;
     const shouldAckReaction = () => {
       if (!ackReaction) return false;
       if (ackReactionScope === "all") return true;
@@ -590,26 +589,31 @@ export function createTelegramBot(opts: TelegramBotOptions) {
       }
       return false;
     };
-    if (shouldAckReaction() && msg.message_id) {
-      const api = bot.api as unknown as {
-        setMessageReaction?: (
-          chatId: number | string,
-          messageId: number,
-          reactions: Array<{ type: "emoji"; emoji: string }>,
-        ) => Promise<void>;
-      };
-      if (typeof api.setMessageReaction === "function") {
-        api
-          .setMessageReaction(chatId, msg.message_id, [
+    const api = bot.api as unknown as {
+      setMessageReaction?: (
+        chatId: number | string,
+        messageId: number,
+        reactions: Array<{ type: "emoji"; emoji: string }>,
+      ) => Promise<void>;
+    };
+    const reactionApi =
+      typeof api.setMessageReaction === "function"
+        ? api.setMessageReaction.bind(api)
+        : null;
+    const ackReactionPromise =
+      shouldAckReaction() && msg.message_id && reactionApi
+        ? reactionApi(chatId, msg.message_id, [
             { type: "emoji", emoji: ackReaction },
-          ])
-          .catch((err) => {
-            logVerbose(
-              `telegram react failed for chat ${chatId}: ${String(err)}`,
-            );
-          });
-      }
-    }
+          ]).then(
+            () => true,
+            (err) => {
+              logVerbose(
+                `telegram react failed for chat ${chatId}: ${String(err)}`,
+              );
+              return false;
+            },
+          )
+        : null;
 
     let placeholder = "";
     if (msg.photo) placeholder = "<media:image>";
@@ -799,8 +803,16 @@ export function createTelegramBot(opts: TelegramBotOptions) {
       await draftStream.flush();
     };
 
-    const { dispatcher, replyOptions, markDispatchIdle } =
-      createReplyDispatcherWithTyping({
+    const disableBlockStreaming =
+      Boolean(draftStream) ||
+      (typeof telegramCfg.blockStreaming === "boolean"
+        ? !telegramCfg.blockStreaming
+        : undefined);
+
+    const { queuedFinal } = await dispatchReplyWithBufferedBlockDispatcher({
+      ctx: ctxPayload,
+      cfg,
+      dispatcherOptions: {
         responsePrefix: resolveEffectiveMessagesConfig(cfg, route.agentId)
           .responsePrefix,
         deliver: async (payload, info) => {
@@ -825,20 +837,8 @@ export function createTelegramBot(opts: TelegramBotOptions) {
           );
         },
         onReplyStart: sendTyping,
-      });
-
-    const disableBlockStreaming =
-      Boolean(draftStream) ||
-      (typeof telegramCfg.blockStreaming === "boolean"
-        ? !telegramCfg.blockStreaming
-        : undefined);
-
-    const { queuedFinal } = await dispatchReplyFromConfig({
-      ctx: ctxPayload,
-      cfg,
-      dispatcher,
+      },
       replyOptions: {
-        ...replyOptions,
         skillFilter,
         onPartialReply: draftStream
           ? (payload) => updateDraftFromPartial(payload.text)
@@ -851,9 +851,23 @@ export function createTelegramBot(opts: TelegramBotOptions) {
         disableBlockStreaming,
       },
     });
-    markDispatchIdle();
     draftStream?.stop();
     if (!queuedFinal) return;
+    if (
+      removeAckAfterReply &&
+      ackReactionPromise &&
+      msg.message_id &&
+      reactionApi
+    ) {
+      void ackReactionPromise.then((didAck) => {
+        if (!didAck) return;
+        reactionApi(chatId, msg.message_id, []).catch((err) => {
+          logVerbose(
+            `telegram: failed to remove ack reaction from ${chatId}/${msg.message_id}: ${String(err)}`,
+          );
+        });
+      });
+    }
   };
 
   const nativeCommands = nativeEnabled ? listNativeCommandSpecs() : [];
@@ -1388,16 +1402,12 @@ async function deliverReplies(params: {
           ...mediaParams,
         });
       } else if (kind === "audio") {
-        const { useVoice, reason } = resolveTelegramVoiceDecision({
+        const { useVoice } = resolveTelegramVoiceSend({
           wantsVoice: reply.audioAsVoice === true, // default false (backward compatible)
           contentType: media.contentType,
           fileName,
+          logFallback: logVerbose,
         });
-        if (reason) {
-          logVerbose(
-            `Telegram voice requested but ${reason}; sending as audio file instead.`,
-          );
-        }
         if (useVoice) {
           // Voice message - displays as round playable bubble (opt-in via [[audio_as_voice]])
           await bot.api.sendVoice(chatId, file, {
@@ -1550,19 +1560,17 @@ async function resolveMedia(
     throw new Error("fetch is not available; set telegram.proxy in config");
   }
   const url = `https://api.telegram.org/file/bot${token}/${file.file_path}`;
-  const res = await fetchImpl(url);
-  if (!res.ok) {
-    throw new Error(
-      `Failed to download telegram file: HTTP ${res.status} ${res.statusText}`,
-    );
-  }
-  const data = Buffer.from(await res.arrayBuffer());
-  const mime = await detectMime({
-    buffer: data,
-    headerMime: res.headers.get("content-type"),
-    filePath: file.file_path,
+  const fetched = await fetchRemoteMedia({
+    url,
+    fetchImpl,
+    filePathHint: file.file_path,
   });
-  const saved = await saveMediaBuffer(data, mime, "inbound", maxBytes);
+  const saved = await saveMediaBuffer(
+    fetched.buffer,
+    fetched.contentType,
+    "inbound",
+    maxBytes,
+  );
   let placeholder = "<media:document>";
   if (msg.photo) placeholder = "<media:image>";
   else if (msg.video) placeholder = "<media:video>";
