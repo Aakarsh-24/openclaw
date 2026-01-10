@@ -103,7 +103,7 @@ Tip: `--json` does **not** imply non-interactive mode. Use `--non-interactive` (
    - Discord: bot token.
    - Signal: optional `signal-cli` install + account config.
    - iMessage: local `imsg` CLI path + DB access.
-  - DM security: default is pairing. First DM sends a code; approve via `clawdbot pairing approve --provider <provider> <code>` or use allowlists.
+  - DM security: default is pairing. First DM sends a code; approve via `clawdbot pairing approve <provider> <code>` or use allowlists.
 
 6) **Daemon install**
    - macOS: LaunchAgent
@@ -182,6 +182,17 @@ clawdbot onboard --non-interactive \
   --mode local \
   --auth-choice gemini-api-key \
   --gemini-api-key "$GEMINI_API_KEY" \
+  --gateway-port 18789 \
+  --gateway-bind loopback
+```
+
+Z.AI example:
+
+```bash
+clawdbot onboard --non-interactive \
+  --mode local \
+  --auth-choice zai-api-key \
+  --zai-api-key "$ZAI_API_KEY" \
   --gateway-port 18789 \
   --gateway-bind loopback
 ```

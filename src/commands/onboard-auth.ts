@@ -134,6 +134,51 @@ export async function setMinimaxApiKey(key: string, agentDir?: string) {
   });
 }
 
+export const ZAI_DEFAULT_MODEL_REF = "zai/glm-4.7";
+
+export async function setZaiApiKey(key: string, agentDir?: string) {
+  // Write to the multi-agent path so gateway finds credentials on startup
+  upsertAuthProfile({
+    profileId: "zai:default",
+    credential: {
+      type: "api_key",
+      provider: "zai",
+      key,
+    },
+    agentDir: agentDir ?? resolveDefaultAgentDir(),
+  });
+}
+
+export function applyZaiConfig(cfg: ClawdbotConfig): ClawdbotConfig {
+  const models = { ...cfg.agents?.defaults?.models };
+  models[ZAI_DEFAULT_MODEL_REF] = {
+    ...models[ZAI_DEFAULT_MODEL_REF],
+    alias: models[ZAI_DEFAULT_MODEL_REF]?.alias ?? "GLM",
+  };
+
+  const existingModel = cfg.agents?.defaults?.model;
+  return {
+    ...cfg,
+    agents: {
+      ...cfg.agents,
+      defaults: {
+        ...cfg.agents?.defaults,
+        models,
+        model: {
+          ...(existingModel &&
+          "fallbacks" in (existingModel as Record<string, unknown>)
+            ? {
+                fallbacks: (existingModel as { fallbacks?: string[] })
+                  .fallbacks,
+              }
+            : undefined),
+          primary: ZAI_DEFAULT_MODEL_REF,
+        },
+      },
+    },
+  };
+}
+
 export function applyAuthProfileConfig(
   cfg: ClawdbotConfig,
   params: {
@@ -334,11 +379,27 @@ export function applyMinimaxApiProviderConfig(
   modelId: string = "MiniMax-M2.1",
 ): ClawdbotConfig {
   const providers = { ...cfg.models?.providers };
+  const existingProvider = providers.minimax;
+  const existingModels = Array.isArray(existingProvider?.models)
+    ? existingProvider.models
+    : [];
+  const apiModel = buildMinimaxApiModelDefinition(modelId);
+  const hasApiModel = existingModels.some((model) => model.id === modelId);
+  const mergedModels = hasApiModel
+    ? existingModels
+    : [...existingModels, apiModel];
+  const { apiKey: existingApiKey, ...existingProviderRest } =
+    (existingProvider ?? {}) as Record<string, unknown> as { apiKey?: string };
+  const resolvedApiKey =
+    typeof existingApiKey === "string" ? existingApiKey : undefined;
+  const normalizedApiKey =
+    resolvedApiKey?.trim() === "minimax" ? "" : resolvedApiKey;
   providers.minimax = {
+    ...existingProviderRest,
     baseUrl: MINIMAX_API_BASE_URL,
-    apiKey: "", // Resolved via MINIMAX_API_KEY env var or auth profile
     api: "anthropic-messages",
-    models: [buildMinimaxApiModelDefinition(modelId)],
+    ...(normalizedApiKey?.trim() ? { apiKey: normalizedApiKey } : {}),
+    models: mergedModels.length > 0 ? mergedModels : [apiModel],
   };
 
   const models = { ...cfg.agents?.defaults?.models };

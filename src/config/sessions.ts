@@ -133,6 +133,17 @@ export type SessionEntry = {
   skillsSnapshot?: SessionSkillSnapshot;
 };
 
+export function mergeSessionEntry(
+  existing: SessionEntry | undefined,
+  patch: Partial<SessionEntry>,
+): SessionEntry {
+  const sessionId =
+    patch.sessionId ?? existing?.sessionId ?? crypto.randomUUID();
+  const updatedAt = patch.updatedAt ?? existing?.updatedAt ?? Date.now();
+  if (!existing) return { ...patch, sessionId, updatedAt };
+  return { ...existing, ...patch, sessionId, updatedAt };
+}
+
 export type GroupKeyResolution = {
   key: string;
   legacyKey?: string;
@@ -487,37 +498,14 @@ export async function updateLastRoute(params: {
   const store = loadSessionStore(storePath);
   const existing = store[sessionKey];
   const now = Date.now();
-  const next: SessionEntry = {
-    sessionId: existing?.sessionId ?? crypto.randomUUID(),
+  const next = mergeSessionEntry(existing, {
     updatedAt: Math.max(existing?.updatedAt ?? 0, now),
-    sessionFile: existing?.sessionFile,
-    systemSent: existing?.systemSent,
-    abortedLastRun: existing?.abortedLastRun,
-    thinkingLevel: existing?.thinkingLevel,
-    verboseLevel: existing?.verboseLevel,
-    providerOverride: existing?.providerOverride,
-    modelOverride: existing?.modelOverride,
-    sendPolicy: existing?.sendPolicy,
-    queueMode: existing?.queueMode,
-    inputTokens: existing?.inputTokens,
-    outputTokens: existing?.outputTokens,
-    totalTokens: existing?.totalTokens,
-    modelProvider: existing?.modelProvider,
-    model: existing?.model,
-    contextTokens: existing?.contextTokens,
-    displayName: existing?.displayName,
-    chatType: existing?.chatType,
-    provider: existing?.provider,
-    subject: existing?.subject,
-    room: existing?.room,
-    space: existing?.space,
-    skillsSnapshot: existing?.skillsSnapshot,
     lastProvider: provider,
     lastTo: to?.trim() ? to.trim() : undefined,
     lastAccountId: accountId?.trim()
       ? accountId.trim()
       : existing?.lastAccountId,
-  };
+  });
   store[sessionKey] = next;
   await saveSessionStore(storePath, store);
   return next;

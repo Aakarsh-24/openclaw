@@ -1,7 +1,7 @@
-# 🦞 CLAWDBOT — Personal AI Assistant
+# 🦞 Clawdbot — Personal AI Assistant
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/clawdbot/clawdbot/main/docs/whatsapp-clawd.jpg" alt="CLAWDBOT" width="400">
+  <img src="https://raw.githubusercontent.com/clawdbot/clawdbot/main/docs/whatsapp-clawd.jpg" alt="Clawdbot" width="400">
 </p>
 
 <p align="center">
@@ -98,7 +98,7 @@ Full security guide: [Security](https://docs.clawd.bot/security)
 
 Default behavior on Telegram/WhatsApp/Signal/iMessage/Discord/Slack:
 - **DM pairing** (`dmPolicy="pairing"` / `discord.dm.policy="pairing"` / `slack.dm.policy="pairing"`): unknown senders receive a short pairing code and the bot does not process their message.
-- Approve with: `clawdbot pairing approve --provider <provider> <code>` (then the sender is added to a local allowlist store).
+- Approve with: `clawdbot pairing approve <provider> <code>` (then the sender is added to a local allowlist store).
 - Public inbound DMs require an explicit opt-in: set `dmPolicy="open"` and include `"*"` in the provider allowlist (`allowFrom` / `discord.dm.allowFrom` / `slack.dm.allowFrom`).
 
 Run `clawdbot doctor` to surface risky/misconfigured DM policies.
@@ -312,7 +312,7 @@ Details: [Security guide](https://docs.clawd.bot/security) · [Docker + sandboxi
 
 ### [WhatsApp](https://docs.clawd.bot/whatsapp)
 
-- Link the device: `pnpm clawdbot login` (stores creds in `~/.clawdbot/credentials`).
+- Link the device: `pnpm clawdbot providers login` (stores creds in `~/.clawdbot/credentials`).
 - Allowlist who can talk to the assistant via `whatsapp.allowFrom`.
 - If `whatsapp.groups` is set, it becomes a group allowlist; include `"*"` to allow all.
 
