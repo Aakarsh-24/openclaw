@@ -31,11 +31,18 @@ struct GeneralSettings: View {
             VStack(alignment: .leading, spacing: 18) {
                 if !self.state.onboardingSeen {
                     Button {
-                        OnboardingController.shared.show()
+                        DebugActions.restartOnboarding()
                     } label: {
-                        Text("Complete onboarding to finish setup")
-                            .font(.callout.weight(.semibold))
-                            .foregroundColor(.accentColor)
+                        HStack(spacing: 8) {
+                            Label("Complete onboarding to finish setup", systemImage: "arrow.counterclockwise")
+                                .font(.callout.weight(.semibold))
+                                .foregroundStyle(Color.accentColor)
+                            Spacer(minLength: 0)
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.tertiary)
+                        }
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .padding(.bottom, 2)

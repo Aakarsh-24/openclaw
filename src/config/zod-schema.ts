@@ -127,7 +127,12 @@ const HumanDelaySchema = z.object({
 const CliBackendSchema = z.object({
   command: z.string(),
   args: z.array(z.string()).optional(),
-  output: z.union([z.literal("json"), z.literal("text")]).optional(),
+  output: z
+    .union([z.literal("json"), z.literal("text"), z.literal("jsonl")])
+    .optional(),
+  resumeOutput: z
+    .union([z.literal("json"), z.literal("text"), z.literal("jsonl")])
+    .optional(),
   input: z.union([z.literal("arg"), z.literal("stdin")]).optional(),
   maxPromptArgChars: z.number().int().positive().optional(),
   env: z.record(z.string(), z.string()).optional(),
@@ -135,6 +140,8 @@ const CliBackendSchema = z.object({
   modelArg: z.string().optional(),
   modelAliases: z.record(z.string(), z.string()).optional(),
   sessionArg: z.string().optional(),
+  sessionArgs: z.array(z.string()).optional(),
+  resumeArgs: z.array(z.string()).optional(),
   sessionMode: z
     .union([z.literal("always"), z.literal("existing"), z.literal("none")])
     .optional(),
@@ -685,6 +692,8 @@ const CommandsSchema = z
   .object({
     native: z.boolean().optional(),
     text: z.boolean().optional(),
+    config: z.boolean().optional(),
+    debug: z.boolean().optional(),
     restart: z.boolean().optional(),
     useAccessGroups: z.boolean().optional(),
   })
@@ -1366,6 +1375,16 @@ export const ClawdbotSchema = z
                       .optional(),
                   )
                   .optional(),
+                ackReaction: z
+                  .object({
+                    emoji: z.string().optional(),
+                    direct: z.boolean().optional().default(true),
+                    group: z
+                      .enum(["always", "mentions", "never"])
+                      .optional()
+                      .default("mentions"),
+                  })
+                  .optional(),
               })
               .superRefine((value, ctx) => {
                 if (value.dmPolicy !== "open") return;
@@ -1411,6 +1430,16 @@ export const ClawdbotSchema = z
               })
               .optional(),
           )
+          .optional(),
+        ackReaction: z
+          .object({
+            emoji: z.string().optional(),
+            direct: z.boolean().optional().default(true),
+            group: z
+              .enum(["always", "mentions", "never"])
+              .optional()
+              .default("mentions"),
+          })
           .optional(),
       })
       .superRefine((value, ctx) => {

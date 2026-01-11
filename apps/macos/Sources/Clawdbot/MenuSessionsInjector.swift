@@ -111,6 +111,7 @@ final class MenuSessionsInjector: NSObject, NSMenuDelegate {
         guard let insertIndex = self.findInsertIndex(in: menu) else { return }
         let width = self.initialWidth(for: menu)
         let isConnected = self.isControlChannelConnected
+        let channelState = ControlChannel.shared.state
 
         var cursor = insertIndex
         var headerView: NSView?
@@ -133,7 +134,7 @@ final class MenuSessionsInjector: NSObject, NSMenuDelegate {
             let hosted = self.makeHostedView(
                 rootView: AnyView(MenuSessionsHeaderView(
                     count: rows.count,
-                    statusText: isConnected ? nil : "Gateway disconnected")),
+                    statusText: isConnected ? nil : self.controlChannelStatusText(for: channelState))),
                 width: width,
                 highlighted: false)
             headerItem.view = hosted
@@ -166,7 +167,7 @@ final class MenuSessionsInjector: NSObject, NSMenuDelegate {
             headerItem.isEnabled = false
             let statusText = isConnected
                 ? (self.cachedErrorText ?? "Loading sessions…")
-                : "Gateway disconnected"
+                : self.controlChannelStatusText(for: channelState)
             let hosted = self.makeHostedView(
                 rootView: AnyView(MenuSessionsHeaderView(
                     count: 0,
@@ -216,6 +217,14 @@ final class MenuSessionsInjector: NSObject, NSMenuDelegate {
             let gatewayItem = self.makeNodeItem(entry: gatewayEntry, width: width)
             menu.insertItem(gatewayItem, at: cursor)
             cursor += 1
+        }
+
+        if case .connecting = ControlChannel.shared.state {
+            menu.insertItem(
+                self.makeMessageItem(text: "Connecting…", symbolName: "circle.dashed", width: width),
+                at: cursor)
+            cursor += 1
+            return
         }
 
         guard self.isControlChannelConnected else { return }
@@ -285,12 +294,22 @@ final class MenuSessionsInjector: NSObject, NSMenuDelegate {
         headerItem.isEnabled = false
         headerItem.view = self.makeHostedView(
             rootView: AnyView(MenuUsageHeaderView(
-                count: rows.count,
-                statusText: errorText)),
+                count: rows.count)),
             width: width,
             highlighted: false)
         menu.insertItem(headerItem, at: cursor)
         cursor += 1
+
+        if let errorText = errorText?.nonEmpty, !rows.isEmpty {
+            menu.insertItem(
+                self.makeMessageItem(
+                    text: errorText,
+                    symbolName: "exclamationmark.triangle",
+                    width: width,
+                    maxLines: 2),
+                at: cursor)
+            cursor += 1
+        }
 
         if rows.isEmpty {
             menu.insertItem(
@@ -373,6 +392,19 @@ final class MenuSessionsInjector: NSObject, NSMenuDelegate {
         return false
     }
 
+    private func controlChannelStatusText(for state: ControlChannel.ConnectionState) -> String {
+        switch state {
+        case .connected:
+            return "Loading sessions…"
+        case .connecting:
+            return "Connecting…"
+        case let .degraded(message):
+            return message.nonEmpty ?? "Gateway disconnected"
+        case .disconnected:
+            return "Gateway disconnected"
+        }
+    }
+
     private func gatewayEntry() -> NodeInfo? {
         let mode = AppStateStore.shared.connectionMode
         let isConnected = self.isControlChannelConnected
@@ -444,18 +476,31 @@ final class MenuSessionsInjector: NSObject, NSMenuDelegate {
         return item
     }
 
-    private func makeMessageItem(text: String, symbolName: String, width: CGFloat) -> NSMenuItem {
+    private func makeMessageItem(text: String, symbolName: String, width: CGFloat, maxLines: Int? = 2) -> NSMenuItem {
         let view = AnyView(
-            Label(text, systemImage: symbolName)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.leading)
-                .lineLimit(nil)
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.leading, 18)
-                .padding(.trailing, 12)
-                .padding(.vertical, 6)
-                .frame(minWidth: 300, alignment: .leading))
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: symbolName)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 14, alignment: .leading)
+                    .padding(.top, 1)
+
+                Text(text)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.leading)
+                    .lineLimit(maxLines)
+                    .truncationMode(.tail)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .layoutPriority(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                Spacer(minLength: 0)
+            }
+            .padding(.leading, 18)
+            .padding(.trailing, 12)
+            .padding(.vertical, 6)
+            .frame(width: max(1, width), alignment: .leading))
 
         let item = NSMenuItem()
         item.tag = self.tag
