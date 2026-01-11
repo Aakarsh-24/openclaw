@@ -6,43 +6,79 @@ import OSLog
 
 @MainActor
 @Observable
-final class GatewayDiscoveryModel {
-    struct LocalIdentity: Equatable {
-        var hostTokens: Set<String>
-        var displayTokens: Set<String>
+public final class GatewayDiscoveryModel {
+    public struct LocalIdentity: Equatable, Sendable {
+        public var hostTokens: Set<String>
+        public var displayTokens: Set<String>
+
+        public init(hostTokens: Set<String>, displayTokens: Set<String>) {
+            self.hostTokens = hostTokens
+            self.displayTokens = displayTokens
+        }
     }
 
-    struct DiscoveredGateway: Identifiable, Equatable {
-        var id: String { self.stableID }
-        var displayName: String
-        var lanHost: String?
-        var tailnetDns: String?
-        var sshPort: Int
-        var gatewayPort: Int?
-        var cliPath: String?
-        var stableID: String
-        var debugID: String
-        var isLocal: Bool
+    public struct DiscoveredGateway: Identifiable, Equatable, Sendable {
+        public var id: String { self.stableID }
+        public var displayName: String
+        public var lanHost: String?
+        public var tailnetDns: String?
+        public var sshPort: Int
+        public var gatewayPort: Int?
+        public var cliPath: String?
+        public var stableID: String
+        public var debugID: String
+        public var isLocal: Bool
+
+        public init(
+            displayName: String,
+            lanHost: String? = nil,
+            tailnetDns: String? = nil,
+            sshPort: Int,
+            gatewayPort: Int? = nil,
+            cliPath: String? = nil,
+            stableID: String,
+            debugID: String,
+            isLocal: Bool)
+        {
+            self.displayName = displayName
+            self.lanHost = lanHost
+            self.tailnetDns = tailnetDns
+            self.sshPort = sshPort
+            self.gatewayPort = gatewayPort
+            self.cliPath = cliPath
+            self.stableID = stableID
+            self.debugID = debugID
+            self.isLocal = isLocal
+        }
     }
 
-    var gateways: [DiscoveredGateway] = []
-    var statusText: String = "Idle"
+    public var gateways: [DiscoveredGateway] = []
+    public var statusText: String = "Idle"
 
     private var browsers: [String: NWBrowser] = [:]
     private var resultsByDomain: [String: Set<NWBrowser.Result>] = [:]
     private var gatewaysByDomain: [String: [DiscoveredGateway]] = [:]
     private var statesByDomain: [String: NWBrowser.State] = [:]
     private var localIdentity: LocalIdentity
+    private let localDisplayName: String?
+    private let filterLocalGateways: Bool
     private var resolvedTXTByID: [String: [String: String]] = [:]
     private var pendingTXTResolvers: [String: GatewayTXTResolver] = [:]
+    private var wideAreaFallbackTask: Task<Void, Never>?
+    private var wideAreaFallbackGateways: [DiscoveredGateway] = []
     private let logger = Logger(subsystem: "com.clawdbot", category: "gateway-discovery")
 
-    init() {
-        self.localIdentity = Self.buildLocalIdentityFast()
+    public init(
+        localDisplayName: String? = nil,
+        filterLocalGateways: Bool = true)
+    {
+        self.localDisplayName = localDisplayName
+        self.filterLocalGateways = filterLocalGateways
+        self.localIdentity = Self.buildLocalIdentityFast(displayName: localDisplayName)
         self.refreshLocalIdentity()
     }
 
-    func start() {
+    public func start() {
         if !self.browsers.isEmpty { return }
 
         for domain in ClawdbotBonjour.bridgeServiceDomains {
@@ -72,9 +108,11 @@ final class GatewayDiscoveryModel {
             self.browsers[domain] = browser
             browser.start(queue: DispatchQueue(label: "com.clawdbot.macos.gateway-discovery.\(domain)"))
         }
+
+        self.scheduleWideAreaFallback()
     }
 
-    func stop() {
+    public func stop() {
         for browser in self.browsers.values {
             browser.cancel()
         }
@@ -85,15 +123,34 @@ final class GatewayDiscoveryModel {
         self.resolvedTXTByID = [:]
         self.pendingTXTResolvers.values.forEach { $0.cancel() }
         self.pendingTXTResolvers = [:]
+        self.wideAreaFallbackTask?.cancel()
+        self.wideAreaFallbackTask = nil
+        self.wideAreaFallbackGateways = []
         self.gateways = []
         self.statusText = "Stopped"
     }
 
     private func recomputeGateways() {
-        self.gateways = self.gatewaysByDomain.values
+        var next = self.gatewaysByDomain.values
             .flatMap(\.self)
-            .filter { !$0.isLocal }
             .sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
+        if self.gatewaysByDomain[ClawdbotBonjour.wideAreaBridgeServiceDomain]?.isEmpty ?? true,
+           !self.wideAreaFallbackGateways.isEmpty
+        {
+            next.append(contentsOf: self.wideAreaFallbackGateways)
+        }
+        var seen = Set<String>()
+        let deduped = next.filter { gateway in
+            if seen.contains(gateway.stableID) { return false }
+            seen.insert(gateway.stableID)
+            return true
+        }
+        let sorted = deduped.sorted {
+            $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending
+        }
+        self.gateways = self.filterLocalGateways
+            ? sorted.filter { !$0.isLocal }
+            : sorted
     }
 
     private func updateGateways(for domain: String) {
@@ -146,6 +203,73 @@ final class GatewayDiscoveryModel {
                 isLocal: isLocal)
         }
         .sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
+
+        if domain == ClawdbotBonjour.wideAreaBridgeServiceDomain,
+           !(self.gatewaysByDomain[domain]?.isEmpty ?? true)
+        {
+            self.wideAreaFallbackGateways = []
+        }
+    }
+
+    private func scheduleWideAreaFallback() {
+        let domain = ClawdbotBonjour.wideAreaBridgeServiceDomain
+        if Self.isRunningTests { return }
+        guard self.wideAreaFallbackTask == nil else { return }
+        self.wideAreaFallbackTask = Task.detached(priority: .utility) { [weak self] in
+            guard let self else { return }
+            var attempt = 0
+            let startedAt = Date()
+            while !Task.isCancelled, Date().timeIntervalSince(startedAt) < 35.0 {
+                let hasResults = await MainActor.run {
+                    !(self.gatewaysByDomain[domain]?.isEmpty ?? true)
+                }
+                if hasResults { return }
+
+                // Wide-area discovery can be racy (Tailscale not yet up, DNS zone not
+                // published yet). Retry with a short backoff while onboarding is open.
+                let beacons = WideAreaGatewayDiscovery.discover(timeoutSeconds: 2.0)
+                if !beacons.isEmpty {
+                    await MainActor.run { [weak self] in
+                        guard let self else { return }
+                        self.wideAreaFallbackGateways = beacons.map { beacon in
+                            let stableID = "wide-area|\(domain)|\(beacon.instanceName)"
+                            let isLocal = Self.isLocalGateway(
+                                lanHost: beacon.lanHost,
+                                tailnetDns: beacon.tailnetDns,
+                                displayName: beacon.displayName,
+                                serviceName: beacon.instanceName,
+                                local: self.localIdentity)
+                            return DiscoveredGateway(
+                                displayName: beacon.displayName,
+                                lanHost: beacon.lanHost,
+                                tailnetDns: beacon.tailnetDns,
+                                sshPort: beacon.sshPort ?? 22,
+                                gatewayPort: beacon.gatewayPort,
+                                cliPath: beacon.cliPath,
+                                stableID: stableID,
+                                debugID: "\(beacon.instanceName)@\(beacon.host):\(beacon.port)",
+                                isLocal: isLocal)
+                        }
+                        self.recomputeGateways()
+                    }
+                    return
+                }
+
+                attempt += 1
+                let backoff = min(8.0, 0.6 + (Double(attempt) * 0.7))
+                try? await Task.sleep(nanoseconds: UInt64(backoff * 1_000_000_000))
+            }
+        }
+    }
+
+    private nonisolated static var isRunningTests: Bool {
+        // Keep discovery background work from running forever during SwiftPM test runs.
+        if Bundle.allBundles.contains(where: { $0.bundleURL.pathExtension == "xctest" }) { return true }
+
+        let env = ProcessInfo.processInfo.environment
+        return env["XCTestConfigurationFilePath"] != nil
+            || env["XCTestBundlePath"] != nil
+            || env["XCTestSessionIdentifier"] != nil
     }
 
     private func updateGatewaysForAllDomains() {
@@ -208,15 +332,15 @@ final class GatewayDiscoveryModel {
         return merged
     }
 
-    struct GatewayTXT: Equatable {
-        var lanHost: String?
-        var tailnetDns: String?
-        var sshPort: Int
-        var gatewayPort: Int?
-        var cliPath: String?
+    public struct GatewayTXT: Equatable {
+        public var lanHost: String?
+        public var tailnetDns: String?
+        public var sshPort: Int
+        public var gatewayPort: Int?
+        public var cliPath: String?
     }
 
-    static func parseGatewayTXT(_ txt: [String: String]) -> GatewayTXT {
+    public static func parseGatewayTXT(_ txt: [String: String]) -> GatewayTXT {
         var lanHost: String?
         var tailnetDns: String?
         var sshPort = 22
@@ -256,7 +380,7 @@ final class GatewayDiscoveryModel {
             cliPath: cliPath)
     }
 
-    static func buildSSHTarget(user: String, host: String, port: Int) -> String {
+    public static func buildSSHTarget(user: String, host: String, port: Int) -> String {
         var target = "\(user)@\(host)"
         if port != 22 {
             target += ":\(port)"
@@ -324,7 +448,7 @@ final class GatewayDiscoveryModel {
         return titled.isEmpty ? normalized : titled
     }
 
-    nonisolated static func isLocalGateway(
+    public nonisolated static func isLocalGateway(
         lanHost: String?,
         tailnetDns: String?,
         displayName: String?,
@@ -346,18 +470,19 @@ final class GatewayDiscoveryModel {
         {
             return true
         }
-        if let service = normalizeServiceToken(serviceName) {
-            for token in local.hostTokens where service.contains(token) {
-                return true
-            }
+        if let serviceHost = normalizeServiceHostToken(serviceName),
+           local.hostTokens.contains(serviceHost)
+        {
+            return true
         }
         return false
     }
 
     private func refreshLocalIdentity() {
         let fastIdentity = self.localIdentity
+        let displayName = self.localDisplayName
         Task.detached(priority: .utility) {
-            let slowIdentity = Self.buildLocalIdentitySlow()
+            let slowIdentity = Self.buildLocalIdentitySlow(displayName: displayName)
             let merged = Self.mergeLocalIdentity(fast: fastIdentity, slow: slowIdentity)
             await MainActor.run { [weak self] in
                 guard let self else { return }
@@ -377,7 +502,7 @@ final class GatewayDiscoveryModel {
             displayTokens: fast.displayTokens.union(slow.displayTokens))
     }
 
-    private nonisolated static func buildLocalIdentityFast() -> LocalIdentity {
+    private nonisolated static func buildLocalIdentityFast(displayName: String?) -> LocalIdentity {
         var hostTokens: Set<String> = []
         var displayTokens: Set<String> = []
 
@@ -386,14 +511,14 @@ final class GatewayDiscoveryModel {
             hostTokens.insert(token)
         }
 
-        if let token = normalizeDisplayToken(InstanceIdentity.displayName) {
+        if let token = normalizeDisplayToken(displayName) {
             displayTokens.insert(token)
         }
 
         return LocalIdentity(hostTokens: hostTokens, displayTokens: displayTokens)
     }
 
-    private nonisolated static func buildLocalIdentitySlow() -> LocalIdentity {
+    private nonisolated static func buildLocalIdentitySlow(displayName: String?) -> LocalIdentity {
         var hostTokens: Set<String> = []
         var displayTokens: Set<String> = []
 
@@ -401,6 +526,10 @@ final class GatewayDiscoveryModel {
            let token = normalizeHostToken(host)
         {
             hostTokens.insert(token)
+        }
+
+        if let token = normalizeDisplayToken(displayName) {
+            displayTokens.insert(token)
         }
 
         if let token = normalizeDisplayToken(Host.current().localizedName) {
@@ -434,11 +563,14 @@ final class GatewayDiscoveryModel {
         return trimmed.lowercased()
     }
 
-    private nonisolated static func normalizeServiceToken(_ raw: String?) -> String? {
+    private nonisolated static func normalizeServiceHostToken(_ raw: String?) -> String? {
         guard let raw else { return nil }
-        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty { return nil }
-        return trimmed.lowercased()
+        let prettified = Self.prettifyInstanceName(raw)
+        let strippedBridge = prettified.replacingOccurrences(
+            of: #"\s*-?\s*bridge$"#,
+            with: "",
+            options: .regularExpression)
+        return normalizeHostToken(strippedBridge)
     }
 }
 

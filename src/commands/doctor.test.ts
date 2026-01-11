@@ -288,6 +288,7 @@ vi.mock("./onboard-helpers.js", () => ({
   DEFAULT_WORKSPACE: "/tmp",
   guardCancel: (value: unknown) => value,
   printWizardHeader: vi.fn(),
+  randomToken: vi.fn(() => "test-gateway-token"),
 }));
 
 vi.mock("./doctor-state-migrations.js", () => ({
@@ -749,7 +750,10 @@ describe("doctor", () => {
       return Promise.resolve({ stdout: "", stderr: "" });
     });
 
-    confirm.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+    confirm
+      .mockResolvedValueOnce(false) // skip gateway token prompt
+      .mockResolvedValueOnce(false) // skip build
+      .mockResolvedValueOnce(true); // accept legacy fallback
 
     const { doctorCommand } = await import("./doctor.js");
     const runtime = {
@@ -1000,5 +1004,40 @@ describe("doctor", () => {
     );
     expect(stateNote).toBeTruthy();
     expect(String(stateNote?.[0])).toContain("CRITICAL");
+  });
+
+  it("warns about opencode provider overrides", async () => {
+    readConfigFileSnapshot.mockResolvedValue({
+      path: "/tmp/clawdbot.json",
+      exists: true,
+      raw: "{}",
+      parsed: {},
+      valid: true,
+      config: {
+        models: {
+          providers: {
+            opencode: {
+              api: "openai-completions",
+              baseUrl: "https://opencode.ai/zen/v1",
+            },
+          },
+        },
+      },
+      issues: [],
+      legacyIssues: [],
+    });
+
+    const { doctorCommand } = await import("./doctor.js");
+    await doctorCommand(
+      { log: vi.fn(), error: vi.fn(), exit: vi.fn() },
+      { nonInteractive: true, workspaceSuggestions: false },
+    );
+
+    const warned = note.mock.calls.some(
+      ([message, title]) =>
+        title === "OpenCode Zen" &&
+        String(message).includes("models.providers.opencode"),
+    );
+    expect(warned).toBe(true);
   });
 });

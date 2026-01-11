@@ -14,7 +14,6 @@ import {
   sanitizeGoogleTurnOrdering,
   sanitizeSessionMessagesImages,
   sanitizeToolCallId,
-  sanitizeToolUseResultPairing,
   validateGeminiTurns,
 } from "./pi-embedded-helpers.js";
 import {
@@ -272,6 +271,14 @@ describe("classifyFailoverReason", () => {
       "format",
     );
     expect(classifyFailoverReason("bad request")).toBeNull();
+  });
+
+  it("classifies OpenAI usage limit errors as rate_limit", () => {
+    expect(
+      classifyFailoverReason(
+        "You have hit your ChatGPT usage limit (plus plan)",
+      ),
+    ).toBe("rate_limit");
   });
 });
 
@@ -582,65 +589,6 @@ describe("sanitizeSessionMessagesImages", () => {
       "thinking",
       "text",
     ]);
-  });
-});
-
-describe("sanitizeToolUseResultPairing", () => {
-  it("moves tool results directly after tool calls and inserts missing results", () => {
-    const input = [
-      {
-        role: "assistant",
-        content: [
-          { type: "toolCall", id: "call_1", name: "read", arguments: {} },
-          { type: "toolCall", id: "call_2", name: "bash", arguments: {} },
-        ],
-      },
-      { role: "user", content: "user message that should come after tool use" },
-      {
-        role: "toolResult",
-        toolCallId: "call_2",
-        toolName: "bash",
-        content: [{ type: "text", text: "ok" }],
-        isError: false,
-      },
-    ] satisfies AgentMessage[];
-
-    const out = sanitizeToolUseResultPairing(input);
-    expect(out[0]?.role).toBe("assistant");
-    expect(out[1]?.role).toBe("toolResult");
-    expect((out[1] as { toolCallId?: string }).toolCallId).toBe("call_1");
-    expect(out[2]?.role).toBe("toolResult");
-    expect((out[2] as { toolCallId?: string }).toolCallId).toBe("call_2");
-    expect(out[3]?.role).toBe("user");
-  });
-
-  it("drops duplicate tool results for the same id within a span", () => {
-    const input = [
-      {
-        role: "assistant",
-        content: [
-          { type: "toolCall", id: "call_1", name: "read", arguments: {} },
-        ],
-      },
-      {
-        role: "toolResult",
-        toolCallId: "call_1",
-        toolName: "read",
-        content: [{ type: "text", text: "first" }],
-        isError: false,
-      },
-      {
-        role: "toolResult",
-        toolCallId: "call_1",
-        toolName: "read",
-        content: [{ type: "text", text: "second" }],
-        isError: false,
-      },
-      { role: "user", content: "ok" },
-    ] satisfies AgentMessage[];
-
-    const out = sanitizeToolUseResultPairing(input);
-    expect(out.filter((m) => m.role === "toolResult")).toHaveLength(1);
   });
 });
 

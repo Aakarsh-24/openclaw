@@ -1,6 +1,9 @@
 # People
 
-Photos and notes for people I should recognize.
+⚠️ Deprecated: Do not store people memory here.
+
+- People memory should be stored in `ppl.gift` (notes + journal endpoints).
+- This folder is for legacy/reference only (e.g., recognition photos if needed).
 
 ## Hurley Family
 

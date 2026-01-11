@@ -58,6 +58,7 @@ cat ~/.clawdbot/clawdbot.json
 - Health check + restart prompt.
 - Skills status summary (eligible/missing/blocked).
 - Legacy config migration and normalization.
+- OpenCode Zen provider override warnings (`models.providers.opencode`).
 - Legacy on-disk state migration (sessions/agent dir/WhatsApp auth).
 - State integrity and permissions checks (sessions, transcripts, state dir).
 - Config file permission checks (chmod 600) when running locally.
@@ -70,6 +71,7 @@ cat ~/.clawdbot/clawdbot.json
 - Gateway runtime best-practice checks (Node vs Bun, version-manager paths).
 - Gateway port collision diagnostics (default `18789`).
 - Security warnings for open DM policies.
+- Gateway auth warnings when no `gateway.auth.token` is set (offers token generation).
 - systemd linger check on Linux.
 - Writes updated config + wizard metadata.
 
@@ -101,11 +103,17 @@ Current migrations:
 - `routing.bindings` → top-level `bindings`
 - `routing.agents`/`routing.defaultAgentId` → `agents.list` + `agents.list[].default`
 - `routing.agentToAgent` → `tools.agentToAgent`
-- `routing.transcribeAudio` → `audio.transcription`
+- `routing.transcribeAudio` → `tools.audio.transcription`
 - `identity` → `agents.list[].identity`
 - `agent.*` → `agents.defaults` + `tools.*` (tools/elevated/bash/sandbox/subagents)
 - `agent.model`/`allowedModels`/`modelAliases`/`modelFallbacks`/`imageModelFallbacks`
   → `agents.defaults.models` + `agents.defaults.model.primary/fallbacks` + `agents.defaults.imageModel.primary/fallbacks`
+
+### 2b) OpenCode Zen provider overrides
+If you’ve added `models.providers.opencode` (or `opencode-zen`) manually, it
+overrides the built-in OpenCode Zen catalog from `@mariozechner/pi-ai`. That can
+force every model onto a single API or zero out costs. Doctor warns so you can
+remove the override and restore per-model API routing + costs.
 
 ### 3) Legacy state migrations (disk layout)
 Doctor can migrate older on-disk layouts into the current structure:
@@ -179,11 +187,16 @@ gateway stays alive after logout.
 Doctor prints a quick summary of eligible/missing/blocked skills for the current
 workspace.
 
-### 11) Gateway health check + restart
+### 11) Gateway auth checks (local token)
+Doctor warns when `gateway.auth` is missing on a local gateway and offers to
+generate a token. Use `clawdbot doctor --generate-gateway-token` to force token
+creation in automation.
+
+### 12) Gateway health check + restart
 Doctor runs a health check and offers to restart the gateway when it looks
 unhealthy.
 
-### 12) Supervisor config audit + repair
+### 13) Supervisor config audit + repair
 Doctor checks the installed supervisor config (launchd/systemd/schtasks) for
 missing or outdated defaults (e.g., systemd network-online dependencies and
 restart delay). When it finds a mismatch, it recommends an update and can
@@ -196,24 +209,24 @@ Notes:
 - `clawdbot doctor --repair --force` overwrites custom supervisor configs.
 - You can always force a full rewrite via `clawdbot daemon install --force`.
 
-### 13) Gateway runtime + port diagnostics
+### 14) Gateway runtime + port diagnostics
 Doctor inspects the daemon runtime (PID, last exit status) and warns when the
 service is installed but not actually running. It also checks for port collisions
 on the gateway port (default `18789`) and reports likely causes (gateway already
 running, SSH tunnel).
 
-### 14) Gateway runtime best practices
+### 15) Gateway runtime best practices
 Doctor warns when the gateway service runs on Bun or a version-managed Node path
 (`nvm`, `fnm`, `volta`, `asdf`, etc.). WhatsApp + Telegram providers require Node,
 and version-manager paths can break after upgrades because the daemon does not
 load your shell init. Doctor offers to migrate to a system Node install when
 available (Homebrew/apt/choco).
 
-### 15) Config write + wizard metadata
+### 16) Config write + wizard metadata
 Doctor persists any config changes and stamps wizard metadata to record the
 doctor run.
 
-### 16) Workspace tips (backup + memory system)
+### 17) Workspace tips (backup + memory system)
 Doctor suggests a workspace memory system when missing and prints a backup tip
 if the workspace is not already under git.
 

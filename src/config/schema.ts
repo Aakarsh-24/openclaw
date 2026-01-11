@@ -89,7 +89,12 @@ const FIELD_LABELS: Record<string, string> = {
   "gateway.remote.password": "Remote Gateway Password",
   "gateway.auth.token": "Gateway Token",
   "gateway.auth.password": "Gateway Password",
+  "tools.audio.transcription.args": "Audio Transcription Args",
+  "tools.audio.transcription.timeoutSeconds":
+    "Audio Transcription Timeout (sec)",
   "gateway.controlUi.basePath": "Control UI Base Path",
+  "gateway.http.endpoints.chatCompletions.enabled":
+    "OpenAI Chat Completions Endpoint",
   "gateway.reload.mode": "Config Reload Mode",
   "gateway.reload.debounceMs": "Config Reload Debounce (ms)",
   "agents.defaults.workspace": "Workspace",
@@ -107,6 +112,7 @@ const FIELD_LABELS: Record<string, string> = {
   "agents.defaults.humanDelay.mode": "Human Delay Mode",
   "agents.defaults.humanDelay.minMs": "Human Delay Min (ms)",
   "agents.defaults.humanDelay.maxMs": "Human Delay Max (ms)",
+  "agents.defaults.cliBackends": "CLI Backends",
   "commands.native": "Native Commands",
   "commands.text": "Text Commands",
   "commands.restart": "Allow Restart",
@@ -154,10 +160,12 @@ const FIELD_HELP: Record<string, string> = {
   "gateway.remote.sshIdentity":
     "Optional SSH identity file path (passed to ssh -i).",
   "gateway.auth.token":
-    "Required for multi-machine access or non-loopback binds.",
+    "Recommended for all gateways; required for non-loopback binds.",
   "gateway.auth.password": "Required for Tailscale funnel.",
   "gateway.controlUi.basePath":
     "Optional URL prefix where the Control UI is served (e.g. /clawdbot).",
+  "gateway.http.endpoints.chatCompletions.enabled":
+    "Enable the OpenAI-compatible `POST /v1/chat/completions` endpoint (default: false).",
   "gateway.reload.mode":
     'Hot reload strategy for config changes ("hybrid" recommended).',
   "gateway.reload.debounceMs":
@@ -184,6 +192,8 @@ const FIELD_HELP: Record<string, string> = {
     "Optional image model (provider/model) used when the primary model lacks image input.",
   "agents.defaults.imageModel.fallbacks":
     "Ordered fallback image models (provider/model).",
+  "agents.defaults.cliBackends":
+    "Optional CLI backends for text-only fallback (claude-cli, etc.).",
   "agents.defaults.humanDelay.mode":
     'Delay style for block replies ("off", "natural", "custom").',
   "agents.defaults.humanDelay.minMs":

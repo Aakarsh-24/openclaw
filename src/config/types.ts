@@ -861,6 +861,26 @@ export type SandboxBrowserSettings = {
   headless?: boolean;
   enableNoVnc?: boolean;
   /**
+   * Allow sandboxed sessions to target the host browser control server.
+   * Default: false.
+   */
+  allowHostControl?: boolean;
+  /**
+   * Allowlist of exact control URLs for target="custom".
+   * When set, any custom controlUrl must match this list.
+   */
+  allowedControlUrls?: string[];
+  /**
+   * Allowlist of hostnames for control URLs (hostname only, no ports).
+   * When set, controlUrl hostname must match.
+   */
+  allowedControlHosts?: string[];
+  /**
+   * Allowlist of ports for control URLs.
+   * When set, controlUrl port must match (defaults: http=80, https=443).
+   */
+  allowedControlPorts?: number[];
+  /**
    * When true (default), sandboxed browser control will try to start/reattach to
    * the sandbox browser container when a tool call needs it.
    */
@@ -910,6 +930,13 @@ export type AgentToolsConfig = {
 export type ToolsConfig = {
   allow?: string[];
   deny?: string[];
+  audio?: {
+    transcription?: {
+      /** CLI args (template-enabled). */
+      args?: string[];
+      timeoutSeconds?: number;
+    };
+  };
   agentToAgent?: {
     /** Enable agent-to-agent messaging tools. Default: false. */
     enabled?: boolean;
@@ -1018,6 +1045,7 @@ export type BroadcastConfig = {
 };
 
 export type AudioConfig = {
+  /** @deprecated Use tools.audio.transcription instead. */
   transcription?: {
     // Optional CLI to turn inbound audio into text; templated args, must output transcript to stdout.
     command: string[];
@@ -1155,6 +1183,22 @@ export type GatewayReloadConfig = {
   debounceMs?: number;
 };
 
+export type GatewayHttpChatCompletionsConfig = {
+  /**
+   * If false, the Gateway will not serve `POST /v1/chat/completions`.
+   * Default: false when absent.
+   */
+  enabled?: boolean;
+};
+
+export type GatewayHttpEndpointsConfig = {
+  chatCompletions?: GatewayHttpChatCompletionsConfig;
+};
+
+export type GatewayHttpConfig = {
+  endpoints?: GatewayHttpEndpointsConfig;
+};
+
 export type GatewayConfig = {
   /** Single multiplexed port for Gateway WS + HTTP (default: 18789). */
   port?: number;
@@ -1173,6 +1217,7 @@ export type GatewayConfig = {
   tailscale?: GatewayTailscaleConfig;
   remote?: GatewayRemoteConfig;
   reload?: GatewayReloadConfig;
+  http?: GatewayHttpConfig;
 };
 
 export type SkillConfig = {
@@ -1310,6 +1355,45 @@ export type AgentContextPruningConfig = {
   };
 };
 
+export type CliBackendConfig = {
+  /** CLI command to execute (absolute path or on PATH). */
+  command: string;
+  /** Base args applied to every invocation. */
+  args?: string[];
+  /** Output parsing mode (default: json). */
+  output?: "json" | "text";
+  /** Prompt input mode (default: arg). */
+  input?: "arg" | "stdin";
+  /** Max prompt length for arg mode (if exceeded, stdin is used). */
+  maxPromptArgChars?: number;
+  /** Extra env vars injected for this CLI. */
+  env?: Record<string, string>;
+  /** Env vars to remove before launching this CLI. */
+  clearEnv?: string[];
+  /** Flag used to pass model id (e.g. --model). */
+  modelArg?: string;
+  /** Model aliases mapping (config model id → CLI model id). */
+  modelAliases?: Record<string, string>;
+  /** Flag used to pass session id (e.g. --session-id). */
+  sessionArg?: string;
+  /** When to pass session ids. */
+  sessionMode?: "always" | "existing" | "none";
+  /** JSON fields to read session id from (in order). */
+  sessionIdFields?: string[];
+  /** Flag used to pass system prompt. */
+  systemPromptArg?: string;
+  /** System prompt behavior (append vs replace). */
+  systemPromptMode?: "append" | "replace";
+  /** When to send system prompt. */
+  systemPromptWhen?: "first" | "always" | "never";
+  /** Flag used to pass image paths. */
+  imageArg?: string;
+  /** How to pass multiple images. */
+  imageMode?: "repeat" | "list";
+  /** Serialize runs for this CLI. */
+  serialize?: boolean;
+};
+
 export type AgentDefaultsConfig = {
   /** Primary model and fallbacks (provider/model). */
   model?: AgentModelListConfig;
@@ -1325,6 +1409,8 @@ export type AgentDefaultsConfig = {
   userTimezone?: string;
   /** Optional display-only context window override (used for % in status UIs). */
   contextTokens?: number;
+  /** Optional CLI backends for text-only fallback (claude-cli, etc.). */
+  cliBackends?: Record<string, CliBackendConfig>;
   /** Opt-in: prune old tool results from the LLM context to reduce token usage. */
   contextPruning?: AgentContextPruningConfig;
   /** Default thinking level when no /think directive is present. */
@@ -1379,6 +1465,13 @@ export type AgentDefaultsConfig = {
     prompt?: string;
     /** Max chars allowed after HEARTBEAT_OK before delivery (default: 30). */
     ackMaxChars?: number;
+    /**
+     * When enabled, deliver the model's reasoning payload for heartbeat runs (when available)
+     * as a separate message prefixed with `Reasoning:` (same as `/reasoning on`).
+     *
+     * Default: false (only the final heartbeat payload is delivered).
+     */
+    includeReasoning?: boolean;
   };
   /** Max concurrent agent runs across all conversations. Default: 1 (sequential). */
   maxConcurrent?: number;

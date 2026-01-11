@@ -1,5 +1,48 @@
 # Changelog
 
+## 2026.1.11-4
+
+### Fixes
+- CLI/Status: when gateway is reachable, show which auth was used (`token`/`password`/`none`).
+
+## 2026.1.11-3
+
+### Fixes
+- CLI/Providers: fix `providers status` tip about `status --deep` requiring a reachable gateway.
+- Docs/Troubleshooting: clarify that `clawdbot status --deep` runs gateway health checks (and needs a reachable gateway).
+
+## 2026.1.11-2
+
+### Fixes
+- CLI/Status: add a “More:” footer with next-step commands and document status/diagnostics commands in troubleshooting.
+
+## 2026.1.11-1
+
+### New Features and Changes
+- Agents/Browser: add `browser.target` (sandbox/host/custom) with sandbox host-control gating via `agents.defaults.sandbox.browser.allowHostControl`, allowlists for custom control URLs/hosts/ports, and expand browser tool docs (remote control, profiles, internals).
+
+## 2026.1.10-4
+
+### Fixes
+- CLI/Status: show token previews (first/last chars) in `clawdbot status` provider details; keep `status --all` redacted (hash+length).
+
+## 2026.1.10-3
+
+### Fixes
+- CLI/Status: add troubleshooting link footer to `clawdbot status --all` output.
+
+## 2026.1.10-2
+
+### Fixes
+- CLI/Status: provider table uses `SETUP` for missing credentials (not `WARN`); richer per-provider detail (token sources, missing keys).
+
+## 2026.1.10-1
+
+### Fixes
+- CLI/Status: expand tables to full terminal width; improve update + daemon summary lines; keep `status --all` gateway log tail pasteable.
+- WhatsApp: detect @lid mentions in groups using authDir reverse mapping + resolve self JID E.164 for mention gating. (#692) — thanks @peschee.
+- Gateway/Auth: default to token auth on loopback during onboarding, add doctor token generation flow, and tighten audio transcription config to Whisper-only.
+
 ## 2026.1.10
 
 ### New Features and Changes
@@ -9,8 +52,19 @@
 - Agents/OpenCode Zen: update fallback models + defaults, keep legacy alias mappings. (#669) — thanks @magimetal.
 - Providers: unify group history context wrappers across providers with per-provider/per-account `historyLimit` overrides (fallback to `messages.groupChat.historyLimit`). Set `0` to disable. (#672) — thanks @steipete.
 - CLI: add `clawdbot update` (safe-ish git checkout update) + `--update` shorthand. (#673) — thanks @fm1randa.
+- CLI: improve `clawdbot status` (OS/update/gateway/daemon/agents/sessions) + add `status --all` for full read-only diagnosis with tables, log tails, and scan progress (OSC-9 + spinner).
+- Gateway: add OpenAI-compatible `/v1/chat/completions` HTTP endpoint (auth, SSE streaming, per-agent routing). (#680) — thanks @steipete.
+- Gateway/Heartbeat: optionally deliver heartbeat `Reasoning:` output (`agents.defaults.heartbeat.includeReasoning`). (#690)
+- Docker: allow optional home volume + extra bind mounts in `docker-setup.sh`. (#679) — thanks @gabriel-trigo.
 
 ### Fixes
+- Providers: dedupe inbound messages across providers to avoid duplicate LLM runs on redeliveries/reconnects. (#689) — thanks @adam91holt.
+- Agents: strip `<thought>`/`<antthinking>` tags from hidden reasoning output and cover tag variants in tests. (#688) — thanks @theglove44.
+- macOS: save model picker selections as normalized provider/model IDs and keep manual entries aligned. (#683) — thanks @benithors.
+- Agents: recognize "usage limit" errors as rate limits for failover. (#687) — thanks @evalexpr.
+- CLI: avoid success message when daemon restart is skipped. (#685) — thanks @carlulsoe.
+- Gateway: disable the OpenAI-compatible `/v1/chat/completions` endpoint by default; enable via `gateway.http.endpoints.chatCompletions.enabled=true`.
+- macOS: stabilize bridge tunnels, guard invoke senders on disconnect, and drain stdout/stderr to avoid deadlocks. (#676) — thanks @ngutman.
 - Agents/System: clarify sandboxed runtime in system prompt and surface elevated availability when sandboxed.
 - Auto-reply: prefer `RawBody` for command/directive parsing (WhatsApp + Discord) and prevent fallback runs from clobbering concurrent session updates. (#643) — thanks @mcinteerj.
 - WhatsApp: fix group reactions by preserving message IDs and sender JIDs in history; normalize participant phone numbers to JIDs in outbound reactions. (#640) — thanks @mcinteerj.
@@ -27,6 +81,7 @@
 - Gateway/Control UI: make `chat.send` non-blocking, wire Stop to `chat.abort`, and treat `/stop` as an out-of-band abort. (#653)
 - Gateway/Control UI: allow `chat.abort` without `runId` (abort active runs), suppress post-abort chat streaming, and prune stuck chat runs. (#653)
 - Gateway/Control UI: sniff image attachments for chat.send, drop non-images, and log mismatches. (#670) — thanks @cristip73.
+- macOS: force `restart-mac.sh --sign` to require identities and keep bundled Node signed for relay verification. (#580) — thanks @jeffersonwarrior.
 - Gateway/Agent: accept image attachments on `agent` (multimodal message) and add live gateway image probe (`CLAWDBOT_LIVE_GATEWAY_IMAGE_PROBE=1`).
 - CLI: `clawdbot sessions` now includes `elev:*` + `usage:*` flags in the table output.
 - CLI/Pairing: accept positional provider for `pairing list|approve` (npm-run compatible); update docs/bot hints.
@@ -47,6 +102,8 @@
 - Telegram: serialize media-group processing to avoid missed albums under load.
 - Signal: handle `dataMessage.reaction` events (signal-cli SSE) to avoid broken attachment errors. (#637) — thanks @neist.
 - Docs: showcase entries for ParentPay, R2 Upload, iOS TestFlight, and Oura Health. (#650) — thanks @henrino3.
+- Agents: repair session transcripts by dropping duplicate tool results across the whole history (unblocks Anthropic-compatible APIs after retries).
+- Tests/Live: reset the gateway session between model runs to avoid cross-provider transcript incompatibilities (notably OpenAI Responses reasoning replay rules).
 ## 2026.1.9
 
 ### Highlights

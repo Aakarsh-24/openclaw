@@ -84,7 +84,11 @@ import {
 } from "./doctor-workspace.js";
 import { healthCommand } from "./health.js";
 import { formatHealthCheckFailure } from "./health-format.js";
-import { applyWizardMetadata, printWizardHeader } from "./onboard-helpers.js";
+import {
+  applyWizardMetadata,
+  printWizardHeader,
+  randomToken,
+} from "./onboard-helpers.js";
 import { ensureSystemdUserLingerInteractive } from "./systemd-linger.js";
 
 const intro = (message: string) =>
@@ -96,6 +100,39 @@ const note = (message: string, title?: string) =>
 
 function resolveMode(cfg: ClawdbotConfig): "local" | "remote" {
   return cfg.gateway?.mode === "remote" ? "remote" : "local";
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function noteOpencodeProviderOverrides(cfg: ClawdbotConfig) {
+  const providers = cfg.models?.providers;
+  if (!providers) return;
+
+  // 2026-01-10: warn when OpenCode Zen overrides mask built-in routing/costs (8a194b4abc360c6098f157956bb9322576b44d51, 2d105d16f8a099276114173836d46b46cdfbdbae).
+  const overrides: string[] = [];
+  if (providers.opencode) overrides.push("opencode");
+  if (providers["opencode-zen"]) overrides.push("opencode-zen");
+  if (overrides.length === 0) return;
+
+  const lines = overrides.flatMap((id) => {
+    const providerEntry = providers[id];
+    const api =
+      isRecord(providerEntry) && typeof providerEntry.api === "string"
+        ? providerEntry.api
+        : undefined;
+    return [
+      `- models.providers.${id} is set; this overrides the built-in OpenCode Zen catalog.`,
+      api ? `- models.providers.${id}.api=${api}` : null,
+    ].filter((line): line is string => Boolean(line));
+  });
+
+  lines.push(
+    "- Remove these entries to restore per-model API routing + costs (then re-run onboarding if needed).",
+  );
+
+  note(lines.join("\n"), "OpenCode Zen");
 }
 
 async function detectClawdbotGitCheckout(
@@ -233,6 +270,8 @@ export async function doctorCommand(
     cfg = normalized.config;
   }
 
+  noteOpencodeProviderOverrides(cfg);
+
   cfg = await maybeRepairAnthropicOAuthProfileId(cfg, prompter);
   await noteAuthProfileHealth({
     cfg,
@@ -243,6 +282,45 @@ export async function doctorCommand(
   const gatewayDetails = buildGatewayConnectionDetails({ config: cfg });
   if (gatewayDetails.remoteFallbackNote) {
     note(gatewayDetails.remoteFallbackNote, "Gateway");
+  }
+  if (resolveMode(cfg) === "local") {
+    const authMode = cfg.gateway?.auth?.mode;
+    const token =
+      typeof cfg.gateway?.auth?.token === "string"
+        ? cfg.gateway?.auth?.token.trim()
+        : "";
+    const needsToken =
+      authMode !== "password" && (authMode !== "token" || !token);
+    if (needsToken) {
+      note(
+        "Gateway auth is off or missing a token. Token auth is now the recommended default (including loopback).",
+        "Gateway auth",
+      );
+      const shouldSetToken =
+        options.generateGatewayToken === true
+          ? true
+          : options.nonInteractive === true
+            ? false
+            : await prompter.confirmRepair({
+                message: "Generate and configure a gateway token now?",
+                initialValue: true,
+              });
+      if (shouldSetToken) {
+        const nextToken = randomToken();
+        cfg = {
+          ...cfg,
+          gateway: {
+            ...cfg.gateway,
+            auth: {
+              ...cfg.gateway?.auth,
+              mode: "token",
+              token: nextToken,
+            },
+          },
+        };
+        note("Gateway token configured.", "Gateway auth");
+      }
+    }
   }
 
   const legacyState = await detectLegacyStateMigrations({ cfg });

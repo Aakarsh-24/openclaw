@@ -20,6 +20,17 @@ const mocks = vi.hoisted(() => ({
   getWebAuthAgeMs: vi.fn().mockReturnValue(5000),
   readWebSelfId: vi.fn().mockReturnValue({ e164: "+1999" }),
   logWebSelfId: vi.fn(),
+  probeGateway: vi.fn().mockResolvedValue({
+    ok: false,
+    url: "ws://127.0.0.1:18789",
+    connectLatencyMs: null,
+    error: "timeout",
+    close: null,
+    health: null,
+    status: null,
+    presence: null,
+    configSnapshot: null,
+  }),
 }));
 
 vi.mock("../config/sessions.js", () => ({
@@ -32,6 +43,52 @@ vi.mock("../web/session.js", () => ({
   getWebAuthAgeMs: mocks.getWebAuthAgeMs,
   readWebSelfId: mocks.readWebSelfId,
   logWebSelfId: mocks.logWebSelfId,
+}));
+vi.mock("../gateway/probe.js", () => ({
+  probeGateway: mocks.probeGateway,
+}));
+vi.mock("../gateway/session-utils.js", () => ({
+  listAgentsForGateway: () => ({
+    defaultId: "main",
+    mainKey: "agent:main:main",
+    scope: "per-sender",
+    agents: [{ id: "main", name: "Main" }],
+  }),
+}));
+vi.mock("../infra/clawdbot-root.js", () => ({
+  resolveClawdbotPackageRoot: vi.fn().mockResolvedValue("/tmp/clawdbot"),
+}));
+vi.mock("../infra/os-summary.js", () => ({
+  resolveOsSummary: () => ({
+    platform: "darwin",
+    arch: "arm64",
+    release: "23.0.0",
+    label: "macos 14.0 (arm64)",
+  }),
+}));
+vi.mock("../infra/update-check.js", () => ({
+  checkUpdateStatus: vi.fn().mockResolvedValue({
+    root: "/tmp/clawdbot",
+    installKind: "git",
+    packageManager: "pnpm",
+    git: {
+      root: "/tmp/clawdbot",
+      branch: "main",
+      upstream: "origin/main",
+      dirty: false,
+      ahead: 0,
+      behind: 0,
+      fetchOk: true,
+    },
+    deps: {
+      manager: "pnpm",
+      status: "ok",
+      lockfilePath: "/tmp/clawdbot/pnpm-lock.yaml",
+      markerPath: "/tmp/clawdbot/node_modules/.modules.yaml",
+    },
+    registry: { latestVersion: "0.0.0" },
+  }),
+  compareSemverStrings: vi.fn(() => 0),
 }));
 vi.mock("../config/config.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../config/config.js")>();
@@ -47,6 +104,10 @@ vi.mock("../daemon/service.js", () => ({
     notLoadedText: "not loaded",
     isLoaded: async () => true,
     readRuntime: async () => ({ status: "running", pid: 1234 }),
+    readCommand: async () => ({
+      programArguments: ["node", "dist/entry.js", "gateway"],
+      sourcePath: "/tmp/Library/LaunchAgents/com.clawdbot.gateway.plist",
+    }),
   }),
 }));
 
@@ -76,16 +137,42 @@ describe("statusCommand", () => {
     (runtime.log as vi.Mock).mockClear();
     await statusCommand({}, runtime as never);
     const logs = (runtime.log as vi.Mock).mock.calls.map((c) => String(c[0]));
-    expect(logs.some((l) => l.includes("Web session"))).toBe(true);
-    expect(logs.some((l) => l.includes("Active sessions"))).toBe(true);
-    expect(logs.some((l) => l.includes("Default model"))).toBe(true);
-    expect(logs.some((l) => l.includes("tokens:"))).toBe(true);
-    expect(logs.some((l) => l.includes("Daemon:"))).toBe(true);
+    expect(logs.some((l) => l.includes("Clawdbot status"))).toBe(true);
+    expect(logs.some((l) => l.includes("Overview"))).toBe(true);
+    expect(logs.some((l) => l.includes("Dashboard"))).toBe(true);
+    expect(logs.some((l) => l.includes("macos 14.0 (arm64)"))).toBe(true);
+    expect(logs.some((l) => l.includes("Providers"))).toBe(true);
+    expect(logs.some((l) => l.includes("Telegram"))).toBe(true);
+    expect(logs.some((l) => l.includes("Sessions"))).toBe(true);
+    expect(logs.some((l) => l.includes("+1000"))).toBe(true);
+    expect(logs.some((l) => l.includes("50%"))).toBe(true);
+    expect(logs.some((l) => l.includes("LaunchAgent"))).toBe(true);
     expect(logs.some((l) => l.includes("FAQ:"))).toBe(true);
     expect(logs.some((l) => l.includes("Troubleshooting:"))).toBe(true);
-    expect(
-      logs.some((l) => l.includes("flags:") && l.includes("verbose:on")),
-    ).toBe(true);
-    expect(mocks.logWebSelfId).toHaveBeenCalled();
+  });
+
+  it("shows gateway auth when reachable", async () => {
+    const prevToken = process.env.CLAWDBOT_GATEWAY_TOKEN;
+    process.env.CLAWDBOT_GATEWAY_TOKEN = "abcd1234";
+    try {
+      mocks.probeGateway.mockResolvedValueOnce({
+        ok: true,
+        url: "ws://127.0.0.1:18789",
+        connectLatencyMs: 123,
+        error: null,
+        close: null,
+        health: {},
+        status: {},
+        presence: [],
+        configSnapshot: null,
+      });
+      (runtime.log as vi.Mock).mockClear();
+      await statusCommand({}, runtime as never);
+      const logs = (runtime.log as vi.Mock).mock.calls.map((c) => String(c[0]));
+      expect(logs.some((l) => l.includes("auth token"))).toBe(true);
+    } finally {
+      if (prevToken === undefined) delete process.env.CLAWDBOT_GATEWAY_TOKEN;
+      else process.env.CLAWDBOT_GATEWAY_TOKEN = prevToken;
+    }
   });
 });

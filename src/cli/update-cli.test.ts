@@ -7,6 +7,10 @@ vi.mock("../infra/update-runner.js", () => ({
   runGatewayUpdate: vi.fn(),
 }));
 
+// Mock doctor (heavy module; should not run in unit tests)
+vi.mock("../commands/doctor.js", () => ({
+  doctorCommand: vi.fn(),
+}));
 // Mock the daemon-cli module
 vi.mock("./daemon-cli.js", () => ({
   runDaemonRestart: vi.fn(),
@@ -28,7 +32,7 @@ describe("update-cli", () => {
     );
     expect(typeof updateCommand).toBe("function");
     expect(typeof registerUpdateCli).toBe("function");
-  });
+  }, 20_000);
 
   it("updateCommand runs update and outputs result", async () => {
     const { runGatewayUpdate } = await import("../infra/update-runner.js");
@@ -124,11 +128,38 @@ describe("update-cli", () => {
     };
 
     vi.mocked(runGatewayUpdate).mockResolvedValue(mockResult);
-    vi.mocked(runDaemonRestart).mockResolvedValue();
+    vi.mocked(runDaemonRestart).mockResolvedValue(true);
 
     await updateCommand({ restart: true });
 
     expect(runDaemonRestart).toHaveBeenCalled();
+  });
+
+  it("updateCommand skips success message when restart does not run", async () => {
+    const { runGatewayUpdate } = await import("../infra/update-runner.js");
+    const { runDaemonRestart } = await import("./daemon-cli.js");
+    const { defaultRuntime } = await import("../runtime.js");
+    const { updateCommand } = await import("./update-cli.js");
+
+    const mockResult: UpdateRunResult = {
+      status: "ok",
+      mode: "git",
+      steps: [],
+      durationMs: 100,
+    };
+
+    vi.mocked(runGatewayUpdate).mockResolvedValue(mockResult);
+    vi.mocked(runDaemonRestart).mockResolvedValue(false);
+    vi.mocked(defaultRuntime.log).mockClear();
+
+    await updateCommand({ restart: true });
+
+    const logLines = vi
+      .mocked(defaultRuntime.log)
+      .mock.calls.map((call) => String(call[0]));
+    expect(
+      logLines.some((line) => line.includes("Daemon restarted successfully.")),
+    ).toBe(false);
   });
 
   it("updateCommand validates timeout option", async () => {
