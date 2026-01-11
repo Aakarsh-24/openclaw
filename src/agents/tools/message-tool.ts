@@ -53,6 +53,13 @@ const MessageActionSchema = Type.Union([
   Type.Literal("role-remove"),
   Type.Literal("channel-info"),
   Type.Literal("channel-list"),
+  Type.Literal("channel-create"),
+  Type.Literal("channel-edit"),
+  Type.Literal("channel-delete"),
+  Type.Literal("channel-move"),
+  Type.Literal("category-create"),
+  Type.Literal("category-edit"),
+  Type.Literal("category-delete"),
   Type.Literal("voice-status"),
   Type.Literal("event-list"),
   Type.Literal("event-create"),
@@ -129,6 +136,15 @@ const MessageToolSchema = Type.Object({
   gatewayUrl: Type.Optional(Type.String()),
   gatewayToken: Type.Optional(Type.String()),
   timeoutMs: Type.Optional(Type.Number()),
+  // Channel management parameters
+  name: Type.Optional(Type.String()),
+  type: Type.Optional(Type.Number()),
+  parentId: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+  topic: Type.Optional(Type.String()),
+  position: Type.Optional(Type.Number()),
+  nsfw: Type.Optional(Type.Boolean()),
+  rateLimitPerUser: Type.Optional(Type.Number()),
+  categoryId: Type.Optional(Type.String()),
 });
 
 type MessageToolOptions = {
@@ -261,6 +277,15 @@ function buildMessageActionSchema(cfg: ClawdbotConfig) {
   if (discordEnabled && discordGate("channelInfo")) {
     actions.add("channel-info");
     actions.add("channel-list");
+  }
+  if (discordEnabled && discordGate("channels", false)) {
+    actions.add("channel-create");
+    actions.add("channel-edit");
+    actions.add("channel-delete");
+    actions.add("channel-move");
+    actions.add("category-create");
+    actions.add("category-edit");
+    actions.add("category-delete");
   }
   if (discordEnabled && discordGate("voiceStatus")) actions.add("voice-status");
   if (discordEnabled && discordGate("events")) {
@@ -1002,6 +1027,164 @@ export function createMessageTool(options?: MessageToolOptions): AnyAgentTool {
         const guildId = readStringParam(params, "guildId", { required: true });
         return await handleDiscordAction(
           { action: "channelList", guildId },
+          cfg,
+        );
+      }
+
+      if (action === "channel-create") {
+        if (provider !== "discord") {
+          throw new Error(
+            `Channel create is only supported for Discord (provider=${provider}).`,
+          );
+        }
+        const guildId = readStringParam(params, "guildId", { required: true });
+        const name = readStringParam(params, "name", { required: true });
+        const type = readNumberParam(params, "type", { integer: true });
+        const parentId = params.parentId as string | null | undefined;
+        const topic = readStringParam(params, "topic");
+        const position = readNumberParam(params, "position", { integer: true });
+        const nsfw =
+          typeof params.nsfw === "boolean" ? params.nsfw : undefined;
+        return await handleDiscordAction(
+          {
+            action: "channelCreate",
+            guildId,
+            name,
+            type: type ?? undefined,
+            parentId: parentId ?? undefined,
+            topic: topic ?? undefined,
+            position: position ?? undefined,
+            nsfw,
+          },
+          cfg,
+        );
+      }
+
+      if (action === "channel-edit") {
+        if (provider !== "discord") {
+          throw new Error(
+            `Channel edit is only supported for Discord (provider=${provider}).`,
+          );
+        }
+        const channelId = readStringParam(params, "channelId", {
+          required: true,
+        });
+        const name = readStringParam(params, "name");
+        const topic = readStringParam(params, "topic");
+        const position = readNumberParam(params, "position", { integer: true });
+        const parentId = params.parentId as string | null | undefined;
+        const nsfw =
+          typeof params.nsfw === "boolean" ? params.nsfw : undefined;
+        const rateLimitPerUser = readNumberParam(params, "rateLimitPerUser", {
+          integer: true,
+        });
+        return await handleDiscordAction(
+          {
+            action: "channelEdit",
+            channelId,
+            name: name ?? undefined,
+            topic: topic ?? undefined,
+            position: position ?? undefined,
+            parentId: parentId === undefined ? undefined : parentId,
+            nsfw,
+            rateLimitPerUser: rateLimitPerUser ?? undefined,
+          },
+          cfg,
+        );
+      }
+
+      if (action === "channel-delete") {
+        if (provider !== "discord") {
+          throw new Error(
+            `Channel delete is only supported for Discord (provider=${provider}).`,
+          );
+        }
+        const channelId = readStringParam(params, "channelId", {
+          required: true,
+        });
+        return await handleDiscordAction(
+          { action: "channelDelete", channelId },
+          cfg,
+        );
+      }
+
+      if (action === "channel-move") {
+        if (provider !== "discord") {
+          throw new Error(
+            `Channel move is only supported for Discord (provider=${provider}).`,
+          );
+        }
+        const guildId = readStringParam(params, "guildId", { required: true });
+        const channelId = readStringParam(params, "channelId", {
+          required: true,
+        });
+        const parentId = params.parentId as string | null | undefined;
+        const position = readNumberParam(params, "position", { integer: true });
+        return await handleDiscordAction(
+          {
+            action: "channelMove",
+            guildId,
+            channelId,
+            parentId: parentId === undefined ? undefined : parentId,
+            position: position ?? undefined,
+          },
+          cfg,
+        );
+      }
+
+      if (action === "category-create") {
+        if (provider !== "discord") {
+          throw new Error(
+            `Category create is only supported for Discord (provider=${provider}).`,
+          );
+        }
+        const guildId = readStringParam(params, "guildId", { required: true });
+        const name = readStringParam(params, "name", { required: true });
+        const position = readNumberParam(params, "position", { integer: true });
+        return await handleDiscordAction(
+          {
+            action: "categoryCreate",
+            guildId,
+            name,
+            position: position ?? undefined,
+          },
+          cfg,
+        );
+      }
+
+      if (action === "category-edit") {
+        if (provider !== "discord") {
+          throw new Error(
+            `Category edit is only supported for Discord (provider=${provider}).`,
+          );
+        }
+        const categoryId = readStringParam(params, "categoryId", {
+          required: true,
+        });
+        const name = readStringParam(params, "name");
+        const position = readNumberParam(params, "position", { integer: true });
+        return await handleDiscordAction(
+          {
+            action: "categoryEdit",
+            categoryId,
+            name: name ?? undefined,
+            position: position ?? undefined,
+          },
+          cfg,
+        );
+      }
+
+      if (action === "category-delete") {
+        if (provider !== "discord") {
+          throw new Error(
+            `Category delete is only supported for Discord (provider=${provider}).`,
+          );
+        }
+        const categoryId = readStringParam(params, "categoryId", {
+          required: true,
+        });
+        return await handleDiscordAction(
+          { action: "categoryDelete", categoryId },
           cfg,
         );
       }
