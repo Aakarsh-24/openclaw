@@ -59,7 +59,10 @@ import {
   type QueueSettings,
   scheduleFollowupDrain,
 } from "./queue.js";
-import { parseReplyDirectives } from "./reply-directives.js";
+import {
+  parseReplyDirectives,
+  parseSplitReplyDirectives,
+} from "./reply-directives.js";
 import {
   applyReplyTagsToPayload,
   applyReplyThreading,
@@ -822,23 +825,47 @@ export async function runReplyAgent(params: {
       replyToChannel,
       currentMessageId: sessionCtx.MessageSid,
     })
-      .map((payload) => {
-        const parsed = parseReplyDirectives(payload.text ?? "", {
-          currentMessageId: sessionCtx.MessageSid,
-          silentToken: SILENT_REPLY_TOKEN,
+      .flatMap((payload) => {
+        const { segments, usedSplit } = parseSplitReplyDirectives(
+          payload.text ?? "",
+          {
+            currentMessageId: sessionCtx.MessageSid,
+            silentToken: SILENT_REPLY_TOKEN,
+          },
+        );
+        const payloadMediaUrls = payload.mediaUrls;
+        const payloadMediaUrl = payload.mediaUrl;
+        const hasPayloadMedia =
+          Boolean(payloadMediaUrl) || (payloadMediaUrls?.length ?? 0) > 0;
+        const segmentsHaveMedia = segments.some(
+          (segment) =>
+            Boolean(segment.mediaUrl) ||
+            (segment.mediaUrls?.length ?? 0) > 0,
+        );
+        const shouldAttachPayloadMedia =
+          hasPayloadMedia && (!usedSplit || !segmentsHaveMedia);
+
+        return segments.map((segment, index) => {
+          const attachPayloadMedia =
+            shouldAttachPayloadMedia && (!usedSplit || index === 0);
+          const mediaUrls = attachPayloadMedia
+            ? payloadMediaUrls ?? segment.mediaUrls
+            : segment.mediaUrls;
+          const mediaUrl = attachPayloadMedia
+            ? payloadMediaUrl ?? segment.mediaUrl ?? mediaUrls?.[0]
+            : segment.mediaUrl ?? mediaUrls?.[0];
+
+          return {
+            ...payload,
+            text: segment.text ? segment.text : undefined,
+            mediaUrls,
+            mediaUrl,
+            replyToId: payload.replyToId ?? segment.replyToId,
+            replyToTag: payload.replyToTag || segment.replyToTag,
+            replyToCurrent: payload.replyToCurrent || segment.replyToCurrent,
+            audioAsVoice: Boolean(payload.audioAsVoice || segment.audioAsVoice),
+          };
         });
-        const mediaUrls = payload.mediaUrls ?? parsed.mediaUrls;
-        const mediaUrl = payload.mediaUrl ?? parsed.mediaUrl ?? mediaUrls?.[0];
-        return {
-          ...payload,
-          text: parsed.text ? parsed.text : undefined,
-          mediaUrls,
-          mediaUrl,
-          replyToId: payload.replyToId ?? parsed.replyToId,
-          replyToTag: payload.replyToTag || parsed.replyToTag,
-          replyToCurrent: payload.replyToCurrent || parsed.replyToCurrent,
-          audioAsVoice: Boolean(payload.audioAsVoice || parsed.audioAsVoice),
-        };
       })
       .filter(isRenderablePayload);
 

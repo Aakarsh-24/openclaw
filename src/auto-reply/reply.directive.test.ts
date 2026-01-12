@@ -368,6 +368,136 @@ describe("directive behavior", () => {
     });
   });
 
+  it("splits payloads on [[split]] tags", async () => {
+    await withTempHome(async (home) => {
+      vi.mocked(runEmbeddedPiAgent).mockResolvedValue({
+        payloads: [
+          {
+            text: "one [[split]] two [[split]] three",
+          },
+        ],
+        meta: {
+          durationMs: 5,
+          agentMeta: { sessionId: "s", provider: "p", model: "m" },
+        },
+      });
+
+      const res = await getReplyFromConfig(
+        {
+          Body: "ping",
+          From: "+1004",
+          To: "+2000",
+          MessageSid: "msg-123",
+        },
+        {},
+        {
+          agents: {
+            defaults: {
+              model: "anthropic/claude-opus-4-5",
+              workspace: path.join(home, "clawd"),
+            },
+          },
+          whatsapp: { allowFrom: ["*"] },
+          session: { store: path.join(home, "sessions.json") },
+        },
+      );
+
+      expect(Array.isArray(res)).toBe(true);
+      const payloads = Array.isArray(res) ? res : [];
+      expect(payloads.map((payload) => payload.text)).toEqual([
+        "one",
+        "two",
+        "three",
+      ]);
+    });
+  });
+
+  it("propagates reply_to_current across split segments", async () => {
+    await withTempHome(async (home) => {
+      vi.mocked(runEmbeddedPiAgent).mockResolvedValue({
+        payloads: [
+          {
+            text: "first [[reply_to_current]] [[split]] second",
+          },
+        ],
+        meta: {
+          durationMs: 5,
+          agentMeta: { sessionId: "s", provider: "p", model: "m" },
+        },
+      });
+
+      const res = await getReplyFromConfig(
+        {
+          Body: "ping",
+          From: "+1004",
+          To: "+2000",
+          MessageSid: "msg-123",
+        },
+        {},
+        {
+          agents: {
+            defaults: {
+              model: "anthropic/claude-opus-4-5",
+              workspace: path.join(home, "clawd"),
+            },
+          },
+          whatsapp: { allowFrom: ["*"] },
+          session: { store: path.join(home, "sessions.json") },
+        },
+      );
+
+      expect(Array.isArray(res)).toBe(true);
+      const payloads = Array.isArray(res) ? res : [];
+      expect(payloads).toHaveLength(2);
+      expect(payloads[0]?.replyToId).toBe("msg-123");
+      expect(payloads[1]?.replyToId).toBe("msg-123");
+    });
+  });
+
+  it("keeps media with the split segment that includes the media tag", async () => {
+    await withTempHome(async (home) => {
+      vi.mocked(runEmbeddedPiAgent).mockResolvedValue({
+        payloads: [
+          {
+            text: "see MEDIA: /tmp/pic.jpg [[split]] later",
+          },
+        ],
+        meta: {
+          durationMs: 5,
+          agentMeta: { sessionId: "s", provider: "p", model: "m" },
+        },
+      });
+
+      const res = await getReplyFromConfig(
+        {
+          Body: "ping",
+          From: "+1004",
+          To: "+2000",
+          MessageSid: "msg-123",
+        },
+        {},
+        {
+          agents: {
+            defaults: {
+              model: "anthropic/claude-opus-4-5",
+              workspace: path.join(home, "clawd"),
+            },
+          },
+          whatsapp: { allowFrom: ["*"] },
+          session: { store: path.join(home, "sessions.json") },
+        },
+      );
+
+      expect(Array.isArray(res)).toBe(true);
+      const payloads = Array.isArray(res) ? res : [];
+      expect(payloads).toHaveLength(2);
+      expect(payloads[0]?.mediaUrl).toBe("/tmp/pic.jpg");
+      expect(payloads[0]?.text).toBe("see");
+      expect(payloads[1]?.mediaUrl).toBeUndefined();
+      expect(payloads[1]?.text).toBe("later");
+    });
+  });
+
   it("applies inline think and still runs agent content", async () => {
     await withTempHome(async (home) => {
       vi.mocked(runEmbeddedPiAgent).mockResolvedValue({
