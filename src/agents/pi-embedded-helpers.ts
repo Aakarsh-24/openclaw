@@ -616,3 +616,106 @@ export function isMessagingToolDuplicate(
     sentTexts.map(normalizeTextForComparison),
   );
 }
+
+/**
+ * Downgrades tool calls that are missing `thought_signature` (required by Gemini)
+ * into text representations, to prevent 400 INVALID_ARGUMENT errors.
+ * Also converts corresponding tool results into user messages.
+ */
+export function downgradeGeminiHistory(messages: AgentMessage[]): AgentMessage[] {
+    const downgradedIds = new Set<string>();
+    const out: AgentMessage[] = [];
+
+    for (const msg of messages) {
+        if (!msg || typeof msg !== "object") {
+            out.push(msg);
+            continue;
+        }
+
+        const role = (msg as { role?: unknown }).role;
+
+        if (role === "assistant") {
+            const assistantMsg = msg as Extract<AgentMessage, { role: "assistant" }>;
+            if (!Array.isArray(assistantMsg.content)) {
+                out.push(msg);
+                continue;
+            }
+
+            let hasDowngraded = false;
+            const newContent = assistantMsg.content.map((block) => {
+                if (!block || typeof block !== "object") return block;
+                const type = (block as { type?: unknown }).type;
+
+                // Check for tool calls / function calls
+                if (
+                    type === "toolCall" ||
+                    type === "functionCall" ||
+                    type === "toolUse"
+                ) {
+                    // Check if thought_signature is missing
+                    // Note: TypeScript doesn't know about thought_signature on standard types
+                    const hasSignature =
+                        "thought_signature" in block &&
+                        Boolean((block as any).thought_signature);
+
+                    if (!hasSignature) {
+                        const id = (block as any).id || (block as any).toolCallId;
+                        const name = (block as any).name || (block as any).toolName;
+                        const args = (block as any).arguments || (block as any).input;
+
+                        if (id) downgradedIds.add(id);
+                        hasDowngraded = true;
+
+                        const argsText =
+                            typeof args === "string"
+                                ? args
+                                : JSON.stringify(args, null, 2);
+
+                        return {
+                            type: "text",
+                            text: `[Tool Call: ${name} (ID: ${id})]\nArguments: ${argsText}`,
+                        };
+                    }
+                }
+                return block;
+            });
+
+            if (hasDowngraded) {
+                out.push({ ...assistantMsg, content: newContent } as AgentMessage);
+            } else {
+                out.push(msg);
+            }
+            continue;
+        }
+
+        if (role === "toolResult") {
+            const toolMsg = msg as Extract<AgentMessage, { role: "toolResult" }>;
+            if (downgradedIds.has(toolMsg.toolCallId)) {
+                // Convert to User message
+                let textContent = "";
+                if (Array.isArray(toolMsg.content)) {
+                    textContent = toolMsg.content
+                        .map((b) => (b as any).text || JSON.stringify(b))
+                        .join("\n");
+                } else {
+                    textContent = JSON.stringify(toolMsg.content);
+                }
+
+                out.push({
+                    role: "user",
+                    content: [
+                        {
+                            type: "text",
+                            text: `[Tool Result for ID ${toolMsg.toolCallId}]\n${textContent}`,
+                        },
+                    ],
+                } as unknown as AgentMessage);
+
+                continue;
+            }
+        }
+
+        out.push(msg);
+    }
+    return out;
+}

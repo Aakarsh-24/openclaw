@@ -18,9 +18,9 @@ import {
 import type { ProviderMessageActionName } from "../../providers/plugins/types.js";
 import { normalizeAccountId } from "../../routing/session-key.js";
 import {
+  GATEWAY_CLIENT_IDS,
   GATEWAY_CLIENT_MODES,
-  GATEWAY_CLIENT_NAMES,
-} from "../../utils/message-provider.js";
+} from "../../gateway/protocol/client-info.js";
 import type { AnyAgentTool } from "./common.js";
 import {
   jsonResult,
@@ -240,26 +240,34 @@ export function createMessageTool(options?: MessageToolOptions): AnyAgentTool {
         url: readStringParam(params, "gatewayUrl", { trim: false }),
         token: readStringParam(params, "gatewayToken", { trim: false }),
         timeoutMs: readNumberParam(params, "timeoutMs"),
-        clientName: GATEWAY_CLIENT_NAMES.GATEWAY_CLIENT,
+        clientName: GATEWAY_CLIENT_IDS.GATEWAY_CLIENT,
         clientDisplayName: "agent",
         mode: GATEWAY_CLIENT_MODES.BACKEND,
       };
 
       const toolContext =
         options?.currentChannelId ||
-        options?.currentThreadTs ||
-        options?.replyToMode ||
-        options?.hasRepliedRef
+          options?.currentThreadTs ||
+          options?.replyToMode ||
+          options?.hasRepliedRef
           ? {
-              currentChannelId: options?.currentChannelId,
-              currentThreadTs: options?.currentThreadTs,
-              replyToMode: options?.replyToMode,
-              hasRepliedRef: options?.hasRepliedRef,
-            }
+            currentChannelId: options?.currentChannelId,
+            currentThreadTs: options?.currentThreadTs,
+            replyToMode: options?.replyToMode,
+            hasRepliedRef: options?.hasRepliedRef,
+          }
           : undefined;
 
       if (action === "send") {
         const to = readStringParam(params, "to", { required: true });
+
+        // Enforce context isolation: if bound to a channel, must send to that channel.
+        if (options?.currentChannelId && to !== options.currentChannelId) {
+          throw new Error(
+            `Cross-context messaging denied: Cannot send to "${to}" while bound to channel "${options.currentChannelId}".`,
+          );
+        }
+
         let message = readStringParam(params, "message", {
           required: true,
           allowEmpty: true,
@@ -327,10 +335,18 @@ export function createMessageTool(options?: MessageToolOptions): AnyAgentTool {
 
       if (action === "poll") {
         const to = readStringParam(params, "to", { required: true });
+
+        // Enforce context isolation: if bound to a channel, must send to that channel.
+        if (options?.currentChannelId && to !== options.currentChannelId) {
+          throw new Error(
+            `Cross-context messaging denied: Cannot send to "${to}" while bound to channel "${options.currentChannelId}".`,
+          );
+        }
+
         const question = readStringParam(params, "pollQuestion", {
           required: true,
         });
-        const options =
+        const pollOptions =
           readStringArrayParam(params, "pollOption", { required: true }) ?? [];
         const allowMultiselect =
           typeof params.pollMulti === "boolean" ? params.pollMulti : undefined;
@@ -339,14 +355,14 @@ export function createMessageTool(options?: MessageToolOptions): AnyAgentTool {
         });
 
         const maxSelections = allowMultiselect
-          ? Math.max(2, options.length)
+          ? Math.max(2, pollOptions.length)
           : 1;
 
         if (dryRun) {
           const result: MessagePollResult = await sendPoll({
             to,
             question,
-            options,
+            options: pollOptions,
             maxSelections,
             durationHours: durationHours ?? undefined,
             provider,
@@ -371,7 +387,7 @@ export function createMessageTool(options?: MessageToolOptions): AnyAgentTool {
         const result: MessagePollResult = await sendPoll({
           to,
           question,
-          options,
+          options: pollOptions,
           maxSelections,
           durationHours: durationHours ?? undefined,
           provider,

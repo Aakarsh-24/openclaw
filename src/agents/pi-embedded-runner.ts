@@ -84,6 +84,7 @@ export type { MessagingToolSend } from "./pi-embedded-messaging.js";
 
 import {
   buildBootstrapContextFiles,
+  downgradeGeminiHistory,
   classifyFailoverReason,
   type EmbeddedContextFile,
   ensureSessionHeader,
@@ -431,7 +432,7 @@ function hasGoogleTurnOrderingMarker(sessionManager: SessionManager): boolean {
         (entry) =>
           (entry as CustomEntryLike)?.type === "custom" &&
           (entry as CustomEntryLike)?.customType ===
-            GOOGLE_TURN_ORDERING_CUSTOM_TYPE,
+          GOOGLE_TURN_ORDERING_CUSTOM_TYPE,
       );
   } catch {
     return false;
@@ -491,8 +492,14 @@ async function sanitizeSessionHistory(params: {
     },
   );
   const repairedTools = sanitizeToolUseResultPairing(sanitizedImages);
+
+  // Downgrade tool calls missing thought_signature if using Gemini
+  const downgraded = isGoogleModelApi(params.modelApi)
+    ? downgradeGeminiHistory(repairedTools)
+    : repairedTools;
+
   return applyGoogleTurnOrderingFix({
-    messages: repairedTools,
+    messages: downgraded,
     modelApi: params.modelApi,
     sessionManager: params.sessionManager,
     sessionId: params.sessionId,
@@ -567,9 +574,9 @@ export function getDmHistoryLimitFromSessionKey(
   const getLimit = (
     providerConfig:
       | {
-          dmHistoryLimit?: number;
-          dms?: Record<string, { historyLimit?: number }>;
-        }
+        dmHistoryLimit?: number;
+        dms?: Record<string, { historyLimit?: number }>;
+      }
       | undefined,
   ): number | undefined => {
     if (!providerConfig) return undefined;
@@ -792,11 +799,11 @@ export function buildEmbeddedSandboxInfo(
     allowedControlPorts: sandbox.browserAllowedControlPorts,
     ...(elevatedAllowed
       ? {
-          elevated: {
-            allowed: true,
-            defaultLevel: execElevated?.defaultLevel ?? "off",
-          },
-        }
+        elevated: {
+          allowed: true,
+          defaultLevel: execElevated?.defaultLevel ?? "off",
+        },
+      }
       : {}),
   };
 }
@@ -1080,13 +1087,13 @@ export async function compactEmbeddedPiSession(params: {
           : [];
         restoreSkillEnv = params.skillsSnapshot
           ? applySkillEnvOverridesFromSnapshot({
-              snapshot: params.skillsSnapshot,
-              config: params.config,
-            })
+            snapshot: params.skillsSnapshot,
+            config: params.config,
+          })
           : applySkillEnvOverrides({
-              skills: skillEntries ?? [],
-              config: params.config,
-            });
+            skills: skillEntries ?? [],
+            config: params.config,
+          });
         const skillsPrompt = resolveSkillsPromptForRun({
           skillsSnapshot: params.skillsSnapshot,
           entries: shouldLoadSkillEntries ? skillEntries : undefined,
@@ -1124,10 +1131,10 @@ export async function compactEmbeddedPiSession(params: {
         );
         const runtimeCapabilities = runtimeProvider
           ? (resolveProviderCapabilities({
-              cfg: params.config,
-              provider: runtimeProvider,
-              accountId: params.agentAccountId,
-            }) ?? [])
+            cfg: params.config,
+            provider: runtimeProvider,
+            accountId: params.agentAccountId,
+          }) ?? [])
           : undefined;
         const runtimeInfo = {
           host: machineName,
@@ -1162,8 +1169,8 @@ export async function compactEmbeddedPiSession(params: {
           reasoningTagHint,
           heartbeatPrompt: isDefaultAgent
             ? resolveHeartbeatPrompt(
-                params.config?.agents?.defaults?.heartbeat?.prompt,
-              )
+              params.config?.agents?.defaults?.heartbeat?.prompt,
+            )
             : undefined,
           skillsPrompt,
           runtimeInfo,
@@ -1494,13 +1501,13 @@ export async function runEmbeddedPiAgent(params: {
             : [];
           restoreSkillEnv = params.skillsSnapshot
             ? applySkillEnvOverridesFromSnapshot({
-                snapshot: params.skillsSnapshot,
-                config: params.config,
-              })
+              snapshot: params.skillsSnapshot,
+              config: params.config,
+            })
             : applySkillEnvOverrides({
-                skills: skillEntries ?? [],
-                config: params.config,
-              });
+              skills: skillEntries ?? [],
+              config: params.config,
+            });
           const skillsPrompt = resolveSkillsPromptForRun({
             skillsSnapshot: params.skillsSnapshot,
             entries: shouldLoadSkillEntries ? skillEntries : undefined,
@@ -1568,8 +1575,8 @@ export async function runEmbeddedPiAgent(params: {
             reasoningTagHint,
             heartbeatPrompt: isDefaultAgent
               ? resolveHeartbeatPrompt(
-                  params.config?.agents?.defaults?.heartbeat?.prompt,
-                )
+                params.config?.agents?.defaults?.heartbeat?.prompt,
+              )
               : undefined,
             skillsPrompt,
             runtimeInfo,
@@ -1917,9 +1924,9 @@ export async function runEmbeddedPiAgent(params: {
                 lastAssistant?.errorMessage?.trim() ||
                 (lastAssistant
                   ? formatAssistantErrorText(lastAssistant, {
-                      cfg: params.config,
-                      sessionKey: params.sessionKey ?? params.sessionId,
-                    })
+                    cfg: params.config,
+                    sessionKey: params.sessionKey ?? params.sessionId,
+                  })
                   : "") ||
                 (timedOut
                   ? "LLM request timed out."
@@ -1961,9 +1968,9 @@ export async function runEmbeddedPiAgent(params: {
 
           const errorText = lastAssistant
             ? formatAssistantErrorText(lastAssistant, {
-                cfg: params.config,
-                sessionKey: params.sessionKey ?? params.sessionId,
-              })
+              cfg: params.config,
+              sessionKey: params.sessionKey ?? params.sessionId,
+            })
             : undefined;
 
           if (errorText) replyItems.push({ text: errorText, isError: true });
