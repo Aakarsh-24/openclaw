@@ -11,9 +11,9 @@ import {
   ensureAuthProfileStore,
   listProfilesForProvider,
 } from "./auth-profiles.js";
-import type { ProviderConfig } from "./models-config.providers.js";
 import {
   normalizeProviders,
+  type ProviderConfig,
   resolveImplicitProviders,
 } from "./models-config.providers.js";
 
@@ -23,6 +23,57 @@ const DEFAULT_MODE: NonNullable<ModelsConfig["mode"]> = "merge";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function mergeProviderModels(
+  implicit: ProviderConfig,
+  explicit: ProviderConfig,
+): ProviderConfig {
+  const implicitModels = Array.isArray(implicit.models) ? implicit.models : [];
+  const explicitModels = Array.isArray(explicit.models) ? explicit.models : [];
+  if (implicitModels.length === 0) return { ...implicit, ...explicit };
+
+  const getId = (model: unknown): string => {
+    if (!model || typeof model !== "object") return "";
+    const id = (model as { id?: unknown }).id;
+    return typeof id === "string" ? id.trim() : "";
+  };
+  const seen = new Set(explicitModels.map(getId).filter(Boolean));
+
+  const mergedModels = [
+    ...explicitModels,
+    ...implicitModels.filter((model) => {
+      const id = getId(model);
+      if (!id) return false;
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    }),
+  ];
+
+  return {
+    ...implicit,
+    ...explicit,
+    models: mergedModels,
+  };
+}
+
+function mergeProviders(params: {
+  implicit?: Record<string, ProviderConfig> | null;
+  explicit?: Record<string, ProviderConfig> | null;
+}): Record<string, ProviderConfig> {
+  const out: Record<string, ProviderConfig> = params.implicit
+    ? { ...params.implicit }
+    : {};
+  for (const [key, explicit] of Object.entries(params.explicit ?? {})) {
+    const providerKey = key.trim();
+    if (!providerKey) continue;
+    const implicit = out[providerKey];
+    out[providerKey] = implicit
+      ? mergeProviderModels(implicit, explicit)
+      : explicit;
+  }
+  return out;
 }
 
 async function readJson(pathname: string): Promise<unknown> {
@@ -39,9 +90,7 @@ async function maybeBuildCopilotProvider(params: {
   env?: NodeJS.ProcessEnv;
 }): Promise<ProviderConfig | null> {
   const env = params.env ?? process.env;
-  const authStore = ensureAuthProfileStore(params.agentDir, {
-    allowKeychainPrompt: false,
-  });
+  const authStore = ensureAuthProfileStore(params.agentDir);
   const hasProfile =
     listProfilesForProvider(authStore, "github-copilot").length > 0;
   const envToken = env.COPILOT_GITHUB_TOKEN ?? env.GH_TOKEN ?? env.GITHUB_TOKEN;
@@ -93,6 +142,7 @@ async function maybeBuildCopilotProvider(params: {
     models: [],
   } satisfies ProviderConfig;
 }
+
 export async function ensureClawdbotModelsJson(
   config?: ClawdbotConfig,
   agentDirOverride?: string,
@@ -101,16 +151,21 @@ export async function ensureClawdbotModelsJson(
   const agentDir = agentDirOverride?.trim()
     ? agentDirOverride.trim()
     : resolveClawdbotAgentDir();
-  const configuredProviders = cfg.models?.providers ?? {};
+
+  const explicitProviders = (cfg.models?.providers ?? {}) as Record<
+    string,
+    ProviderConfig
+  >;
   const implicitProviders = resolveImplicitProviders({ agentDir });
-  const providers: Record<string, ProviderConfig> = {
-    ...implicitProviders,
-    ...configuredProviders,
-  };
+  const providers: Record<string, ProviderConfig> = mergeProviders({
+    implicit: implicitProviders,
+    explicit: explicitProviders,
+  });
   const implicitCopilot = await maybeBuildCopilotProvider({ agentDir });
   if (implicitCopilot && !providers["github-copilot"]) {
     providers["github-copilot"] = implicitCopilot;
   }
+
   if (Object.keys(providers).length === 0) {
     return { agentDir, wrote: false };
   }

@@ -98,8 +98,9 @@ export async function sanitizeSessionMessagesImages(
   const sanitizedIds = options?.sanitizeToolCallIds
     ? sanitizeToolCallIdsForCloudCodeAssist(messages)
     : messages;
+  const base = sanitizedIds;
   const out: AgentMessage[] = [];
-  for (const msg of sanitizedIds) {
+  for (const msg of base) {
     if (!msg || typeof msg !== "object") {
       out.push(msg);
       continue;

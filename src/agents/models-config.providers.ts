@@ -10,6 +10,7 @@ export type ProviderConfig = NonNullable<ModelsConfig["providers"]>[string];
 
 const MINIMAX_API_BASE_URL = "https://api.minimax.io/anthropic";
 const MINIMAX_DEFAULT_MODEL_ID = "MiniMax-M2.1";
+const MINIMAX_DEFAULT_VISION_MODEL_ID = "MiniMax-VL-01";
 const MINIMAX_DEFAULT_CONTEXT_WINDOW = 200000;
 const MINIMAX_DEFAULT_MAX_TOKENS = 8192;
 // Pricing: MiniMax doesn't publish public rates. Override in models.json for accurate costs.
@@ -34,7 +35,7 @@ const MOONSHOT_DEFAULT_COST = {
 function normalizeApiKeyConfig(value: string): string {
   const trimmed = value.trim();
   const match = /^\$\{([A-Z0-9_]+)\}$/.exec(trimmed);
-  return match ? match[1]! : trimmed;
+  return match?.[1] ?? trimmed;
 }
 
 function resolveEnvApiKeyVarName(provider: string): string | undefined {
@@ -148,6 +149,15 @@ function buildMinimaxProvider(): ProviderConfig {
         contextWindow: MINIMAX_DEFAULT_CONTEXT_WINDOW,
         maxTokens: MINIMAX_DEFAULT_MAX_TOKENS,
       },
+      {
+        id: MINIMAX_DEFAULT_VISION_MODEL_ID,
+        name: "MiniMax VL 01",
+        reasoning: false,
+        input: ["text", "image"],
+        cost: MINIMAX_API_COST,
+        contextWindow: MINIMAX_DEFAULT_CONTEXT_WINDOW,
+        maxTokens: MINIMAX_DEFAULT_MAX_TOKENS,
+      },
     ],
   };
 }
@@ -194,4 +204,3 @@ export function resolveImplicitProviders(params: {
 
   return providers;
 }
-

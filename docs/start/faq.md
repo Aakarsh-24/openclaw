@@ -83,6 +83,10 @@ pnpm clawdbot onboard
 
 The wizard can also build UI assets automatically. After onboarding, you typically run the Gateway on port **18789**.
 
+### How do I open the dashboard after onboarding?
+
+The wizard now opens your browser with a tokenized dashboard URL right after onboarding and also prints the full link (with token) in the summary. Keep that tab open; if it didn’t launch, copy/paste the printed URL on the same machine. Tokens stay local to your host—nothing is fetched from the browser.
+
 ### What runtime do I need?
 
 Node **>= 22** is required. `pnpm` is recommended; `bun` is optional.
@@ -118,7 +122,7 @@ Clawdbot supports **OpenAI Code (Codex)** via OAuth or by reusing your Codex CLI
 
 ### Is a local model OK for casual chats?
 
-Usually no. Clawdbot needs large context + strong safety; small cards truncate. See [/gateway/local-models](/gateway/local-models) for hardware expectations and the LM Studio MiniMax M2.1 setup.
+Usually no. Clawdbot needs large context + strong safety; small cards truncate and leak. If you must, run the **largest** MiniMax M2.1 build you can locally (LM Studio) and see [/gateway/local-models](/gateway/local-models). Smaller/quantized models increase prompt-injection risk — see [Security](/gateway/security).
 
 ### Can I use Bun?
 
@@ -760,6 +764,8 @@ Facts (from code):
 - The UI can import `?token=...` (and/or `?password=...`) once, then strips it from the URL.
 
 Fix:
+- Fastest: `clawdbot dashboard` (prints + copies tokenized link, tries to open; shows SSH hint if headless).
+- If remote, tunnel first: `ssh -N -L 18789:127.0.0.1:18789 user@host` then open `http://127.0.0.1:18789/?token=...`.
 - Set `gateway.auth.token` (or `CLAWDBOT_GATEWAY_TOKEN`) on the gateway host.
 - In the Control UI settings, paste the same token (or refresh with a one-time `?token=...` link).
 

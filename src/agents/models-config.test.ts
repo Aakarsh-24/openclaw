@@ -35,7 +35,7 @@ const MODELS_CONFIG: ClawdbotConfig = {
 
 describe("models config", () => {
   it("auto-injects github-copilot provider when token is present", async () => {
-    await withTempHome(async () => {
+    await withTempHome(async (home) => {
       const previous = process.env.COPILOT_GITHUB_TOKEN;
       process.env.COPILOT_GITHUB_TOKEN = "gh-token";
 
@@ -54,11 +54,10 @@ describe("models config", () => {
         }));
 
         const { ensureClawdbotModelsJson } = await import("./models-config.js");
-        const { resolveClawdbotAgentDir } = await import("./agent-paths.js");
 
-        await ensureClawdbotModelsJson({ models: { providers: {} } });
+        const agentDir = path.join(home, "agent-default-base-url");
+        await ensureClawdbotModelsJson({ models: { providers: {} } }, agentDir);
 
-        const agentDir = resolveClawdbotAgentDir();
         const raw = await fs.readFile(
           path.join(agentDir, "models.json"),
           "utf8",
@@ -73,6 +72,114 @@ describe("models config", () => {
         expect(parsed.providers["github-copilot"]?.models?.length ?? 0).toBe(0);
       } finally {
         process.env.COPILOT_GITHUB_TOKEN = previous;
+      }
+    });
+  });
+
+  it("prefers COPILOT_GITHUB_TOKEN over GH_TOKEN and GITHUB_TOKEN", async () => {
+    await withTempHome(async () => {
+      const previous = process.env.COPILOT_GITHUB_TOKEN;
+      const previousGh = process.env.GH_TOKEN;
+      const previousGithub = process.env.GITHUB_TOKEN;
+      process.env.COPILOT_GITHUB_TOKEN = "copilot-token";
+      process.env.GH_TOKEN = "gh-token";
+      process.env.GITHUB_TOKEN = "github-token";
+
+      try {
+        vi.resetModules();
+
+        const resolveCopilotApiToken = vi.fn().mockResolvedValue({
+          token: "copilot",
+          expiresAt: Date.now() + 60 * 60 * 1000,
+          source: "mock",
+          baseUrl: "https://api.copilot.example",
+        });
+
+        vi.doMock("../providers/github-copilot-token.js", () => ({
+          DEFAULT_COPILOT_API_BASE_URL:
+            "https://api.individual.githubcopilot.com",
+          resolveCopilotApiToken,
+        }));
+
+        const { ensureClawdbotModelsJson } = await import("./models-config.js");
+
+        await ensureClawdbotModelsJson({ models: { providers: {} } });
+
+        expect(resolveCopilotApiToken).toHaveBeenCalledWith(
+          expect.objectContaining({ githubToken: "copilot-token" }),
+        );
+      } finally {
+        process.env.COPILOT_GITHUB_TOKEN = previous;
+        process.env.GH_TOKEN = previousGh;
+        process.env.GITHUB_TOKEN = previousGithub;
+      }
+    });
+  });
+
+  it("uses the first github-copilot profile when env tokens are missing", async () => {
+    await withTempHome(async (home) => {
+      const previous = process.env.COPILOT_GITHUB_TOKEN;
+      const previousGh = process.env.GH_TOKEN;
+      const previousGithub = process.env.GITHUB_TOKEN;
+      delete process.env.COPILOT_GITHUB_TOKEN;
+      delete process.env.GH_TOKEN;
+      delete process.env.GITHUB_TOKEN;
+
+      try {
+        vi.resetModules();
+
+        const agentDir = path.join(home, "agent-profiles");
+        await fs.mkdir(agentDir, { recursive: true });
+        await fs.writeFile(
+          path.join(agentDir, "auth-profiles.json"),
+          JSON.stringify(
+            {
+              version: 1,
+              profiles: {
+                "github-copilot:alpha": {
+                  type: "token",
+                  provider: "github-copilot",
+                  token: "alpha-token",
+                },
+                "github-copilot:beta": {
+                  type: "token",
+                  provider: "github-copilot",
+                  token: "beta-token",
+                },
+              },
+            },
+            null,
+            2,
+          ),
+        );
+
+        const resolveCopilotApiToken = vi.fn().mockResolvedValue({
+          token: "copilot",
+          expiresAt: Date.now() + 60 * 60 * 1000,
+          source: "mock",
+          baseUrl: "https://api.copilot.example",
+        });
+
+        vi.doMock("../providers/github-copilot-token.js", () => ({
+          DEFAULT_COPILOT_API_BASE_URL:
+            "https://api.individual.githubcopilot.com",
+          resolveCopilotApiToken,
+        }));
+
+        const { ensureClawdbotModelsJson } = await import("./models-config.js");
+
+        await ensureClawdbotModelsJson({ models: { providers: {} } }, agentDir);
+
+        expect(resolveCopilotApiToken).toHaveBeenCalledWith(
+          expect.objectContaining({ githubToken: "alpha-token" }),
+        );
+      } finally {
+        if (previous === undefined) delete process.env.COPILOT_GITHUB_TOKEN;
+        else process.env.COPILOT_GITHUB_TOKEN = previous;
+        if (previousGh === undefined) delete process.env.GH_TOKEN;
+        else process.env.GH_TOKEN = previousGh;
+        if (previousGithub === undefined) delete process.env.GITHUB_TOKEN;
+        else process.env.GITHUB_TOKEN = previousGithub;
       }
     });
   });
@@ -122,6 +229,42 @@ describe("models config", () => {
 
         expect(parsed.providers["github-copilot"]?.baseUrl).toBe(
           "https://copilot.local",
+        );
+      } finally {
+        process.env.COPILOT_GITHUB_TOKEN = previous;
+      }
+    });
+  });
+
+  it("falls back to default baseUrl when token exchange fails", async () => {
+    await withTempHome(async () => {
+      const previous = process.env.COPILOT_GITHUB_TOKEN;
+      process.env.COPILOT_GITHUB_TOKEN = "gh-token";
+
+      try {
+        vi.resetModules();
+
+        vi.doMock("../providers/github-copilot-token.js", () => ({
+          DEFAULT_COPILOT_API_BASE_URL: "https://api.default.test",
+          resolveCopilotApiToken: vi.fn().mockRejectedValue(new Error("boom")),
+        }));
+
+        const { ensureClawdbotModelsJson } = await import("./models-config.js");
+        const { resolveClawdbotAgentDir } = await import("./agent-paths.js");
+
+        await ensureClawdbotModelsJson({ models: { providers: {} } });
+
+        const agentDir = resolveClawdbotAgentDir();
+        const raw = await fs.readFile(
+          path.join(agentDir, "models.json"),
+          "utf8",
+        );
+        const parsed = JSON.parse(raw) as {
+          providers: Record<string, { baseUrl?: string }>;
+        };
+
+        expect(parsed.providers["github-copilot"]?.baseUrl).toBe(
+          "https://api.default.test",
         );
       } finally {
         process.env.COPILOT_GITHUB_TOKEN = previous;
@@ -197,6 +340,50 @@ describe("models config", () => {
       }
     });
   });
+
+  it("skips writing models.json when no env token or profile exists", async () => {
+    await withTempHome(async (home) => {
+      const previous = process.env.COPILOT_GITHUB_TOKEN;
+      const previousGh = process.env.GH_TOKEN;
+      const previousGithub = process.env.GITHUB_TOKEN;
+      const previousMinimax = process.env.MINIMAX_API_KEY;
+      const previousMoonshot = process.env.MOONSHOT_API_KEY;
+      delete process.env.COPILOT_GITHUB_TOKEN;
+      delete process.env.GH_TOKEN;
+      delete process.env.GITHUB_TOKEN;
+      delete process.env.MINIMAX_API_KEY;
+      delete process.env.MOONSHOT_API_KEY;
+
+      try {
+        vi.resetModules();
+        const { ensureClawdbotModelsJson } = await import("./models-config.js");
+
+        const agentDir = path.join(home, "agent-empty");
+        const result = await ensureClawdbotModelsJson(
+          {
+            models: { providers: {} },
+          },
+          agentDir,
+        );
+
+        await expect(
+          fs.stat(path.join(agentDir, "models.json")),
+        ).rejects.toThrow();
+        expect(result.wrote).toBe(false);
+      } finally {
+        if (previous === undefined) delete process.env.COPILOT_GITHUB_TOKEN;
+        else process.env.COPILOT_GITHUB_TOKEN = previous;
+        if (previousGh === undefined) delete process.env.GH_TOKEN;
+        else process.env.GH_TOKEN = previousGh;
+        if (previousGithub === undefined) delete process.env.GITHUB_TOKEN;
+        else process.env.GITHUB_TOKEN = previousGithub;
+        if (previousMinimax === undefined) delete process.env.MINIMAX_API_KEY;
+        else process.env.MINIMAX_API_KEY = previousMinimax;
+        if (previousMoonshot === undefined) delete process.env.MOONSHOT_API_KEY;
+        else process.env.MOONSHOT_API_KEY = previousMoonshot;
+      }
+    });
+  });
   let previousHome: string | undefined;
 
   beforeEach(() => {
@@ -243,7 +430,11 @@ describe("models config", () => {
         const parsed = JSON.parse(raw) as {
           providers: Record<
             string,
-            { baseUrl?: string; apiKey?: string; models?: Array<{ id: string }> }
+            {
+              baseUrl?: string;
+              apiKey?: string;
+              models?: Array<{ id: string }>;
+            }
           >;
         };
         expect(parsed.providers.minimax?.baseUrl).toBe(
@@ -252,6 +443,7 @@ describe("models config", () => {
         expect(parsed.providers.minimax?.apiKey).toBe("MINIMAX_API_KEY");
         const ids = parsed.providers.minimax?.models?.map((model) => model.id);
         expect(ids).toContain("MiniMax-M2.1");
+        expect(ids).toContain("MiniMax-VL-01");
       } finally {
         if (prevKey === undefined) delete process.env.MINIMAX_API_KEY;
         else process.env.MINIMAX_API_KEY = prevKey;
@@ -295,9 +487,14 @@ describe("models config", () => {
         const modelPath = path.join(resolveClawdbotAgentDir(), "models.json");
         const raw = await fs.readFile(modelPath, "utf8");
         const parsed = JSON.parse(raw) as {
-          providers: Record<string, { apiKey?: string }>;
+          providers: Record<
+            string,
+            { apiKey?: string; models?: Array<{ id: string }> }
+          >;
         };
         expect(parsed.providers.minimax?.apiKey).toBe("MINIMAX_API_KEY");
+        const ids = parsed.providers.minimax?.models?.map((model) => model.id);
+        expect(ids).toContain("MiniMax-VL-01");
       } finally {
         if (prevKey === undefined) delete process.env.MINIMAX_API_KEY;
         else process.env.MINIMAX_API_KEY = prevKey;

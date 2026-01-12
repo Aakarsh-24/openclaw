@@ -117,6 +117,7 @@ import { makeToolPrunablePredicate } from "./pi-extensions/context-pruning/tools
 import { toToolDefinitions } from "./pi-tool-definition-adapter.js";
 import { createClawdbotCodingTools } from "./pi-tools.js";
 import { resolveSandboxContext } from "./sandbox.js";
+import { guardSessionManager } from "./session-tool-result-guard-wrapper.js";
 import { sanitizeToolUseResultPairing } from "./session-transcript-repair.js";
 import {
   applySkillEnvOverrides,
@@ -967,6 +968,7 @@ function resolveModel(
   provider: string,
   modelId: string,
   agentDir?: string,
+  cfg?: ClawdbotConfig,
 ): {
   model?: Model<Api>;
   error?: string;
@@ -978,6 +980,38 @@ function resolveModel(
   const modelRegistry = discoverModels(authStorage, resolvedAgentDir);
   const model = modelRegistry.find(provider, modelId) as Model<Api> | null;
   if (!model) {
+    const providers = cfg?.models?.providers ?? {};
+    const inlineModels =
+      providers[provider]?.models ??
+      Object.values(providers)
+        .flatMap((entry) => entry?.models ?? [])
+        .map((entry) => ({ ...entry, provider }));
+    const inlineMatch = inlineModels.find((entry) => entry.id === modelId);
+    if (inlineMatch) {
+      const normalized = normalizeModelCompat(inlineMatch as Model<Api>);
+      return {
+        model: normalized,
+        authStorage,
+        modelRegistry,
+      };
+    }
+    const providerCfg = providers[provider];
+    if (providerCfg || modelId.startsWith("mock-")) {
+      const fallbackModel: Model<Api> = normalizeModelCompat({
+        id: modelId,
+        name: modelId,
+        api: providerCfg?.api ?? "openai-responses",
+        provider,
+        reasoning: false,
+        input: ["text"],
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+        contextWindow:
+          providerCfg?.models?.[0]?.contextWindow ?? DEFAULT_CONTEXT_TOKENS,
+        maxTokens:
+          providerCfg?.models?.[0]?.maxTokens ?? DEFAULT_CONTEXT_TOKENS,
+      } as Model<Api>);
+      return { model: fallbackModel, authStorage, modelRegistry };
+    }
     return {
       error: `Unknown model: ${provider}/${modelId}`,
       authStorage,
@@ -1029,6 +1063,7 @@ export async function compactEmbeddedPiSession(params: {
         provider,
         modelId,
         agentDir,
+        params.config,
       );
       if (!model) {
         return {
@@ -1193,7 +1228,9 @@ export async function compactEmbeddedPiSession(params: {
         try {
           // Pre-warm session file to bring it into OS page cache
           await prewarmSessionFile(params.sessionFile);
-          const sessionManager = SessionManager.open(params.sessionFile);
+          const sessionManager = guardSessionManager(
+            SessionManager.open(params.sessionFile),
+          );
           trackSessionManagerAccess(params.sessionFile);
           const settingsManager = SettingsManager.create(
             effectiveWorkspace,
@@ -1274,6 +1311,7 @@ export async function compactEmbeddedPiSession(params: {
               },
             };
           } finally {
+            sessionManager.flushPendingToolResults?.();
             session.dispose();
           }
         } finally {
@@ -1379,6 +1417,7 @@ export async function runEmbeddedPiAgent(params: {
         provider,
         modelId,
         agentDir,
+        params.config,
       );
       if (!model) {
         throw new Error(error ?? `Unknown model: ${provider}/${modelId}`);
@@ -1610,7 +1649,9 @@ export async function runEmbeddedPiAgent(params: {
           });
           // Pre-warm session file to bring it into OS page cache
           await prewarmSessionFile(params.sessionFile);
-          const sessionManager = SessionManager.open(params.sessionFile);
+          const sessionManager = guardSessionManager(
+            SessionManager.open(params.sessionFile),
+          );
           trackSessionManagerAccess(params.sessionFile);
           const settingsManager = SettingsManager.create(
             effectiveWorkspace,
@@ -1682,6 +1723,7 @@ export async function runEmbeddedPiAgent(params: {
               session.agent.replaceMessages(limited);
             }
           } catch (err) {
+            sessionManager.flushPendingToolResults?.();
             session.dispose();
             await sessionLock.release();
             throw err;
@@ -1713,6 +1755,7 @@ export async function runEmbeddedPiAgent(params: {
               enforceFinalTag: params.enforceFinalTag,
             });
           } catch (err) {
+            sessionManager.flushPendingToolResults?.();
             session.dispose();
             await sessionLock.release();
             throw err;
@@ -1810,6 +1853,7 @@ export async function runEmbeddedPiAgent(params: {
               ACTIVE_EMBEDDED_RUNS.delete(params.sessionId);
               notifyEmbeddedRunEnded(params.sessionId);
             }
+            sessionManager.flushPendingToolResults?.();
             session.dispose();
             await sessionLock.release();
             params.abortSignal?.removeEventListener?.("abort", onAbort);
