@@ -11,7 +11,7 @@ import type { ClawdbotConfig } from "../config/config.js";
 import type { CliBackendConfig } from "../config/types.js";
 import { shouldLogVerbose } from "../globals.js";
 import { createSubsystemLogger } from "../logging.js";
-import { runCommandWithTimeout } from "../process/exec.js";
+import { runCommandWithTimeout, runExec } from "../process/exec.js";
 import { resolveUserPath } from "../utils.js";
 import { resolveSessionAgentIds } from "./agent-scope.js";
 import { resolveCliBackendConfig } from "./cli-backends.js";
@@ -601,6 +601,18 @@ export async function runCliAgent(params: {
         }
         return next;
       })();
+
+      // Clean up old suspended processes with the same sessionId to prevent memory leaks
+      if (useResume && cliSessionIdToSend) {
+        try {
+          await runExec("pkill", [
+            "-f",
+            `claude.*--resume.*${cliSessionIdToSend.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`,
+          ]);
+        } catch {
+          // Ignore if no processes found
+        }
+      }
 
       const result = await runCommandWithTimeout([backend.command, ...args], {
         timeoutMs: params.timeoutMs,
