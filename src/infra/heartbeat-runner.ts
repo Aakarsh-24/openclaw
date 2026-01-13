@@ -276,6 +276,7 @@ export async function runHeartbeatOnce(opts: {
     ...heartbeatFileInfo,
     promptLength: prompt.length,
     promptMentionsHeartbeatFile: /HEARTBEAT\\.md/i.test(prompt),
+    promptPreview: prompt.slice(0, 200),
   });
   const ctx = {
     Body: prompt,
