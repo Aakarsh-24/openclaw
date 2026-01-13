@@ -732,6 +732,18 @@
     {
       "source": "/plugins",
       "destination": "/plugin"
+    },
+    {
+      "source": "/media-understanding",
+      "destination": "/nodes/media-understanding"
+    },
+    {
+      "source": "/voice-notes",
+      "destination": "/nodes/media-understanding"
+    },
+    {
+      "source": "/video-understanding",
+      "destination": "/nodes/media-understanding"
     }
   ],
   "navigation": {
@@ -961,6 +973,7 @@
           "nodes/camera",
           "nodes/images",
           "nodes/audio",
+          "nodes/media-understanding",
           "nodes/location-command",
           "nodes/voicewake",
           "nodes/talk"
