@@ -47,8 +47,11 @@ function setZaloUpdateMode(
 ): ClawdbotConfig {
   if (mode === "polling") {
     // Remove webhook config for polling mode
-    const { webhookUrl: _, webhookSecret: __, ...rest } =
-      cfg.channels?.zalo ?? {};
+    const {
+      webhookUrl: _,
+      webhookSecret: __,
+      ...rest
+    } = cfg.channels?.zalo ?? {};
     return {
       ...cfg,
       channels: {
