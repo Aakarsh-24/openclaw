@@ -521,6 +521,84 @@ describe("sendMessageTelegram", () => {
       message_thread_id: 99,
     });
   });
+
+  it("splits long captions into media + text messages when text exceeds 1024 chars", async () => {
+    const chatId = "123";
+    // Generate text longer than 1024 characters
+    const longText = "A".repeat(1100);
+
+    const sendPhoto = vi.fn().mockResolvedValue({
+      message_id: 70,
+      chat: { id: chatId },
+    });
+    const sendMessage = vi.fn().mockResolvedValue({
+      message_id: 71,
+      chat: { id: chatId },
+    });
+    const api = { sendPhoto, sendMessage } as unknown as {
+      sendPhoto: typeof sendPhoto;
+      sendMessage: typeof sendMessage;
+    };
+
+    loadWebMedia.mockResolvedValueOnce({
+      buffer: Buffer.from("fake-image"),
+      contentType: "image/jpeg",
+      fileName: "photo.jpg",
+    });
+
+    const res = await sendMessageTelegram(chatId, longText, {
+      token: "tok",
+      api,
+      mediaUrl: "https://example.com/photo.jpg",
+    });
+
+    // Media should be sent first without caption
+    expect(sendPhoto).toHaveBeenCalledWith(chatId, expect.anything(), {
+      caption: undefined,
+    });
+    // Then text sent as separate message
+    expect(sendMessage).toHaveBeenCalledWith(chatId, longText, {
+      parse_mode: "HTML",
+    });
+    // Returns the text message ID (the "main" content)
+    expect(res.messageId).toBe("71");
+  });
+
+  it("uses caption when text is within 1024 char limit", async () => {
+    const chatId = "123";
+    // Text exactly at 1024 characters should still use caption
+    const shortText = "B".repeat(1024);
+
+    const sendPhoto = vi.fn().mockResolvedValue({
+      message_id: 72,
+      chat: { id: chatId },
+    });
+    const sendMessage = vi.fn();
+    const api = { sendPhoto, sendMessage } as unknown as {
+      sendPhoto: typeof sendPhoto;
+      sendMessage: typeof sendMessage;
+    };
+
+    loadWebMedia.mockResolvedValueOnce({
+      buffer: Buffer.from("fake-image"),
+      contentType: "image/jpeg",
+      fileName: "photo.jpg",
+    });
+
+    const res = await sendMessageTelegram(chatId, shortText, {
+      token: "tok",
+      api,
+      mediaUrl: "https://example.com/photo.jpg",
+    });
+
+    // Caption should be included with media
+    expect(sendPhoto).toHaveBeenCalledWith(chatId, expect.anything(), {
+      caption: shortText,
+    });
+    // No separate text message needed
+    expect(sendMessage).not.toHaveBeenCalled();
+    expect(res.messageId).toBe("72");
+  });
 });
 
 describe("reactMessageTelegram", () => {
