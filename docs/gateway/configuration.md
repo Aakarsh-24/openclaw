@@ -345,6 +345,30 @@ Group messages default to **require mention** (either metadata mention or regex 
 
 `messages.groupChat.historyLimit` sets the global default for group history context. Providers can override with `<provider>.historyLimit` (or `<provider>.accounts.*.historyLimit` for multi-account). Set `0` to disable history wrapping.
 
+#### DM history limits
+
+DM conversations use session-based history managed by the agent. You can limit the number of user turns retained per DM session:
+
+```json5
+{
+  channels: {
+    telegram: {
+      dmHistoryLimit: 30,  // limit DM sessions to 30 user turns
+      dms: {
+        "123456789": { historyLimit: 50 }  // per-user override (user ID)
+      }
+    }
+  }
+}
+```
+
+Resolution order:
+1. Per-DM override: `<provider>.dms[userId].historyLimit`
+2. Provider default: `<provider>.dmHistoryLimit`
+3. No limit (all history retained)
+
+Supported providers: `telegram`, `whatsapp`, `discord`, `slack`, `signal`, `imessage`, `msteams`.
+
 Per-agent override (takes precedence when set, even `[]`):
 ```json5
 {

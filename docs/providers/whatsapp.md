@@ -261,6 +261,7 @@ WhatsApp can automatically send emoji reactions to incoming messages immediately
 - `whatsapp.groupAllowFrom` (group sender allowlist).
 - `whatsapp.groupPolicy` (group policy).
 - `whatsapp.historyLimit` / `whatsapp.accounts.<accountId>.historyLimit` (group history context; `0` disables).
+- `whatsapp.dmHistoryLimit` (DM history limit in user turns). Per-user overrides: `whatsapp.dms["<phone>"].historyLimit`.
 - `whatsapp.groups` (group allowlist + mention gating defaults; use `"*"` to allow all)
 - `whatsapp.actions.reactions` (gate WhatsApp tool reactions).
 - `agents.list[].groupChat.mentionPatterns` (or `messages.groupChat.mentionPatterns`)

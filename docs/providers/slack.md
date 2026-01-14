@@ -61,6 +61,7 @@ Or via config:
 ## History context
 - `slack.historyLimit` (or `slack.accounts.*.historyLimit`) controls how many recent channel/group messages are wrapped into the prompt.
 - Falls back to `messages.groupChat.historyLimit`. Set `0` to disable (default 50).
+- DM history can be limited with `slack.dmHistoryLimit` (user turns). Per-user overrides: `slack.dms["<user_id>"].historyLimit`.
 
 ## Manifest (optional)
 Use this Slack app manifest to create the app quickly (adjust the name/command if you want).
