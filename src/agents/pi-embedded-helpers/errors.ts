@@ -170,8 +170,9 @@ export function formatAssistantErrorText(
   msg: AssistantMessage,
   opts?: { cfg?: ClawdbotConfig; sessionKey?: string },
 ): string | undefined {
-  if (msg.stopReason !== "error") return undefined;
+  // Also format errors if errorMessage is present, even if stopReason isn't "error"
   const raw = (msg.errorMessage ?? "").trim();
+  if (msg.stopReason !== "error" && !raw) return undefined;
   if (!raw) return "LLM request failed with an unknown error.";
 
   const unknownTool =
@@ -193,7 +194,8 @@ export function formatAssistantErrorText(
     );
   }
 
-  if (/incorrect role information|roles must alternate/i.test(raw)) {
+  // Catch role ordering errors - including JSON-wrapped and "400" prefix variants
+  if (/incorrect role information|roles must alternate|400.*role|"message".*role.*information/i.test(raw)) {
     return (
       "Message ordering conflict - please try again. " +
       "If this persists, use /new to start a fresh session."
@@ -213,6 +215,10 @@ export function formatAssistantErrorText(
     return "The AI service returned an error. Please try again.";
   }
 
+  // Never return raw unhandled errors - log for debugging but return safe message
+  if (raw.length > 600) {
+    console.warn("[formatAssistantErrorText] Long error truncated:", raw.slice(0, 200));
+  }
   return raw.length > 600 ? `${raw.slice(0, 600)}…` : raw;
 }
 
