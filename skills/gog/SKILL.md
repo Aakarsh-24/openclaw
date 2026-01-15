@@ -16,7 +16,11 @@ Setup (once)
 
 Common commands
 - Gmail search: `gog gmail search 'newer_than:7d' --max 10`
-- Gmail send: `gog gmail send --to a@b.com --subject "Hi" --body "Hello"`
+- Gmail send (plain): `gog gmail send --to a@b.com --subject "Hi" --body "Hello"`
+- Gmail send (HTML): `gog gmail send --to a@b.com --subject "Hi" --body-html "<p>Hello</p>"`
+- Gmail draft: `gog gmail drafts create --to a@b.com --subject "Hi" --body-html "<p>Content</p>"`
+- Gmail send draft: `gog gmail drafts send <draftId>`
+- Gmail reply: `gog gmail send --to a@b.com --subject "Re: Hi" --body "Reply" --reply-to-message-id <msgId>`
 - Calendar list events: `gog calendar events <calendarId> --from <iso> --to <iso>`
 - Calendar create event: `gog calendar create <calendarId> --summary "Title" --from <iso> --to <iso>`
 - Calendar create with color: `gog calendar create <calendarId> --summary "Title" --from <iso> --to <iso> --event-color 7`
@@ -47,6 +51,18 @@ Calendar Colors
   - 9: #5484ed
   - 10: #51b749
   - 11: #dc2127
+
+Email Formatting
+- **Use `--body-html` for multi-paragraph emails.** The `--body` flag with literal `\n` will display as text, not line breaks.
+- HTML tags: `<p>` for paragraphs, `<br>` for line breaks, `<strong>` for bold, `<em>` for italic, `<a href="url">` for links
+- Example (professional email):
+  ```bash
+  gog gmail send --to recipient@example.com \
+    --subject "Meeting Follow-up" \
+    --body-html "<p>Hi Name,</p><p>Thanks for meeting today. Here are the next steps:</p><ul><li>Item one</li><li>Item two</li></ul><p>Best regards,<br>Your Name</p>"
+  ```
+- For drafts (review before sending): `gog gmail drafts create --to a@b.com --subject "Subject" --body-html "<p>Content</p>"`
+- Plain text is fine for simple one-line messages: `--body "Quick message here"`
 
 Notes
 - Set `GOG_ACCOUNT=you@gmail.com` to avoid repeating `--account`.
