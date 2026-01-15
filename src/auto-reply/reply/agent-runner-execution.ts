@@ -366,6 +366,7 @@ export async function runAgentTurnWithFallback(params: {
         /context.*overflow|too large|context window/i.test(message);
       const isCompactionFailure = isCompactionFailureError(message);
       const isSessionCorruption = /function call turn comes immediately after/i.test(message);
+      const isRoleOrderingError = /incorrect role information|roles must alternate/i.test(message);
 
       if (
         isCompactionFailure &&
@@ -422,7 +423,9 @@ export async function runAgentTurnWithFallback(params: {
         payload: {
           text: isContextOverflow
             ? "⚠️ Context overflow — prompt too large for this model. Try a shorter message or a larger-context model."
-            : `⚠️ Agent failed before reply: ${message}. Check gateway logs for details.`,
+            : isRoleOrderingError
+              ? "⚠️ Message ordering conflict - please try again. If this persists, use /new to start a fresh session."
+              : `⚠️ Agent failed before reply: ${message}. Check gateway logs for details.`,
         },
       };
     }
