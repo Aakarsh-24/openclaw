@@ -36,6 +36,7 @@ type GeminiThinkingBlock = {
   type?: unknown;
   thinking?: unknown;
   thinkingSignature?: unknown;
+  signature?: unknown; // Claude API format uses 'signature' instead of 'thinkingSignature'
 };
 
 export function downgradeGeminiThinkingBlocks(messages: AgentMessage[]): AgentMessage[] {
@@ -56,16 +57,18 @@ export function downgradeGeminiThinkingBlocks(messages: AgentMessage[]): AgentMe
       continue;
     }
 
-    // Gemini rejects thinking blocks that lack a signature; downgrade to text for safety.
+    // Gemini/Claude rejects thinking blocks that lack a signature; downgrade to text for safety.
     let hasDowngraded = false;
     type AssistantContentBlock = (typeof assistantMsg.content)[number];
     const nextContent = assistantMsg.content.flatMap((block): AssistantContentBlock[] => {
       if (!block || typeof block !== "object") return [block as AssistantContentBlock];
       const record = block as GeminiThinkingBlock;
       if (record.type !== "thinking") return [block];
-      const signature =
+      // Check both thinkingSignature (pi-sdk format) and signature (Claude API format)
+      const thinkingSig =
         typeof record.thinkingSignature === "string" ? record.thinkingSignature.trim() : "";
-      if (signature.length > 0) return [block];
+      const sig = typeof record.signature === "string" ? record.signature.trim() : "";
+      if (thinkingSig.length > 0 || sig.length > 0) return [block];
       const thinking = typeof record.thinking === "string" ? record.thinking : "";
       const trimmed = thinking.trim();
       hasDowngraded = true;

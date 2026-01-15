@@ -86,11 +86,25 @@ export async function sanitizeSessionMessagesImages(
           if (rec.type !== "text" || typeof rec.text !== "string") return true;
           return rec.text.trim().length > 0;
         });
+
+        // Ensure all tool call blocks have an input/arguments field (required by Claude API)
+        const sanitizedToolCalls = filteredContent.map((block) => {
+          if (!block || typeof block !== "object") return block;
+          const rec = block as { type?: unknown; input?: unknown; arguments?: unknown };
+          if (rec.type !== "toolCall" && rec.type !== "toolUse" && rec.type !== "functionCall") {
+            return block;
+          }
+          // If neither input nor arguments is present, add empty input object
+          if (rec.input === undefined && rec.arguments === undefined) {
+            return { ...block, input: {} };
+          }
+          return block;
+        });
         const normalizedContent = options?.enforceToolCallLast
           ? (() => {
               let lastToolIndex = -1;
-              for (let i = filteredContent.length - 1; i >= 0; i -= 1) {
-                const block = filteredContent[i];
+              for (let i = sanitizedToolCalls.length - 1; i >= 0; i -= 1) {
+                const block = sanitizedToolCalls[i];
                 if (!block || typeof block !== "object") continue;
                 const type = (block as { type?: unknown }).type;
                 if (type === "functionCall" || type === "toolUse" || type === "toolCall") {
@@ -98,10 +112,10 @@ export async function sanitizeSessionMessagesImages(
                   break;
                 }
               }
-              if (lastToolIndex === -1) return filteredContent;
-              return filteredContent.slice(0, lastToolIndex + 1);
+              if (lastToolIndex === -1) return sanitizedToolCalls;
+              return sanitizedToolCalls.slice(0, lastToolIndex + 1);
             })()
-          : filteredContent;
+          : sanitizedToolCalls;
         const finalContent = (await sanitizeContentBlocksImages(
           normalizedContent as unknown as ContentBlock[],
           label,
