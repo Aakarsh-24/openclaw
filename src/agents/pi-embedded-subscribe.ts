@@ -18,6 +18,73 @@ const THINKING_TAG_SCAN_RE = /<\s*(\/?)\s*(?:think(?:ing)?|thought|antthinking)\
 const FINAL_TAG_SCAN_RE = /<\s*(\/?)\s*final\s*>/gi;
 const log = createSubsystemLogger("agent/embedded");
 
+/**
+ * Find ranges of inline code (backticks) and fenced code blocks in text.
+ * Returns an array of [start, end] tuples representing code span ranges.
+ */
+function findCodeSpanRanges(text: string): Array<[number, number]> {
+  const ranges: Array<[number, number]> = [];
+  let i = 0;
+
+  while (i < text.length) {
+    // Check for fenced code block (``` or ~~~)
+    if (
+      (text[i] === "`" && text[i + 1] === "`" && text[i + 2] === "`") ||
+      (text[i] === "~" && text[i + 1] === "~" && text[i + 2] === "~")
+    ) {
+      const fence = text.slice(i, i + 3);
+      const start = i;
+      i += 3;
+      // Skip to end of opening fence line
+      while (i < text.length && text[i] !== "\n") i++;
+      // Find closing fence
+      const closeIdx = text.indexOf("\n" + fence, i);
+      if (closeIdx !== -1) {
+        const end = closeIdx + 1 + fence.length;
+        ranges.push([start, end]);
+        i = end;
+      } else {
+        // Unclosed fence - treat rest of text as code
+        ranges.push([start, text.length]);
+        break;
+      }
+      continue;
+    }
+
+    // Check for inline code (single or double backticks)
+    if (text[i] === "`") {
+      const start = i;
+      // Count consecutive backticks
+      let backtickCount = 0;
+      while (i < text.length && text[i] === "`") {
+        backtickCount++;
+        i++;
+      }
+      // Find matching closing backticks
+      const closingPattern = "`".repeat(backtickCount);
+      const closeIdx = text.indexOf(closingPattern, i);
+      if (closeIdx !== -1) {
+        const end = closeIdx + backtickCount;
+        ranges.push([start, end]);
+        i = end;
+      }
+      // If no closing backticks found, continue (not a code span)
+      continue;
+    }
+
+    i++;
+  }
+
+  return ranges;
+}
+
+/**
+ * Check if an index falls within any of the given ranges.
+ */
+function isInsideCodeSpan(index: number, ranges: Array<[number, number]>): boolean {
+  return ranges.some(([start, end]) => index >= start && index < end);
+}
+
 export type {
   BlockReplyChunking,
   SubscribeEmbeddedPiSessionParams,
@@ -188,6 +255,9 @@ export function subscribeEmbeddedPiSession(params: SubscribeEmbeddedPiSessionPar
   const stripBlockTags = (text: string, state: { thinking: boolean; final: boolean }): string => {
     if (!text) return text;
 
+    // Find code span ranges to avoid matching tags inside backticks
+    const codeSpanRanges = findCodeSpanRanges(text);
+
     // 1. Handle <think> blocks (stateful, strip content inside)
     let processed = "";
     THINKING_TAG_SCAN_RE.lastIndex = 0;
@@ -195,6 +265,10 @@ export function subscribeEmbeddedPiSession(params: SubscribeEmbeddedPiSessionPar
     let inThinking = state.thinking;
     for (const match of text.matchAll(THINKING_TAG_SCAN_RE)) {
       const idx = match.index ?? 0;
+      // Skip matches inside code spans (backticks)
+      if (isInsideCodeSpan(idx, codeSpanRanges)) {
+        continue;
+      }
       if (!inThinking) {
         processed += text.slice(lastIndex, idx);
       }
