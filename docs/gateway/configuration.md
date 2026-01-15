@@ -306,6 +306,10 @@ rotation order used for failover.
 }
 ```
 
+Note: `anthropic:claude-cli` should use `mode: "oauth"` even when the stored
+credential is a setup-token. Clawdbot auto-migrates older configs that used
+`mode: "token"`.
+
 ### `agents.list[].identity`
 
 Optional per-agent identity used for defaults and UX. This is written by the macOS onboarding assistant.
@@ -478,6 +482,30 @@ Group messages default to **require mention** (either metadata mention or regex 
 ```
 
 `messages.groupChat.historyLimit` sets the global default for group history context. Channels can override with `channels.<channel>.historyLimit` (or `channels.<channel>.accounts.*.historyLimit` for multi-account). Set `0` to disable history wrapping.
+
+#### DM history limits
+
+DM conversations use session-based history managed by the agent. You can limit the number of user turns retained per DM session:
+
+```json5
+{
+  channels: {
+    telegram: {
+      dmHistoryLimit: 30,  // limit DM sessions to 30 user turns
+      dms: {
+        "123456789": { historyLimit: 50 }  // per-user override (user ID)
+      }
+    }
+  }
+}
+```
+
+Resolution order:
+1. Per-DM override: `channels.<provider>.dms[userId].historyLimit`
+2. Provider default: `channels.<provider>.dmHistoryLimit`
+3. No limit (all history retained)
+
+Supported providers: `telegram`, `whatsapp`, `discord`, `slack`, `signal`, `imessage`, `msteams`.
 
 Per-agent override (takes precedence when set, even `[]`):
 ```json5
@@ -780,6 +808,7 @@ Notes:
 - `commands.bash: true` enables `! <cmd>` to run host shell commands (`/bash <cmd>` also works as an alias). Requires `tools.elevated.enabled` and allowlisting the sender in `tools.elevated.allowFrom.<channel>`.
 - `commands.bashForegroundMs` controls how long bash waits before backgrounding. While a bash job is running, new `! <cmd>` requests are rejected (one at a time).
 - `commands.config: true` enables `/config` (reads/writes `clawdbot.json`).
+- `channels.<provider>.configWrites` gates config mutations initiated by that channel (default: true). This applies to `/config set|unset` plus provider-specific auto-migrations (Telegram supergroup ID changes, Slack channel ID changes).
 - `commands.debug: true` enables `/debug` (runtime-only overrides).
 - `commands.restart: true` enables `/restart` and the gateway tool restart action.
 - `commands.useAccessGroups: false` allows commands to bypass access-group allowlists/policies.
@@ -810,6 +839,7 @@ Set `web.enabled: false` to keep it off by default.
 Clawdbot starts Telegram only when a `channels.telegram` config section exists. The bot token is resolved from `TELEGRAM_BOT_TOKEN` or `channels.telegram.botToken`.
 Set `channels.telegram.enabled: false` to disable automatic startup.
 Multi-account support lives under `channels.telegram.accounts` (see the multi-account section above). Env tokens only apply to the default account.
+Set `channels.telegram.configWrites: false` to block Telegram-initiated config writes (including supergroup ID migrations and `/config set|unset`).
 
 ```json5
 {
@@ -1002,6 +1032,7 @@ Slack runs in Socket Mode and requires both a bot token and app token:
 Multi-account support lives under `channels.slack.accounts` (see the multi-account section above). Env tokens only apply to the default account.
 
 Clawdbot starts Slack when the provider is enabled and both tokens are set (via config or `SLACK_BOT_TOKEN` + `SLACK_APP_TOKEN`). Use `user:<id>` (DM) or `channel:<id>` when specifying delivery targets for cron/CLI commands.
+Set `channels.slack.configWrites: false` to block Slack-initiated config writes (including channel ID migrations and `/config set|unset`).
 
 Bot-authored messages are ignored by default. Enable with `channels.slack.allowBots` or `channels.slack.channels.<id>.allowBots`.
 

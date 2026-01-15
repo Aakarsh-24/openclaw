@@ -67,12 +67,16 @@ export type SlackAccountConfig = {
   capabilities?: string[];
   /** Override native command registration for Slack (bool or "auto"). */
   commands?: ProviderCommandsConfig;
+  /** Allow channel-initiated config writes (default: true). */
+  configWrites?: boolean;
   /** If false, do not start this Slack account. Default: true. */
   enabled?: boolean;
   botToken?: string;
   appToken?: string;
   /** Allow bot-authored messages to trigger replies (default: false). */
   allowBots?: boolean;
+  /** Default mention requirement for channel messages (default: true). */
+  requireMention?: boolean;
   /**
    * Controls how channel messages are handled:
    * - "open": channels bypass allowlists; mention-gating applies

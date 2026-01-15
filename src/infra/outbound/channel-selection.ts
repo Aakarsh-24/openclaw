@@ -2,17 +2,17 @@ import { listChannelPlugins } from "../../channels/plugins/index.js";
 import type { ChannelPlugin } from "../../channels/plugins/types.js";
 import type { ClawdbotConfig } from "../../config/config.js";
 import {
-  DELIVERABLE_MESSAGE_CHANNELS,
+  listDeliverableMessageChannels,
   type DeliverableMessageChannel,
   normalizeMessageChannel,
 } from "../../utils/message-channel.js";
 
 export type MessageChannelId = DeliverableMessageChannel;
 
-const MESSAGE_CHANNELS = [...DELIVERABLE_MESSAGE_CHANNELS];
+const getMessageChannels = () => listDeliverableMessageChannels();
 
 function isKnownChannel(value: string): value is MessageChannelId {
-  return (MESSAGE_CHANNELS as readonly string[]).includes(value);
+  return getMessageChannels().includes(value as MessageChannelId);
 }
 
 function isAccountEnabled(account: unknown): boolean {
@@ -21,10 +21,7 @@ function isAccountEnabled(account: unknown): boolean {
   return enabled !== false;
 }
 
-async function isPluginConfigured(
-  plugin: ChannelPlugin,
-  cfg: ClawdbotConfig,
-): Promise<boolean> {
+async function isPluginConfigured(plugin: ChannelPlugin, cfg: ClawdbotConfig): Promise<boolean> {
   const accountIds = plugin.config.listAccountIds(cfg);
   if (accountIds.length === 0) return false;
 
@@ -78,8 +75,6 @@ export async function resolveMessageChannelSelection(params: {
     throw new Error("Channel is required (no configured channels detected).");
   }
   throw new Error(
-    `Channel is required when multiple channels are configured: ${configured.join(
-      ", ",
-    )}`,
+    `Channel is required when multiple channels are configured: ${configured.join(", ")}`,
   );
 }

@@ -1,9 +1,44 @@
 # Changelog
 
-## 2026.1.14
+## 2026.1.15
+
+### Changes
+- Security: add `clawdbot security audit` (`--deep`) and surface it in `status --all` and `doctor`.
+- Onboarding: add a security checkpoint prompt (docs link + sandboxing hint); require `--accept-risk` for `--non-interactive`.
+- Docs: expand gateway security hardening guidance and incident response checklist.
+- Docs: document DM history limits for channel DMs. (#883) — thanks @pkrmf.
 
 ### Fixes
+- Agents: scrub tuple `items` schemas for Gemini tool calls. (#926, fixes #746) — thanks @grp06.
+- Embedded runner: suppress raw API error payloads from replies. (#924) — thanks @grp06.
+- Auth: normalize Claude Code CLI profile mode to oauth and auto-migrate config. (#855) — thanks @sebslight.
+- Sandbox: restore `docker.binds` config validation for custom bind mounts. (#873) — thanks @akonyer.
+- Sandbox: preserve configured PATH for `docker exec` so custom tools remain available. (#873) — thanks @akonyer.
+
+## 2026.1.14
+
+### Changes
+- Usage: add MiniMax coding plan usage tracking.
+- Auth: label Claude Code CLI auth options. (#915) — thanks @SeanZoR.
+- Docs: standardize Claude Code CLI naming across docs and prompts. (follow-up to #915)
+- Telegram: add message delete action in the message tool. (#903) — thanks @sleontenko.
+- Config: add `channels.<provider>.configWrites` gating for channel-initiated config writes; migrate Slack channel IDs.
+
+### Fixes
+ - Mac: pass auth token/password to dashboard URL for authenticated access. (#918) — thanks @rahthakor.
+ - UI: use application-defined WebSocket close code (browser compatibility). (#918) — thanks @rahthakor.
+- TUI: render picker overlays via the overlay stack so /models and /settings display. (#921) — thanks @grizzdank.
+- TUI: add a bright spinner + elapsed time in the status line for send/stream/run states.
 - Gateway/Dev: ensure `pnpm gateway:dev` always uses the dev profile config + state (`~/.clawdbot-dev`).
+- macOS: fix cron preview/testing payload to use `channel` key. (#867) — thanks @wes-davis.
+- Telegram: honor `channels.telegram.timeoutSeconds` for grammY API requests. (#863) — thanks @Snaver.
+- Telegram: split long captions into media + follow-up text messages. (#907) - thanks @jalehman.
+- Telegram: migrate group config when supergroups change chat IDs. (#906) — thanks @sleontenko.
+- Messaging: unify markdown formatting + format-first chunking for Slack/Telegram/Signal. (#920) — thanks @TheSethRose.
+- Slack: drop Socket Mode events with mismatched `api_app_id`/`team_id`. (#889) — thanks @roshanasingh4.
+- Discord: isolate autoThread thread context. (#856) — thanks @davidguttman.
+- WhatsApp: fix context isolation using wrong ID (was bot's number, now conversation ID). (#911) — thanks @tristanmanchester.
+- WhatsApp: normalize user JIDs with device suffix for allowlist checks in groups. (#838) — thanks @peschee.
 
 ## 2026.1.13
 
@@ -314,7 +349,7 @@
 - Dependencies: Pi 0.40.0 bump (#543) — thanks @mcinteerj.
 - Build: Docker build cache layer (#605) — thanks @zknicker.
 
-- Auth: enable OAuth token refresh for Claude CLI credentials (`anthropic:claude-cli`) with bidirectional sync back to Claude Code storage (file on Linux/Windows, Keychain on macOS). This allows long-running agents to operate autonomously without manual re-authentication (#654 — thanks @radek-paclt).
+- Auth: enable OAuth token refresh for Claude Code CLI credentials (`anthropic:claude-cli`) with bidirectional sync back to Claude Code storage (file on Linux/Windows, Keychain on macOS). This allows long-running agents to operate autonomously without manual re-authentication (#654 — thanks @radek-paclt).
 
 ## 2026.1.8
 

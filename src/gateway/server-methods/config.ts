@@ -1,7 +1,4 @@
-import {
-  resolveAgentWorkspaceDir,
-  resolveDefaultAgentId,
-} from "../../agents/agent-scope.js";
+import { resolveAgentWorkspaceDir, resolveDefaultAgentId } from "../../agents/agent-scope.js";
 import {
   CONFIG_PATH_CLAWDBOT,
   loadConfig,
@@ -58,10 +55,7 @@ export const configHandlers: GatewayRequestHandlers = {
       return;
     }
     const cfg = loadConfig();
-    const workspaceDir = resolveAgentWorkspaceDir(
-      cfg,
-      resolveDefaultAgentId(cfg),
-    );
+    const workspaceDir = resolveAgentWorkspaceDir(cfg, resolveDefaultAgentId(cfg));
     const pluginRegistry = loadClawdbotPlugins({
       config: cfg,
       workspaceDir,
@@ -78,6 +72,11 @@ export const configHandlers: GatewayRequestHandlers = {
         name: plugin.name,
         description: plugin.description,
         configUiHints: plugin.configUiHints,
+      })),
+      channels: pluginRegistry.channels.map((entry) => ({
+        id: entry.plugin.id,
+        label: entry.plugin.meta.label,
+        description: entry.plugin.meta.blurb,
       })),
     });
     respond(true, schema, undefined);
@@ -99,20 +98,13 @@ export const configHandlers: GatewayRequestHandlers = {
       respond(
         false,
         undefined,
-        errorShape(
-          ErrorCodes.INVALID_REQUEST,
-          "invalid config.set params: raw (string) required",
-        ),
+        errorShape(ErrorCodes.INVALID_REQUEST, "invalid config.set params: raw (string) required"),
       );
       return;
     }
     const parsedRes = parseConfigJson5(rawValue);
     if (!parsedRes.ok) {
-      respond(
-        false,
-        undefined,
-        errorShape(ErrorCodes.INVALID_REQUEST, parsedRes.error),
-      );
+      respond(false, undefined, errorShape(ErrorCodes.INVALID_REQUEST, parsedRes.error));
       return;
     }
     const validated = validateConfigObject(parsedRes.parsed);
@@ -163,11 +155,7 @@ export const configHandlers: GatewayRequestHandlers = {
     }
     const parsedRes = parseConfigJson5(rawValue);
     if (!parsedRes.ok) {
-      respond(
-        false,
-        undefined,
-        errorShape(ErrorCodes.INVALID_REQUEST, parsedRes.error),
-      );
+      respond(false, undefined, errorShape(ErrorCodes.INVALID_REQUEST, parsedRes.error));
       return;
     }
     const validated = validateConfigObject(parsedRes.parsed);
@@ -191,11 +179,9 @@ export const configHandlers: GatewayRequestHandlers = {
       typeof (params as { note?: unknown }).note === "string"
         ? (params as { note?: string }).note?.trim() || undefined
         : undefined;
-    const restartDelayMsRaw = (params as { restartDelayMs?: unknown })
-      .restartDelayMs;
+    const restartDelayMsRaw = (params as { restartDelayMs?: unknown }).restartDelayMs;
     const restartDelayMs =
-      typeof restartDelayMsRaw === "number" &&
-      Number.isFinite(restartDelayMsRaw)
+      typeof restartDelayMsRaw === "number" && Number.isFinite(restartDelayMsRaw)
         ? Math.max(0, Math.floor(restartDelayMsRaw))
         : undefined;
 

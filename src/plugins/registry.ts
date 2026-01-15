@@ -1,4 +1,6 @@
 import type { AnyAgentTool } from "../agents/tools/common.js";
+import type { ChannelDock } from "../channels/dock.js";
+import type { ChannelPlugin } from "../channels/plugins/types.js";
 import type {
   GatewayRequestHandler,
   GatewayRequestHandlers,
@@ -6,6 +8,7 @@ import type {
 import { resolveUserPath } from "../utils.js";
 import type {
   ClawdbotPluginApi,
+  ClawdbotPluginChannelRegistration,
   ClawdbotPluginCliRegistrar,
   ClawdbotPluginService,
   ClawdbotPluginToolContext,
@@ -30,6 +33,13 @@ export type PluginCliRegistration = {
   source: string;
 };
 
+export type PluginChannelRegistration = {
+  pluginId: string;
+  plugin: ChannelPlugin;
+  dock?: ChannelDock;
+  source: string;
+};
+
 export type PluginServiceRegistration = {
   pluginId: string;
   service: ClawdbotPluginService;
@@ -48,6 +58,7 @@ export type PluginRecord = {
   status: "loaded" | "disabled" | "error";
   error?: string;
   toolNames: string[];
+  channelIds: string[];
   gatewayMethods: string[];
   cliCommands: string[];
   services: string[];
@@ -58,6 +69,7 @@ export type PluginRecord = {
 export type PluginRegistry = {
   plugins: PluginRecord[];
   tools: PluginToolRegistration[];
+  channels: PluginChannelRegistration[];
   gatewayHandlers: GatewayRequestHandlers;
   cliRegistrars: PluginCliRegistration[];
   services: PluginServiceRegistration[];
@@ -73,14 +85,13 @@ export function createPluginRegistry(registryParams: PluginRegistryParams) {
   const registry: PluginRegistry = {
     plugins: [],
     tools: [],
+    channels: [],
     gatewayHandlers: {},
     cliRegistrars: [],
     services: [],
     diagnostics: [],
   };
-  const coreGatewayMethods = new Set(
-    Object.keys(registryParams.coreGatewayHandlers ?? {}),
-  );
+  const coreGatewayMethods = new Set(Object.keys(registryParams.coreGatewayHandlers ?? {}));
 
   const pushDiagnostic = (diag: PluginDiagnostic) => {
     registry.diagnostics.push(diag);
@@ -93,9 +104,7 @@ export function createPluginRegistry(registryParams: PluginRegistryParams) {
   ) => {
     const names = opts?.names ?? (opts?.name ? [opts.name] : []);
     const factory: ClawdbotPluginToolFactory =
-      typeof tool === "function"
-        ? tool
-        : (_ctx: ClawdbotPluginToolContext) => tool;
+      typeof tool === "function" ? tool : (_ctx: ClawdbotPluginToolContext) => tool;
 
     if (typeof tool !== "function") {
       names.push(tool.name);
@@ -133,14 +142,40 @@ export function createPluginRegistry(registryParams: PluginRegistryParams) {
     record.gatewayMethods.push(trimmed);
   };
 
+  const registerChannel = (
+    record: PluginRecord,
+    registration: ClawdbotPluginChannelRegistration | ChannelPlugin,
+  ) => {
+    const normalized =
+      typeof (registration as ClawdbotPluginChannelRegistration).plugin === "object"
+        ? (registration as ClawdbotPluginChannelRegistration)
+        : { plugin: registration as ChannelPlugin };
+    const plugin = normalized.plugin;
+    const id = typeof plugin?.id === "string" ? plugin.id.trim() : String(plugin?.id ?? "").trim();
+    if (!id) {
+      pushDiagnostic({
+        level: "error",
+        pluginId: record.id,
+        source: record.source,
+        message: "channel registration missing id",
+      });
+      return;
+    }
+    record.channelIds.push(id);
+    registry.channels.push({
+      pluginId: record.id,
+      plugin,
+      dock: normalized.dock,
+      source: record.source,
+    });
+  };
+
   const registerCli = (
     record: PluginRecord,
     registrar: ClawdbotPluginCliRegistrar,
     opts?: { commands?: string[] },
   ) => {
-    const commands = (opts?.commands ?? [])
-      .map((cmd) => cmd.trim())
-      .filter(Boolean);
+    const commands = (opts?.commands ?? []).map((cmd) => cmd.trim()).filter(Boolean);
     record.cliCommands.push(...commands);
     registry.cliRegistrars.push({
       pluginId: record.id,
@@ -150,10 +185,7 @@ export function createPluginRegistry(registryParams: PluginRegistryParams) {
     });
   };
 
-  const registerService = (
-    record: PluginRecord,
-    service: ClawdbotPluginService,
-  ) => {
+  const registerService = (record: PluginRecord, service: ClawdbotPluginService) => {
     const id = service.id.trim();
     if (!id) return;
     record.services.push(id);
@@ -188,8 +220,8 @@ export function createPluginRegistry(registryParams: PluginRegistryParams) {
       pluginConfig: params.pluginConfig,
       logger: normalizeLogger(registryParams.logger),
       registerTool: (tool, opts) => registerTool(record, tool, opts),
-      registerGatewayMethod: (method, handler) =>
-        registerGatewayMethod(record, method, handler),
+      registerChannel: (registration) => registerChannel(record, registration),
+      registerGatewayMethod: (method, handler) => registerGatewayMethod(record, method, handler),
       registerCli: (registrar, opts) => registerCli(record, registrar, opts),
       registerService: (service) => registerService(record, service),
       resolvePath: (input: string) => resolveUserPath(input),
@@ -201,6 +233,7 @@ export function createPluginRegistry(registryParams: PluginRegistryParams) {
     createApi,
     pushDiagnostic,
     registerTool,
+    registerChannel,
     registerGatewayMethod,
     registerCli,
     registerService,
