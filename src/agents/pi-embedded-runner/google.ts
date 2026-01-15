@@ -157,18 +157,19 @@ export async function sanitizeSessionHistory(params: {
   sessionManager: SessionManager;
   sessionId: string;
 }): Promise<AgentMessage[]> {
+  const isAntigravityClaudeModel = isAntigravityClaude(params.modelApi, params.modelId);
   const sanitizedImages = await sanitizeSessionMessagesImages(params.messages, "session:history", {
     sanitizeToolCallIds: shouldSanitizeToolCallIds(params.modelApi),
     enforceToolCallLast: params.modelApi === "anthropic-messages",
-    preserveSignatures: params.modelApi === "google-antigravity" && isAntigravityClaude(params.modelId),
+    preserveSignatures: params.modelApi === "google-antigravity" && isAntigravityClaudeModel,
   });
   const repairedTools = sanitizeToolUseResultPairing(sanitizedImages);
+  const shouldDowngradeGemini = isGoogleModelApi(params.modelApi) && !isAntigravityClaudeModel;
   // Gemini rejects unsigned thinking blocks; downgrade them before send to avoid INVALID_ARGUMENT.
-  const downgradedThinking = isGoogleModelApi(params.modelApi)
+  const downgradedThinking = shouldDowngradeGemini
     ? downgradeGeminiThinkingBlocks(repairedTools)
     : repairedTools;
-  // Downgrade Gemini history for native Gemini APIs, but NOT for Antigravity Claude
-  const downgraded = isGoogleModelApi(params.modelApi) && !isAntigravityClaude(params.modelId)
+  const downgraded = shouldDowngradeGemini
     ? downgradeGeminiHistory(downgradedThinking)
     : downgradedThinking;
 
