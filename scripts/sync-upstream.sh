@@ -32,6 +32,52 @@ cd "$REPO_DIR" || fail "Could not cd to $REPO_DIR"
 
 echo "$(date '+%Y-%m-%d %H:%M:%S') Starting sync..."
 
+# Validate .gitattributes merge=ours patterns
+echo "🔍 Validating .gitattributes merge strategy..."
+if [ -f .gitattributes ]; then
+    # Extract all patterns with merge=ours (excluding comments and empty lines)
+    MERGE_OURS_PATTERNS=$(grep -E '^\s*[^#].*merge=ours' .gitattributes | awk '{print $1}' || true)
+
+    if [ -n "$MERGE_OURS_PATTERNS" ]; then
+        VIOLATIONS=""
+        while IFS= read -r pattern; do
+            # Skip CLAUDE.md - it's allowed to exist in upstream
+            if [ "$pattern" = "CLAUDE.md" ]; then
+                continue
+            fi
+
+            # Check if this pattern matches any files in upstream
+            # For glob patterns (**), check the directory exists in upstream
+            if [[ "$pattern" == *"**"* ]]; then
+                # Extract directory from pattern (e.g., .workflow/** -> .workflow)
+                dir_pattern="${pattern%%/**}"
+                if git ls-tree -r --name-only upstream/main | grep -q "^${dir_pattern}/"; then
+                    VIOLATIONS="${VIOLATIONS}\n  - $pattern (matches files in upstream)"
+                fi
+            else
+                # For specific files, check if they exist in upstream
+                if git ls-tree -r --name-only upstream/main | grep -qx "$pattern"; then
+                    VIOLATIONS="${VIOLATIONS}\n  - $pattern (exists in upstream)"
+                fi
+            fi
+        done <<< "$MERGE_OURS_PATTERNS"
+
+        if [ -n "$VIOLATIONS" ]; then
+            echo "❌ .gitattributes validation failed!"
+            echo "The following merge=ours patterns match files that exist in upstream:"
+            echo -e "$VIOLATIONS"
+            echo ""
+            echo "Rule: Only fork-specific files (not in upstream) can use merge=ours."
+            echo "Exception: CLAUDE.md is allowed."
+            echo ""
+            echo "Fix: Remove these patterns from .gitattributes or verify they're correct."
+            fail ".gitattributes has invalid merge=ours patterns"
+        fi
+
+        echo "✅ All merge=ours patterns are valid (fork-only files + CLAUDE.md)"
+    fi
+fi
+
 # Check for git lock
 if [ -f .git/index.lock ]; then
     fail "Git lock file exists. Another git process may be running."
