@@ -75,6 +75,8 @@ describe("applyMediaUnderstanding", () => {
     expect(result.appliedAudio).toBe(true);
     expect(ctx.Transcript).toBe("transcribed text");
     expect(ctx.Body).toBe("[Audio]\nTranscript:\ntranscribed text");
+    expect(ctx.CommandBody).toBe("transcribed text");
+    expect(ctx.RawBody).toBe("transcribed text");
   });
 
   it("handles URL-only attachments for audio transcription", async () => {
@@ -188,6 +190,45 @@ describe("applyMediaUnderstanding", () => {
     expect(result.appliedVideo).toBe(false);
     expect(describeVideo).not.toHaveBeenCalled();
     expect(ctx.Body).toBe("<media:video>");
+  });
+
+  it("keeps caption text for command parsing when only video understanding runs", async () => {
+    const { applyMediaUnderstanding } = await loadApply();
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-media-"));
+    const videoPath = path.join(dir, "clip.mp4");
+    await fs.writeFile(videoPath, "video-bytes");
+
+    const ctx: MsgContext = {
+      Body: "<media:video> show Dom",
+      MediaPath: videoPath,
+      MediaType: "video/mp4",
+    };
+    const cfg: ClawdbotConfig = {
+      tools: {
+        video: {
+          understanding: {
+            enabled: true,
+            provider: "google",
+            maxBytes: 1024 * 1024,
+          },
+        },
+      },
+    };
+
+    const result = await applyMediaUnderstanding({
+      ctx,
+      cfg,
+      providers: {
+        google: {
+          id: "google",
+          describeVideo: async () => ({ text: "video description" }),
+        },
+      },
+    });
+
+    expect(result.appliedVideo).toBe(true);
+    expect(ctx.CommandBody).toBe("show Dom");
+    expect(ctx.RawBody).toBe("show Dom");
   });
 
   it("accepts gemini as an alias for google video understanding", async () => {

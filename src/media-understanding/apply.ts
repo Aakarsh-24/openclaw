@@ -8,7 +8,7 @@ import { resolveApiKeyForProvider } from "../agents/model-auth.js";
 import { logVerbose, shouldLogVerbose } from "../globals.js";
 import { fetchRemoteMedia } from "../media/fetch.js";
 import { detectMime, getFileExtension, isAudioFileName } from "../media/mime.js";
-import { formatMediaUnderstandingBody } from "./format.js";
+import { extractMediaUserText, formatMediaUnderstandingBody } from "./format.js";
 import {
   buildMediaUnderstandingRegistry,
   getMediaUnderstandingProvider,
@@ -227,6 +227,11 @@ export async function applyMediaUnderstanding(params: {
   providers?: Record<string, MediaUnderstandingProvider>;
 }): Promise<ApplyMediaUnderstandingResult> {
   const { ctx, cfg } = params;
+  const commandCandidates = [ctx.CommandBody, ctx.RawBody, ctx.Body];
+  const originalUserText =
+    commandCandidates
+      .map((value) => extractMediaUserText(value))
+      .find((value) => value && value.trim()) ?? undefined;
   const registry = buildMediaUnderstandingRegistry(params.providers);
   const outputs: MediaUnderstandingOutput[] = [];
   const attachments = normalizeAttachments(ctx);
@@ -400,6 +405,15 @@ export async function applyMediaUnderstanding(params: {
     const audioOutput = outputs.find((output) => output.kind === "audio.transcription");
     if (audioOutput) {
       ctx.Transcript = audioOutput.text;
+      ctx.CommandBody = audioOutput.text;
+      if (!ctx.RawBody) {
+        ctx.RawBody = audioOutput.text;
+      }
+    } else if (originalUserText) {
+      ctx.CommandBody = originalUserText;
+      if (!extractMediaUserText(ctx.RawBody)) {
+        ctx.RawBody = originalUserText;
+      }
     }
     ctx.MediaUnderstanding = [...(ctx.MediaUnderstanding ?? []), ...outputs];
   }

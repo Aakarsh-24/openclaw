@@ -3,18 +3,12 @@ import type { MediaUnderstandingOutput } from "./types.js";
 const MEDIA_PLACEHOLDER_RE = /^<media:[^>]+>(\s*\([^)]*\))?$/i;
 const MEDIA_PLACEHOLDER_TOKEN_RE = /^<media:[^>]+>(\s*\([^)]*\))?\s*/i;
 
-function normalizeBody(body?: string): string {
+export function extractMediaUserText(body?: string): string | undefined {
   const trimmed = body?.trim() ?? "";
-  if (!trimmed) return "";
-  return trimmed.replace(MEDIA_PLACEHOLDER_TOKEN_RE, "").trim();
-}
-
-function isMeaningfulBody(body?: string): boolean {
-  const trimmed = body?.trim() ?? "";
-  if (!trimmed) return false;
-  if (MEDIA_PLACEHOLDER_RE.test(trimmed)) return false;
-  const cleaned = normalizeBody(trimmed);
-  return Boolean(cleaned);
+  if (!trimmed) return undefined;
+  if (MEDIA_PLACEHOLDER_RE.test(trimmed)) return undefined;
+  const cleaned = trimmed.replace(MEDIA_PLACEHOLDER_TOKEN_RE, "").trim();
+  return cleaned || undefined;
 }
 
 function formatSection(
@@ -40,7 +34,7 @@ export function formatMediaUnderstandingBody(params: {
     return params.body ?? "";
   }
 
-  const userText = isMeaningfulBody(params.body) ? normalizeBody(params.body) : undefined;
+  const userText = extractMediaUserText(params.body);
   const sections: string[] = [];
   if (userText && outputs.length > 1) {
     sections.push(`User text:\n${userText}`);
