@@ -300,7 +300,7 @@ describe("createTelegramBot", () => {
       expect(replySpy).toHaveBeenCalledTimes(1);
       const payload = replySpy.mock.calls[0][0];
       expect(payload.Body).toMatch(
-        /^\[Telegram Ada Lovelace \(@ada_bot\) id:1234 2025-01-09T00:00Z\]/,
+        /^\[Telegram Ada Lovelace \(@ada_bot\) id:1234 (Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), (January|February|March|April|May|June|July|August|September|October|November|December) \d{1,2}, \d{4} at \d{1,2}:\d{2} (AM|PM) [^\]]+\]/,
       );
       expect(payload.Body).toContain("hello world");
     } finally {
@@ -433,7 +433,7 @@ describe("createTelegramBot", () => {
     expect(replySpy).toHaveBeenCalledTimes(1);
     const payload = replySpy.mock.calls[0][0];
     expect(payload.WasMentioned).toBe(true);
-    expect(payload.Body).toMatch(/^\[Telegram Test Group id:7 from Ada id:9 2025-01-09T00:00Z\]/);
+    expect(payload.Body).toMatch(/^\[Telegram Test Group id:7 from Ada id:9 (Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), (January|February|March|April|May|June|July|August|September|October|November|December) \d{1,2}, \d{4} at \d{1,2}:\d{2} (AM|PM) [^\]]+\]/);
   });
 
   it("includes sender identity in group envelope headers", async () => {
@@ -473,7 +473,7 @@ describe("createTelegramBot", () => {
     expect(replySpy).toHaveBeenCalledTimes(1);
     const payload = replySpy.mock.calls[0][0];
     expect(payload.Body).toMatch(
-      /^\[Telegram Ops id:42 from Ada Lovelace \(@ada\) id:99 2025-01-09T00:00Z\]/,
+      /^\[Telegram Ops id:42 from Ada Lovelace \(@ada\) id:99 (Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), (January|February|March|April|May|June|July|August|September|October|November|December) \d{1,2}, \d{4} at \d{1,2}:\d{2} (AM|PM) [^\]]+\]/,
     );
   });
 

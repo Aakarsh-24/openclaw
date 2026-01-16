@@ -1,3 +1,5 @@
+import { formatEnvelopeTimestamp } from "../agents/date-time.js";
+
 export type AgentEnvelopeParams = {
   channel: string;
   from?: string;
@@ -11,16 +13,7 @@ function formatTimestamp(ts?: number | Date): string | undefined {
   if (!ts) return undefined;
   const date = ts instanceof Date ? ts : new Date(ts);
   if (Number.isNaN(date.getTime())) return undefined;
-
-  const yyyy = String(date.getUTCFullYear()).padStart(4, "0");
-  const mm = String(date.getUTCMonth() + 1).padStart(2, "0");
-  const dd = String(date.getUTCDate()).padStart(2, "0");
-  const hh = String(date.getUTCHours()).padStart(2, "0");
-  const min = String(date.getUTCMinutes()).padStart(2, "0");
-
-  // Compact ISO-like UTC timestamp with minutes precision.
-  // Example: 2025-01-02T03:04Z
-  return `${yyyy}-${mm}-${dd}T${hh}:${min}Z`;
+  return formatEnvelopeTimestamp(date);
 }
 
 export function formatAgentEnvelope(params: AgentEnvelopeParams): string {

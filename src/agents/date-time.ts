@@ -129,6 +129,46 @@ function ordinalSuffix(day: number): string {
   }
 }
 
+/**
+ * Format a date as a human-readable envelope timestamp.
+ * Example: "Thursday, January 16, 2026 at 4:52 AM PST"
+ *
+ * Uses the host timezone automatically.
+ */
+export function formatEnvelopeTimestamp(date: Date): string {
+  const tz = resolveUserTimezone();
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz,
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+      timeZoneName: "short",
+    }).formatToParts(date);
+
+    const map: Record<string, string> = {};
+    for (const part of parts) {
+      if (part.type !== "literal") map[part.type] = part.value;
+    }
+
+    if (!map.weekday || !map.year || !map.month || !map.day || !map.hour || !map.minute) {
+      // Fallback to ISO if formatting fails
+      return date.toISOString().replace(/:\d{2}\.\d{3}Z$/, "Z");
+    }
+
+    const dayPeriod = map.dayPeriod ?? "AM";
+    const tzName = map.timeZoneName ?? tz;
+    return `${map.weekday}, ${map.month} ${map.day}, ${map.year} at ${map.hour}:${map.minute} ${dayPeriod} ${tzName}`;
+  } catch {
+    // Fallback to compact ISO format
+    return date.toISOString().replace(/:\d{2}\.\d{3}Z$/, "Z");
+  }
+}
+
 export function formatUserTime(
   date: Date,
   timeZone: string,
