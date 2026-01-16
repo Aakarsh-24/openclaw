@@ -19,6 +19,7 @@
 - Repo: ignore local identity files to avoid accidental commits. (#1001) — thanks @gerardward2007.
 - Sessions/Security: add `session.dmScope` for multi-user DM isolation and audit warnings. (#948) — thanks @Alphonse-arianee.
 - Plugins: add provider auth registry + `clawdbot models auth login` for plugin-driven OAuth/API key flows.
+- Skills: add user-invocable skill commands with sanitized names and an opt-out for model invocation.
 - Onboarding: switch channels setup to a single-select loop with per-channel actions and disabled hints in the picker.
 - TUI: show provider/model labels for the active session and default model.
 - Heartbeat: add per-agent heartbeat configuration and multi-agent docs example.
@@ -48,6 +49,7 @@
 
 ### Fixes
 - WhatsApp: default response prefix only for self-chat, using identity name when set.
+- Fix: make `clawdbot update` auto-update global installs when installed via a package manager.
 - Fix: list model picker entries as provider/model pairs for explicit selection. (#970) — thanks @mcinteerj.
 - Fix: align OpenAI image-gen defaults with DALL-E 3 standard quality and document output formats. (#880) — thanks @mkbehr.
 - Fix: persist `gateway.mode=local` after selecting Local run mode in `clawdbot configure`, even if no other sections are chosen.
