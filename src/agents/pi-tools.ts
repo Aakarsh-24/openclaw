@@ -142,6 +142,7 @@ export function createClawdbotCodingTools(options?: {
   ]);
   const sandboxRoot = sandbox?.workspaceDir;
   const allowWorkspaceWrites = sandbox?.workspaceAccess !== "ro";
+<<<<<<< Updated upstream
   const workspaceRoot = options?.workspaceDir ?? process.cwd();
   const applyPatchConfig = options?.config?.tools?.exec?.applyPatch;
   const applyPatchEnabled =
@@ -173,6 +174,24 @@ export function createClawdbotCodingTools(options?: {
       if (sandboxRoot) return [];
       // Wrap with param normalization for Claude Code compatibility
       return [wrapToolParamNormalization(createEditTool(workspaceRoot), CLAUDE_PARAM_GROUPS.edit)];
+=======
+  // Use create*Tool(process.cwd()) instead of pre-created tools because
+  // the pre-created tools were created at module load time with the cwd at that moment,
+  // but we need tools configured for the current workspace (process.chdir happens before this call).
+  const currentCwd = process.cwd();
+  const base = (codingTools as unknown as AnyAgentTool[]).flatMap((tool) => {
+    if (tool.name === readTool.name) {
+      return sandboxRoot
+        ? [createSandboxedReadTool(sandboxRoot)]
+        : [createClawdbotReadTool(createReadTool(currentCwd))];
+    }
+    if (tool.name === bashToolName) return [];
+    if (tool.name === "edit") {
+      return sandboxRoot ? [] : [createEditTool(currentCwd) as AnyAgentTool];
+    }
+    if (tool.name === "write") {
+      return sandboxRoot ? [] : [createWriteTool(currentCwd) as AnyAgentTool];
+>>>>>>> Stashed changes
     }
     return [tool as AnyAgentTool];
   });

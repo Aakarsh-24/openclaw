@@ -16,7 +16,7 @@ If you do not know, you should be honest about it. If you need more clarity you 
 
 ---
 
-**Dev-only** (never push): `.workflow/`, `.claude/`, `scripts/setup-*.sh`, `scripts/daily-*.sh`
+**Dev-only** (never push): `.workflow/`, `.claude/`
 
 ---
 
@@ -52,7 +52,7 @@ Run `/dev:help` for full list.
 |------|---------|
 | Release | `/build:release [ver]` |
 | Hotfix status | `./scripts/release-fixes-status.sh` |
-| Daily (ARM+x86) | `./scripts/daily-all.sh` |
+| Daily (ARM+x86) | `./.workflow/scripts/daily-all.sh` |
 
 Hotfix branches: `hotfix/*` → auto-applied. See `automation/infrastructure.md` for details.
 
@@ -60,7 +60,19 @@ Hotfix branches: `hotfix/*` → auto-applied. See `automation/infrastructure.md`
 
 ## Standards
 
+<<<<<<< Updated upstream
 See root `AGENTS.md`. Key: `/dev:gate` before commits, `scripts/committer` for scoped commits, 70% coverage.
+=======
+See root `AGENTS.md` for multi-agent safety and quality standards.
+
+Key points: `/dev:gate` before commits, `scripts/committer` for scoped commits, 70% coverage.
+
+---
+
+## Troubleshooting
+
+See `automation/infrastructure.md` for logs, environment variables, and troubleshooting commands.
+>>>>>>> Stashed changes
 
 ---
 

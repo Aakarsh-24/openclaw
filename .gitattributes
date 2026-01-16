@@ -1,4 +1,6 @@
 * text=auto eol=lf
 
-# Keep fork-specific CLAUDE.md during upstream merges
+# Keep fork-specific files during upstream merges
 CLAUDE.md merge=ours
+.workflow/** merge=ours
+.claude/** merge=ours

@@ -93,10 +93,8 @@ From `.workflow/AGENTS.md`, understand the three-remote model:
 **PR Flow:** dev → fork → upstream
 
 **Dev-Only Files (never push):**
-- `.workflow/` - Workflow documentation
+- `.workflow/` - Workflow documentation and scripts
 - `.claude/` - Claude Code config
-- `scripts/setup-*.sh` - Local setup scripts
-- `scripts/daily-*.sh` - Daily build automation
 
 ---
 
