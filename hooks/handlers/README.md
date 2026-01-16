@@ -4,9 +4,9 @@ This directory contains example internal hook handlers that demonstrate how to e
 
 ## Available Examples
 
-### session-memory.ts
+### session-memory.js
 
-Saves session context to disk when the `/new` command is issued.
+Saves session context to the daily memory log when the `/new` command is issued.
 
 **Usage:**
 
@@ -18,7 +18,7 @@ Saves session context to disk when the `/new` command is issued.
       "handlers": [
         {
           "event": "command:new",
-          "module": "./hooks/handlers/session-memory.ts"
+          "module": "./hooks/handlers/session-memory.js"
         }
       ]
     }
@@ -28,12 +28,21 @@ Saves session context to disk when the `/new` command is issued.
 
 **What it does:**
 - Listens for `/new` commands
-- Saves session context to `~/.clawdbot/memory/sessions/`
-- Generates timestamped JSON files with session state
+- Appends session details to the daily memory log
+- Uses Markdown format matching the standard memory system
 
 **Output location:**
 ```
-~/.clawdbot/memory/sessions/<session-key>_<timestamp>.json
+~/clawd/memory/YYYY-MM-DD.md
+```
+
+**Output format:**
+```markdown
+### Session Started: /new command
+- **Time**: 2026-01-15 21:04:56 UTC
+- **Session Key**: agent:main:main
+- **Session ID**: 0e8163a5-f76a-4b0b-8f0d-0e30c46012fa
+- **Source**: telegram
 ```
 
 ### command-logger.ts

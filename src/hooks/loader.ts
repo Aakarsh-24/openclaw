@@ -39,9 +39,10 @@ export async function loadInternalHooks(cfg: ClawdbotConfig): Promise<number> {
         ? handlerConfig.module
         : path.join(process.cwd(), handlerConfig.module);
 
-      // Import the module
+      // Import the module with cache-busting to ensure fresh reload
       const url = pathToFileURL(modulePath).href;
-      const mod = (await import(url)) as Record<string, unknown>;
+      const cacheBustedUrl = `${url}?t=${Date.now()}`;
+      const mod = (await import(cacheBustedUrl)) as Record<string, unknown>;
 
       // Get the handler function
       const exportName = handlerConfig.export ?? 'default';

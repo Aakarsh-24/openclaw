@@ -2,6 +2,7 @@ import { logVerbose } from "../../globals.js";
 import { resolveSendPolicy } from "../../sessions/send-policy.js";
 import { shouldHandleTextCommands } from "../commands-registry.js";
 import { createInternalHookEvent, triggerInternalHook } from "../../hooks/internal-hooks.js";
+import { routeReply } from "./route-reply.js";
 import { handleBashCommand } from "./commands-bash.js";
 import { handleCompactCommand } from "./commands-compact.js";
 import { handleConfigCommand, handleDebugCommand } from "./commands-config.js";
@@ -64,9 +65,31 @@ export async function handleCommands(params: HandleCommandsParams): Promise<Comm
         sessionEntry: params.sessionEntry,
         commandSource: params.command.surface,
         senderId: params.command.senderId,
+        cfg: params.cfg, // Pass config for LLM slug generation
       }
     );
     await triggerInternalHook(hookEvent);
+
+    // Send hook messages immediately if present
+    if (hookEvent.messages.length > 0) {
+      // Use OriginatingChannel/To if available, otherwise fall back to command channel/from
+      const channel = params.ctx.OriginatingChannel || (params.command.channel as any);
+      // For replies, use 'from' (the sender) not 'to' (which might be the bot itself)
+      const to = params.ctx.OriginatingTo || params.command.from || params.command.to;
+
+      if (channel && to) {
+        const hookReply = { text: hookEvent.messages.join('\n\n') };
+        await routeReply({
+          payload: hookReply,
+          channel: channel,
+          to: to,
+          sessionKey: params.sessionKey,
+          accountId: params.ctx.AccountId,
+          threadId: params.ctx.MessageThreadId,
+          cfg: params.cfg,
+        });
+      }
+    }
   }
 
   const allowTextCommands = shouldHandleTextCommands({

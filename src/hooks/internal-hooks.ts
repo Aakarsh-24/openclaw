@@ -18,6 +18,8 @@ export interface InternalHookEvent {
   context: Record<string, unknown>;
   /** Timestamp when the event occurred */
   timestamp: Date;
+  /** Messages to send back to the user (hooks can push to this array) */
+  messages: string[];
 }
 
 export type InternalHookHandler = (event: InternalHookEvent) => Promise<void> | void;
@@ -148,5 +150,6 @@ export function createInternalHookEvent(
     sessionKey,
     context,
     timestamp: new Date(),
+    messages: [],
   };
 }

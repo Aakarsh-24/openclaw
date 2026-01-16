@@ -8,6 +8,7 @@ import {
 import type { CliDeps } from "../cli/deps.js";
 import type { loadConfig } from "../config/config.js";
 import { startGmailWatcher } from "../hooks/gmail-watcher.js";
+import { clearInternalHooks } from "../hooks/internal-hooks.js";
 import { loadInternalHooks } from "../hooks/loader.js";
 import type { loadClawdbotPlugins } from "../plugins/loader.js";
 import { type PluginServicesHandle, startPluginServices } from "../plugins/services.js";
@@ -93,6 +94,8 @@ export async function startGatewaySidecars(params: {
 
   // Load internal hook handlers from configuration.
   try {
+    // Clear any previously registered hooks to ensure fresh loading
+    clearInternalHooks();
     const loadedCount = await loadInternalHooks(params.cfg);
     if (loadedCount > 0) {
       params.logHooks.info(`loaded ${loadedCount} internal hook handler${loadedCount > 1 ? 's' : ''}`);
