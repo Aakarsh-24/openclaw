@@ -806,11 +806,11 @@ export class MemoryIndexManager {
           label: undefined,
           report: (update) => {
             if (!params.progress) return;
-            if (update.label) progress.label = update.label;
+            if (update.label) progress!.label = update.label;
             const label =
-              update.total > 0 && progress.label
-                ? `${progress.label} ${update.completed}/${update.total}`
-                : progress.label;
+              update.total > 0 && progress!.label
+                ? `${progress!.label} ${update.completed}/${update.total}`
+                : progress!.label;
             params.progress({
               completed: update.completed,
               total: update.total,
