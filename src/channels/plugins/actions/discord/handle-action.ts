@@ -21,8 +21,11 @@ export async function handleDiscordMessageAction(
 ): Promise<AgentToolResult<unknown>> {
   const { action, params, cfg } = ctx;
 
-  const resolveChannelId = () =>
-    readStringParam(params, "channelId") ?? readStringParam(params, "to", { required: true });
+  const resolveChannelId = () => {
+    const raw = readStringParam(params, "channelId") ?? readStringParam(params, "to", { required: true });
+    // Strip "channel:" prefix if present (target resolver adds it for Discord numeric IDs)
+    return raw.startsWith("channel:") ? raw.slice(8) : raw;
+  };
 
   if (action === "send") {
     const to = readStringParam(params, "to", { required: true });
