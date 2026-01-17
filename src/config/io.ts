@@ -52,6 +52,8 @@ const SHELL_ENV_EXPECTED_KEYS = [
   "CLAWDBOT_GATEWAY_PASSWORD",
 ];
 
+const CONFIG_BACKUP_COUNT = 5;
+
 export type ParseConfigJson5Result = { ok: true; parsed: unknown } | { ok: false; error: string };
 
 function hashConfigRaw(raw: string | null): string {
@@ -71,6 +73,53 @@ export function resolveConfigSnapshotHash(snapshot: {
   }
   if (typeof snapshot.raw !== "string") return null;
   return hashConfigRaw(snapshot.raw);
+}
+
+function coerceConfig(value: unknown): ClawdbotConfig {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+  return value as ClawdbotConfig;
+}
+
+function rotateConfigBackupsSync(configPath: string, ioFs: typeof fs): void {
+  if (CONFIG_BACKUP_COUNT <= 1) return;
+  const backupBase = `${configPath}.bak`;
+  const maxIndex = CONFIG_BACKUP_COUNT - 1;
+  try {
+    ioFs.unlinkSync(`${backupBase}.${maxIndex}`);
+  } catch {
+    // best-effort
+  }
+  for (let index = maxIndex - 1; index >= 1; index -= 1) {
+    try {
+      ioFs.renameSync(`${backupBase}.${index}`, `${backupBase}.${index + 1}`);
+    } catch {
+      // best-effort
+    }
+  }
+  try {
+    ioFs.renameSync(backupBase, `${backupBase}.1`);
+  } catch {
+    // best-effort
+  }
+}
+
+async function rotateConfigBackups(configPath: string, ioFs: typeof fs.promises): Promise<void> {
+  if (CONFIG_BACKUP_COUNT <= 1) return;
+  const backupBase = `${configPath}.bak`;
+  const maxIndex = CONFIG_BACKUP_COUNT - 1;
+  await ioFs.unlink(`${backupBase}.${maxIndex}`).catch(() => {
+    // best-effort
+  });
+  for (let index = maxIndex - 1; index >= 1; index -= 1) {
+    await ioFs.rename(`${backupBase}.${index}`, `${backupBase}.${index + 1}`).catch(() => {
+      // best-effort
+    });
+  }
+  await ioFs.rename(backupBase, `${backupBase}.1`).catch(() => {
+    // best-effort
+  });
 }
 
 export type ConfigIoDeps = {
@@ -165,10 +214,13 @@ export function createConfigIO(overrides: ConfigIoDeps = {}) {
 
     deps.fs.writeFileSync(tmp, json, { encoding: "utf-8", mode: 0o600 });
 
-    try {
-      deps.fs.copyFileSync(configPath, `${configPath}.bak`);
-    } catch {
-      // best-effort
+    if (deps.fs.existsSync(configPath)) {
+      rotateConfigBackupsSync(configPath, deps.fs);
+      try {
+        deps.fs.copyFileSync(configPath, `${configPath}.bak`);
+      } catch {
+        // best-effort
+      }
     }
 
     try {
@@ -225,27 +277,21 @@ export function createConfigIO(overrides: ConfigIoDeps = {}) {
       const substituted = resolveConfigEnvVars(resolved, deps.env);
 
       const migrated = applyLegacyMigrations(substituted);
-      const resolvedConfigRaw = migrated.next ?? substituted;
-      warnOnConfigMiskeys(resolvedConfigRaw, deps.logger);
-
-      if (typeof resolvedConfigRaw !== "object" || resolvedConfigRaw === null) {
-        return {} as ClawdbotConfig;
-      }
-
-      const validated = ClawdbotSchema.safeParse(resolvedConfigRaw);
+      const resolvedConfig = migrated.next ?? substituted;
+      warnOnConfigMiskeys(resolvedConfig, deps.logger);
+      if (typeof resolvedConfig !== "object" || resolvedConfig === null) return {};
+      const validated = ClawdbotSchema.safeParse(resolvedConfig);
       if (!validated.success) {
         deps.logger.error("Invalid config:");
         for (const iss of validated.error.issues) {
           deps.logger.error(`- ${iss.path.join(".")}: ${iss.message}`);
         }
-        // Return the best-effort config even if validation fails,
-        // to prevent total loss if this is used for writes/merges.
-        return resolvedConfigRaw as ClawdbotConfig;
+        return {};
       }
       if (migrated.next && migrated.changes.length > 0) {
         deps.logger.warn(formatLegacyMigrationLog(migrated.changes));
         try {
-          writeConfigFileSync(resolvedConfigRaw as ClawdbotConfig);
+          writeConfigFileSync(resolvedConfig as ClawdbotConfig);
         } catch (err) {
           deps.logger.warn(`Failed to write migrated config at ${configPath}: ${String(err)}`);
         }
@@ -287,9 +333,6 @@ export function createConfigIO(overrides: ConfigIoDeps = {}) {
         throw err;
       }
       deps.logger.error(`Failed to read config at ${configPath}`, err);
-      // If we have a partially loaded config (substituted or resolved), return that
-      // instead of {} to prevent total failure if possible.
-      // But loadConfig is synchronous and doesn't have the same context as readConfigFileSnapshot.
       return {};
     }
   }
@@ -353,7 +396,7 @@ export function createConfigIO(overrides: ConfigIoDeps = {}) {
           raw,
           parsed: parsedRes.parsed,
           valid: false,
-          config: parsedRes.parsed as ClawdbotConfig, // Preserve parsed config
+          config: coerceConfig(parsedRes.parsed),
           hash,
           issues: [{ path: "", message }],
           legacyIssues: [],
@@ -375,7 +418,7 @@ export function createConfigIO(overrides: ConfigIoDeps = {}) {
           raw,
           parsed: parsedRes.parsed,
           valid: false,
-          config: resolved as ClawdbotConfig, // Preserve resolved config
+          config: coerceConfig(resolved),
           hash,
           issues: [{ path: "", message }],
           legacyIssues: [],
@@ -388,17 +431,13 @@ export function createConfigIO(overrides: ConfigIoDeps = {}) {
 
       const validated = validateConfigObject(resolvedConfigRaw);
       if (!validated.ok) {
-        const resolvedConfig =
-          typeof resolvedConfigRaw === "object" && resolvedConfigRaw !== null
-            ? (resolvedConfigRaw as ClawdbotConfig)
-            : {};
         return {
           path: configPath,
           exists: true,
           raw,
           parsed: parsedRes.parsed,
           valid: false,
-          config: resolvedConfig,
+          config: coerceConfig(resolvedConfigRaw),
           hash,
           issues: validated.issues,
           legacyIssues,
@@ -459,9 +498,12 @@ export function createConfigIO(overrides: ConfigIoDeps = {}) {
       mode: 0o600,
     });
 
-    await deps.fs.promises.copyFile(configPath, `${configPath}.bak`).catch(() => {
-      // best-effort
-    });
+    if (deps.fs.existsSync(configPath)) {
+      await rotateConfigBackups(configPath, deps.fs.promises);
+      await deps.fs.promises.copyFile(configPath, `${configPath}.bak`).catch(() => {
+        // best-effort
+      });
+    }
 
     try {
       await deps.fs.promises.rename(tmp, configPath);
