@@ -88,9 +88,19 @@ export { DEFAULT_MODEL, DEFAULT_PROVIDER };
 /**
  * Model key format: "provider/model"
  *
- * The model key is displayed in `/model status` and used to reference models.
- * When using `/model <key>`, use the exact format shown (e.g., "openrouter/moonshotai/kimi-k2").
+ * The model key is displayed in `/model status` and is the internal identifier.
+ *
+ * When using `/model <key>` to switch models:
+ * - For Anthropic: use the model ID directly (e.g., `/model claude-opus-4-5`)
+ * - For OpenAI: use the model ID directly (e.g., `/model gpt-4.1`)
+ * - For OpenRouter: use the model ID without provider prefix (e.g., `/model moonshotai/kimi-k2`)
+ *
+ * Note: The status display shows "provider/model" for clarity, but when switching,
+ * omit the provider prefix for most providers. The parsing logic uses the first "/" to
+ * separate provider from model ID.
  *
  * For providers with hierarchical model IDs (e.g., OpenRouter), the model ID may include
- * sub-providers (e.g., "moonshotai/kimi-k2"), resulting in a key like "openrouter/moonshotai/kimi-k2".
+ * sub-providers (e.g., "moonshotai/kimi-k2"), resulting in a display key like "openrouter/moonshotai/kimi-k2".
+ *
+ * Related: See issue #1019 for OpenRouter model usage clarification.
  */
