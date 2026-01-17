@@ -240,9 +240,10 @@ export async function applyAuthChoiceOAuth(
       );
       spin.stop("Gemini CLI OAuth complete");
       if (oauthCreds) {
+        const profileSuffix = oauthCreds.email?.trim() || "default";
         await writeOAuthCredentials("google-gemini-cli", oauthCreds, params.agentDir);
         nextConfig = applyAuthProfileConfig(nextConfig, {
-          profileId: `google-gemini-cli:${oauthCreds.email ?? "gemini-cli"}`,
+          profileId: `google-gemini-cli:${profileSuffix}`,
           provider: "google-gemini-cli",
           mode: "oauth",
         });
