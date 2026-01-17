@@ -1,0 +1,121 @@
+version: '3.8'
+
+# Clawdbot Development Docker Compose
+#
+# Purpose: Hot-swap development environment for TypeScript/Node development
+# without rebuilding the entire image on each code change.
+#
+# Usage:
+#   docker compose -f docker-compose.dev.yml up
+#
+# The setup mounts source directories into the running container so that:
+# 1. TypeScript changes in ./src are immediately visible in the container
+# 2. Built output in ./dist is shared between host and container
+# 3. nodemon watches for changes and auto-restarts the Node process
+# 4. Rust + Go binaries from the image remain unchanged (no rebuilds needed)
+#
+# Hot-swap workflow:
+#   1. Make changes to ./src/*.ts files
+#   2. Changes are visible in the container at /app/src
+#   3. nodemon detects the change and rebuilds via `pnpm build`
+#   4. Node process restarts with new code automatically
+#   5. No container rebuild required
+#
+# For changes to dependencies (package.json), rebuild:
+#   docker compose -f docker-compose.dev.yml build --no-cache
+#   docker compose -f docker-compose.dev.yml up
+
+services:
+  clawdbot-dev:
+    # Build from the optimized image which includes Rust + Go binaries
+    build:
+      context: .
+      dockerfile: Dockerfile.optimized
+      target: runtime-full  # Full runtime with Rust image-ops + Go proxy
+
+    container_name: clawdbot-dev
+
+    # Ports: 18789 (gateway), 18790 (bridge/alternative)
+    ports:
+      - "18789:18789"
+      - "18790:18790"
+
+    # Environment: development mode with hot-reload
+    environment:
+      - NODE_ENV=development
+      - CLAWDBOT_DEV=1
+      - LOG_LEVEL=debug
+
+    # Volume mounts for hot-swap development
+    volumes:
+      # TypeScript source code - live edits
+      - ./src:/app/src:cached
+
+      # Built output - shared between host and container for quick refresh
+      - ./dist:/app/dist:cached
+
+      # Skills/extensions - hot-swap plugins
+      - ./skills:/app/skills:cached
+
+      # Documentation - for live doc development
+      - ./docs:/app/docs:cached
+
+      # Extensions (workspace packages)
+      - ./extensions:/app/extensions:cached
+
+      # Assets (keep in sync)
+      - ./assets:/app/assets:cached
+
+      # node_modules - prevent host vs container conflicts
+      # Use a named volume to ensure Docker uses container's node_modules
+      - node_modules_dev:/app/node_modules
+
+    # Working directory
+    working_dir: /app
+
+    # Restart policy for development
+    restart: unless-stopped
+
+    # Health check - gateway should be responsive
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:18789/health').then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+    # Entrypoint: use nodemon to watch TypeScript source and auto-rebuild + restart
+    #
+    # Strategy:
+    # 1. nodemon watches ./src for changes
+    # 2. On change: runs `pnpm build` to compile TypeScript -> dist
+    # 3. After build succeeds: automatically restarts the Node process
+    # 4. Process runs: node dist/index.js gateway-daemon --bind lan --port 18789
+    #
+    # No manual rebuild or container restart needed - just edit and save.
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        # Install nodemon globally (lightweight, fast)
+        npm install -g nodemon@3.1.7
+
+        # Watch ./src, run build on change, then start gateway
+        # --ext ts,json: watch TypeScript and JSON files
+        # --exec: execute command on change
+        # --delay: wait 500ms for rapid edits before rebuilding
+        nodemon \
+          --watch src \
+          --ext ts,json \
+          --delay 500ms \
+          --exec 'pnpm build && node dist/index.js gateway-daemon --bind lan --port 18789' \
+          || node dist/index.js gateway-daemon --bind lan --port 18789
+
+    # Interactive mode for debugging
+    stdin_open: true
+    tty: true
+
+# Named volume for node_modules to avoid host/container sync issues
+volumes:
+  node_modules_dev:
+    driver: local

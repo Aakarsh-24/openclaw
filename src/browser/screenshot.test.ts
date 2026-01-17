@@ -1,18 +1,14 @@
 import crypto from "node:crypto";
 
-import sharp from "sharp";
 import { describe, expect, it } from "vitest";
 
+import { createTestJpeg, createLargeTestPng } from "../../test/helpers/test-images.js";
+import { getImageMetadata } from "../media/image-ops.js";
 import { normalizeBrowserScreenshot } from "./screenshot.js";
 
 describe("browser screenshot normalization", () => {
   it("shrinks oversized images to <=2000x2000 and <=5MB", async () => {
-    const width = 2300;
-    const height = 2300;
-    const raw = crypto.randomBytes(width * height * 3);
-    const bigPng = await sharp(raw, { raw: { width, height, channels: 3 } })
-      .png({ compressionLevel: 0 })
-      .toBuffer();
+    const bigPng = await createLargeTestPng(); // Creates 2800x2800 PNG >5MB
 
     const normalized = await normalizeBrowserScreenshot(bigPng, {
       maxSide: 2000,
@@ -20,24 +16,19 @@ describe("browser screenshot normalization", () => {
     });
 
     expect(normalized.buffer.byteLength).toBeLessThanOrEqual(5 * 1024 * 1024);
-    const meta = await sharp(normalized.buffer).metadata();
-    expect(Number(meta.width)).toBeLessThanOrEqual(2000);
-    expect(Number(meta.height)).toBeLessThanOrEqual(2000);
+    const meta = await getImageMetadata(normalized.buffer);
+    expect(meta).not.toBeNull();
+    if (meta) {
+      expect(meta.width).toBeLessThanOrEqual(2000);
+      expect(meta.height).toBeLessThanOrEqual(2000);
+    }
+    // Check JPEG magic bytes
     expect(normalized.buffer[0]).toBe(0xff);
     expect(normalized.buffer[1]).toBe(0xd8);
   }, 120_000);
 
   it("keeps already-small screenshots unchanged", async () => {
-    const jpeg = await sharp({
-      create: {
-        width: 800,
-        height: 600,
-        channels: 3,
-        background: { r: 255, g: 0, b: 0 },
-      },
-    })
-      .jpeg({ quality: 80 })
-      .toBuffer();
+    const jpeg = createTestJpeg();
 
     const normalized = await normalizeBrowserScreenshot(jpeg, {
       maxSide: 2000,
