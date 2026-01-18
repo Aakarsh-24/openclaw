@@ -1,0 +1,20 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: clawdbot
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  # - secret.yaml  # Uncomment sau khi tạo từ template
+  - pvc.yaml
+  - deployment.yaml
+  - service.yaml
+  - ingress.yaml
+# commonLabels:
+#   app: clawdbot
+#   managed-by: kustomize
+
+# images:
+#   - name: vcr.vnpaycloud.vn/286e18c6183846159c47575db4e3d831-clawdbot/clawdbot
+#     newTag: latest

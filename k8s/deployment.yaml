@@ -1,0 +1,135 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: clawdbot-gateway
+  namespace: clawdbot
+  labels:
+    app: clawdbot
+    component: gateway
+spec:
+  replicas: 1 # Clawdbot là single-user assistant, chỉ cần 1 replica
+  strategy:
+    type: Recreate # Tránh multiple instances cùng lúc
+  selector:
+    matchLabels:
+      app: clawdbot
+      component: gateway
+  template:
+    metadata:
+      labels:
+        app: clawdbot
+        component: gateway
+    spec:
+      # imagePullSecrets:  # Uncomment nếu registry cần authentication
+      # - name: registry-secret
+
+      initContainers:
+        # Init container để copy config file vào config volume
+        - name: config-init
+          image: busybox:latest
+          command:
+            - sh
+            - -c
+            - |
+              mkdir -p /home/node/.clawdbot
+              cp /config/clawdbot.json /home/node/.clawdbot/clawdbot.json
+              # Note: fsGroup handles ownership, chown not needed
+          volumeMounts:
+            - name: config-volume
+              mountPath: /home/node/.clawdbot
+            - name: clawdbot-config
+              mountPath: /config
+
+      containers:
+        - name: gateway
+          image: vcr.vnpaycloud.vn/286e18c6183846159c47575db4e3d831-clawdbot/clawdbot:latest
+          imagePullPolicy: Always
+
+          command:
+            - node
+            - dist/index.js
+            - gateway-daemon
+            - --bind
+            - auto
+
+          ports:
+            - name: gateway
+              containerPort: 18789
+              protocol: TCP
+            - name: bridge
+              containerPort: 18790
+              protocol: TCP
+
+          env:
+            - name: HOME
+              value: "/home/node"
+            - name: NODE_ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: clawdbot-config
+                  key: NODE_ENV
+            - name: TERM
+              valueFrom:
+                configMapKeyRef:
+                  name: clawdbot-config
+                  key: TERM
+
+          # Load secrets từ Secret
+          envFrom:
+            - secretRef:
+                name: clawdbot-secrets
+
+          volumeMounts:
+            - name: config-volume
+              mountPath: /home/node/.clawdbot
+            - name: workspace-volume
+              mountPath: /home/node/clawd
+
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "2Gi"
+              cpu: "1000m"
+
+          livenessProbe:
+            httpGet:
+              path: /
+              port: gateway
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          readinessProbe:
+            httpGet:
+              path: /
+              port: gateway
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+      volumes:
+        - name: config-volume
+          persistentVolumeClaim:
+            claimName: clawdbot-config-pvc
+        - name: workspace-volume
+          persistentVolumeClaim:
+            claimName: clawdbot-workspace-pvc
+        - name: clawdbot-config
+          configMap:
+            name: clawdbot-config
+            items:
+              - key: clawdbot.json
+                path: clawdbot.json
+
+      # Security context
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+
+      # Restart policy
+      restartPolicy: Always

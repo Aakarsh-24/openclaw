@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: clawdbot-gateway
+  namespace: clawdbot
+  labels:
+    app: clawdbot
+    component: gateway
+spec:
+  type: ClusterIP
+  selector:
+    app: clawdbot
+    component: gateway
+  ports:
+    - name: gateway
+      port: 18789
+      targetPort: 18789
+      protocol: TCP
+    - name: bridge
+      port: 18790
+      targetPort: 18790
+      protocol: TCP

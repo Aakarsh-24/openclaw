@@ -1,0 +1,38 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: clawdbot-ingress
+  namespace: clawdbot
+  annotations:
+    # Nginx ingress annotations
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+
+    # WebSocket support
+    nginx.ingress.kubernetes.io/websocket-services: "clawdbot-gateway"
+    nginx.ingress.kubernetes.io/upstream-hash-by: "$remote_addr"
+
+    # Certificate manager (nếu dùng cert-manager)
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  ingressClassName: nginx # Hoặc ingress class name của cluster
+
+  tls:
+    - hosts:
+        - clawdbot.x.vnshop.cloud
+      secretName: clawdbot-tls
+
+  rules:
+    - host: clawdbot.x.vnshop.cloud
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: clawdbot-gateway
+                port:
+                  number: 18789
