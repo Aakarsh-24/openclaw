@@ -175,7 +175,7 @@ enum ExecApprovalsStore {
 
     static func readSnapshot() -> ExecApprovalsSnapshot {
         let url = self.fileURL()
-        guard FileManager.default.fileExists(atPath: url.path) else {
+        guard FileManager().fileExists(atPath: url.path) else {
             return ExecApprovalsSnapshot(
                 path: url.path,
                 exists: false,
@@ -215,7 +215,7 @@ enum ExecApprovalsStore {
 
     static func loadFile() -> ExecApprovalsFile {
         let url = self.fileURL()
-        guard FileManager.default.fileExists(atPath: url.path) else {
+        guard FileManager().fileExists(atPath: url.path) else {
             return ExecApprovalsFile(version: 1, socket: nil, defaults: nil, agents: [:])
         }
         do {
@@ -237,11 +237,11 @@ enum ExecApprovalsStore {
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             let data = try encoder.encode(file)
             let url = self.fileURL()
-            try FileManager.default.createDirectory(
+            try FileManager().createDirectory(
                 at: url.deletingLastPathComponent(),
                 withIntermediateDirectories: true)
             try data.write(to: url, options: [.atomic])
-            try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+            try? FileManager().setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
         } catch {
             self.logger.error("exec approvals save failed: \(error.localizedDescription, privacy: .public)")
         }
@@ -441,11 +441,11 @@ enum ExecApprovalsStore {
     private static func expandPath(_ raw: String) -> String {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed == "~" {
-            return FileManager.default.homeDirectoryForCurrentUser.path
+            return FileManager().homeDirectoryForCurrentUser.path
         }
         if trimmed.hasPrefix("~/") {
             let suffix = trimmed.dropFirst(2)
-            return FileManager.default.homeDirectoryForCurrentUser
+            return FileManager().homeDirectoryForCurrentUser
                 .appendingPathComponent(String(suffix)).path
         }
         return trimmed
@@ -496,7 +496,7 @@ struct ExecCommandResolution: Sendable {
                     return expanded
                 }
                 let base = cwd?.trimmingCharacters(in: .whitespacesAndNewlines)
-                let root = (base?.isEmpty == false) ? base! : FileManager.default.currentDirectoryPath
+                let root = (base?.isEmpty == false) ? base! : FileManager().currentDirectoryPath
                 return URL(fileURLWithPath: root).appendingPathComponent(expanded).path
             }
             let searchPaths = self.searchPaths(from: env)

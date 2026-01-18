@@ -48,7 +48,7 @@ import Testing
 
     @MainActor
     @Test func remoteBridgePortUsesMatchingRemoteUrlPort() {
-        let configPath = FileManager.default.temporaryDirectory
+        let configPath = FileManager().temporaryDirectory
             .appendingPathComponent("clawdbot-config-\(UUID().uuidString)")
             .appendingPathComponent("clawdbot.json")
             .path
@@ -80,7 +80,7 @@ import Testing
 
     @MainActor
     @Test func remoteBridgePortFallsBackWhenRemoteUrlHostMismatch() {
-        let configPath = FileManager.default.temporaryDirectory
+        let configPath = FileManager().temporaryDirectory
             .appendingPathComponent("clawdbot-config-\(UUID().uuidString)")
             .appendingPathComponent("clawdbot.json")
             .path
