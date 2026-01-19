@@ -199,7 +199,9 @@ export async function runConfigureWizard(
         );
       }
       if (!snapshot.valid) {
-        outro(`Config invalid. Run \`${formatCliCommand("clawdbot doctor")}\` to repair it, then re-run configure.`);
+        outro(
+          `Config invalid. Run \`${formatCliCommand("clawdbot doctor")}\` to repair it, then re-run configure.`,
+        );
         runtime.exit(1);
         return;
       }

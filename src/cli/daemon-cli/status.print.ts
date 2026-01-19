@@ -71,7 +71,9 @@ export function printDaemonStatus(status: DaemonStatus, opts: { json: boolean })
       defaultRuntime.error(`${warnText("Service config issue:")} ${issue.message}${detail}`);
     }
     defaultRuntime.error(
-      warnText(`Recommendation: run "${formatCliCommand("clawdbot doctor")}" (or "${formatCliCommand("clawdbot doctor --repair")}").`),
+      warnText(
+        `Recommendation: run "${formatCliCommand("clawdbot doctor")}" (or "${formatCliCommand("clawdbot doctor --repair")}").`,
+      ),
     );
   }
 

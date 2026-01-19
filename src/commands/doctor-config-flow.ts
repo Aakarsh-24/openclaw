@@ -66,7 +66,10 @@ export async function loadAndMaybeMigrateDoctorConfig(params: {
       if (changes.length > 0) note(changes.join("\n"), "Doctor changes");
       if (migrated) cfg = migrated;
     } else {
-      note(`Run "${formatCliCommand("clawdbot doctor --fix")}" to apply legacy migrations.`, "Doctor");
+      note(
+        `Run "${formatCliCommand("clawdbot doctor --fix")}" to apply legacy migrations.`,
+        "Doctor",
+      );
     }
   }
 

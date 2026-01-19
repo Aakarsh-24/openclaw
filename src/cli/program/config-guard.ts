@@ -61,7 +61,9 @@ export async function ensureConfigReady(params: {
   if (pluginIssues.length > 0) {
     params.runtime.error(`Plugin config errors:\n${pluginIssues.join("\n")}`);
   }
-  params.runtime.error(`Run \`${formatCliCommand("clawdbot doctor --fix")}\` to repair, then retry.`);
+  params.runtime.error(
+    `Run \`${formatCliCommand("clawdbot doctor --fix")}\` to repair, then retry.`,
+  );
   if (!allowInvalid) {
     params.runtime.exit(1);
   }

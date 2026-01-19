@@ -411,7 +411,9 @@ export async function updateCommand(opts: UpdateCommandOptions): Promise<void> {
       if (!opts.json) {
         defaultRuntime.log(theme.warn(`Daemon restart failed: ${String(err)}`));
         defaultRuntime.log(
-          theme.muted(`You may need to restart the daemon manually: ${formatCliCommand("clawdbot daemon restart")}`),
+          theme.muted(
+            `You may need to restart the daemon manually: ${formatCliCommand("clawdbot daemon restart")}`,
+          ),
         );
       }
     }
@@ -425,7 +427,9 @@ export async function updateCommand(opts: UpdateCommandOptions): Promise<void> {
       );
     } else {
       defaultRuntime.log(
-        theme.muted(`Tip: Run \`${formatCliCommand("clawdbot daemon restart")}\` to apply updates to a running gateway.`),
+        theme.muted(
+          `Tip: Run \`${formatCliCommand("clawdbot daemon restart")}\` to apply updates to a running gateway.`,
+        ),
       );
     }
   }

@@ -153,7 +153,9 @@ export async function setupSkills(
         spin.stop(`Install failed: ${name}${code}${detail ? ` — ${detail}` : ""}`);
         if (result.stderr) runtime.log(result.stderr.trim());
         else if (result.stdout) runtime.log(result.stdout.trim());
-        runtime.log(`Tip: run \`${formatCliCommand("clawdbot doctor")}\` to review skills + requirements.`);
+        runtime.log(
+          `Tip: run \`${formatCliCommand("clawdbot doctor")}\` to review skills + requirements.`,
+        );
         runtime.log("Docs: https://docs.clawd.bot/skills");
       }
     }
