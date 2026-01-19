@@ -2,6 +2,18 @@ import ClawdbotKit
 import Foundation
 import SwiftUI
 
+/// Strip envelope format from message text.
+/// Envelope format: [Channel from +elapsed timestamp] body
+/// Example: [WebChat agent:main:main +2m 2026-01-19 09:29 UTC] hello world
+func stripEnvelope(_ text: String) -> String {
+    // Match envelope pattern: [anything] at start of string
+    // The envelope is everything between [ and ] followed by a space
+    guard let range = text.range(of: "^\\[([^\\]]+)\\]\\s*", options: .regularExpression) else {
+        return text
+    }
+    return String(text[range.upperBound...])
+}
+
 private enum ChatUIConstants {
     static let bubbleMaxWidth: CGFloat = 560
     static let bubbleCorner: CGFloat = 18
@@ -229,7 +241,14 @@ private struct ChatMessageBody: View {
             guard kind == "text" || kind.isEmpty else { return nil }
             return content.text
         }
-        return parts.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+        let joined = parts.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Strip envelope format from user messages
+        let role = self.message.role.lowercased()
+        if role == "user" {
+            return stripEnvelope(joined)
+        }
+        return joined
     }
 
     private var inlineAttachments: [ClawdbotChatMessageContent] {
