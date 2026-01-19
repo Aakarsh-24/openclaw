@@ -453,7 +453,7 @@ function syncExternalCliCredentials(
     if (shouldUpdate && !isEqual) {
       store.profiles[CLAUDE_CLI_PROFILE_ID] = claudeCreds;
       mutated = true;
-      log.info("synced anthropic credentials from claude cli", {
+      log.debug("synced anthropic credentials from claude cli", {
         profileId: CLAUDE_CLI_PROFILE_ID,
         type: claudeCreds.type,
         expires:
@@ -490,7 +490,7 @@ function syncExternalCliCredentials(
     ) {
       store.profiles[CODEX_CLI_PROFILE_ID] = codexCreds;
       mutated = true;
-      log.info("synced openai-codex credentials from codex cli", {
+      log.debug("synced openai-codex credentials from codex cli", {
         profileId: CODEX_CLI_PROFILE_ID,
         expires: new Date(codexCreds.expires).toISOString(),
       });
