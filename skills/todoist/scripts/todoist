@@ -1,0 +1,441 @@
+#!/usr/bin/env bash
+# todoist - CLI wrapper for Todoist REST API v2
+# Requires: TODOIST_API_TOKEN environment variable
+
+set -euo pipefail
+
+API_BASE="https://api.todoist.com/rest/v2"
+SYNC_API="https://api.todoist.com/sync/v9"
+
+# --- Helpers ---
+die() { echo "error: $*" >&2; exit 1; }
+
+check_token() {
+  [[ -n "${TODOIST_API_TOKEN:-}" ]] || die "TODOIST_API_TOKEN not set"
+}
+
+api() {
+  local method="$1" endpoint="$2"
+  shift 2
+  curl -sfS -X "$method" "${API_BASE}${endpoint}" \
+    -H "Authorization: Bearer $TODOIST_API_TOKEN" \
+    -H "Content-Type: application/json" \
+    "$@"
+}
+
+sync_api() {
+  local endpoint="$1"
+  shift
+  curl -sfS -X POST "${SYNC_API}${endpoint}" \
+    -H "Authorization: Bearer $TODOIST_API_TOKEN" \
+    "$@"
+}
+
+# --- Tasks ---
+tasks_list() {
+  local filter="" project_id=""
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --filter) filter="$2"; shift 2 ;;
+      --project) project_id="$2"; shift 2 ;;
+      *) shift ;;
+    esac
+  done
+  local query=""
+  [[ -n "$filter" ]] && query="filter=$(jq -rn --arg f "$filter" '$f|@uri')"
+  [[ -n "$project_id" ]] && query="${query:+$query&}project_id=$project_id"
+  api GET "/tasks${query:+?$query}"
+}
+
+tasks_get() {
+  [[ -n "${1:-}" ]] || die "task id required"
+  api GET "/tasks/$1"
+}
+
+tasks_add() {
+  local content="" project="" due="" priority="" labels="" description=""
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --content|-c) content="$2"; shift 2 ;;
+      --project|-p) project="$2"; shift 2 ;;
+      --due|-d) due="$2"; shift 2 ;;
+      --priority) priority="$2"; shift 2 ;;
+      --labels|-l) labels="$2"; shift 2 ;;
+      --description) description="$2"; shift 2 ;;
+      *) [[ -z "$content" ]] && content="$1"; shift ;;
+    esac
+  done
+  [[ -n "$content" ]] || die "task content required (--content or positional)"
+  
+  local json
+  json=$(jq -nc \
+    --arg content "$content" \
+    --arg project "$project" \
+    --arg due "$due" \
+    --arg priority "$priority" \
+    --arg labels "$labels" \
+    --arg desc "$description" \
+    '{content: $content}
+     + (if $project != "" then {project_id: $project} else {} end)
+     + (if $due != "" then {due_string: $due} else {} end)
+     + (if $priority != "" then {priority: ($priority|tonumber)} else {} end)
+     + (if $labels != "" then {labels: ($labels|split(","))} else {} end)
+     + (if $desc != "" then {description: $desc} else {} end)')
+  
+  api POST "/tasks" -d "$json"
+}
+
+tasks_update() {
+  local id="" content="" due="" priority="" labels="" description=""
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --id) id="$2"; shift 2 ;;
+      --content|-c) content="$2"; shift 2 ;;
+      --due|-d) due="$2"; shift 2 ;;
+      --priority) priority="$2"; shift 2 ;;
+      --labels|-l) labels="$2"; shift 2 ;;
+      --description) description="$2"; shift 2 ;;
+      *) [[ -z "$id" ]] && id="$1"; shift ;;
+    esac
+  done
+  [[ -n "$id" ]] || die "task id required"
+  
+  local json
+  json=$(jq -nc \
+    --arg content "$content" \
+    --arg due "$due" \
+    --arg priority "$priority" \
+    --arg labels "$labels" \
+    --arg desc "$description" \
+    '{}
+     + (if $content != "" then {content: $content} else {} end)
+     + (if $due != "" then {due_string: $due} else {} end)
+     + (if $priority != "" then {priority: ($priority|tonumber)} else {} end)
+     + (if $labels != "" then {labels: ($labels|split(","))} else {} end)
+     + (if $desc != "" then {description: $desc} else {} end)')
+  
+  api POST "/tasks/$id" -d "$json"
+}
+
+tasks_complete() {
+  [[ -n "${1:-}" ]] || die "task id required"
+  api POST "/tasks/$1/close"
+  echo '{"success":true}'
+}
+
+tasks_reopen() {
+  [[ -n "${1:-}" ]] || die "task id required"
+  api POST "/tasks/$1/reopen"
+  echo '{"success":true}'
+}
+
+tasks_delete() {
+  [[ -n "${1:-}" ]] || die "task id required"
+  api DELETE "/tasks/$1"
+  echo '{"success":true}'
+}
+
+# --- Projects ---
+projects_list() {
+  api GET "/projects"
+}
+
+projects_get() {
+  [[ -n "${1:-}" ]] || die "project id required"
+  api GET "/projects/$1"
+}
+
+projects_add() {
+  local name="" color="" parent="" favorite=""
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --name|-n) name="$2"; shift 2 ;;
+      --color) color="$2"; shift 2 ;;
+      --parent) parent="$2"; shift 2 ;;
+      --favorite) favorite="true"; shift ;;
+      *) [[ -z "$name" ]] && name="$1"; shift ;;
+    esac
+  done
+  [[ -n "$name" ]] || die "project name required"
+  
+  local json
+  json=$(jq -nc \
+    --arg name "$name" \
+    --arg color "$color" \
+    --arg parent "$parent" \
+    --arg fav "$favorite" \
+    '{name: $name}
+     + (if $color != "" then {color: $color} else {} end)
+     + (if $parent != "" then {parent_id: $parent} else {} end)
+     + (if $fav == "true" then {is_favorite: true} else {} end)')
+  
+  api POST "/projects" -d "$json"
+}
+
+projects_update() {
+  local id="" name="" color="" favorite=""
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --id) id="$2"; shift 2 ;;
+      --name|-n) name="$2"; shift 2 ;;
+      --color) color="$2"; shift 2 ;;
+      --favorite) favorite="true"; shift ;;
+      --no-favorite) favorite="false"; shift ;;
+      *) [[ -z "$id" ]] && id="$1"; shift ;;
+    esac
+  done
+  [[ -n "$id" ]] || die "project id required"
+  
+  local json
+  json=$(jq -nc \
+    --arg name "$name" \
+    --arg color "$color" \
+    --arg fav "$favorite" \
+    '{}
+     + (if $name != "" then {name: $name} else {} end)
+     + (if $color != "" then {color: $color} else {} end)
+     + (if $fav == "true" then {is_favorite: true} elif $fav == "false" then {is_favorite: false} else {} end)')
+  
+  api POST "/projects/$id" -d "$json"
+}
+
+projects_delete() {
+  [[ -n "${1:-}" ]] || die "project id required"
+  api DELETE "/projects/$1"
+  echo '{"success":true}'
+}
+
+# --- Sections ---
+sections_list() {
+  local project_id=""
+  [[ -n "${1:-}" ]] && project_id="$1"
+  if [[ -n "$project_id" ]]; then
+    api GET "/sections?project_id=$project_id"
+  else
+    api GET "/sections"
+  fi
+}
+
+sections_add() {
+  local name="" project_id=""
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --name|-n) name="$2"; shift 2 ;;
+      --project|-p) project_id="$2"; shift 2 ;;
+      *) shift ;;
+    esac
+  done
+  [[ -n "$name" ]] || die "section name required"
+  [[ -n "$project_id" ]] || die "project id required (--project)"
+  
+  api POST "/sections" -d "$(jq -nc --arg n "$name" --arg p "$project_id" '{name:$n,project_id:$p}')"
+}
+
+sections_delete() {
+  [[ -n "${1:-}" ]] || die "section id required"
+  api DELETE "/sections/$1"
+  echo '{"success":true}'
+}
+
+# --- Labels ---
+labels_list() {
+  api GET "/labels"
+}
+
+labels_add() {
+  local name="" color=""
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --name|-n) name="$2"; shift 2 ;;
+      --color) color="$2"; shift 2 ;;
+      *) [[ -z "$name" ]] && name="$1"; shift ;;
+    esac
+  done
+  [[ -n "$name" ]] || die "label name required"
+  
+  local json
+  json=$(jq -nc --arg n "$name" --arg c "$color" '{name:$n} + (if $c != "" then {color:$c} else {} end)')
+  api POST "/labels" -d "$json"
+}
+
+labels_delete() {
+  [[ -n "${1:-}" ]] || die "label id required"
+  api DELETE "/labels/$1"
+  echo '{"success":true}'
+}
+
+# --- Comments ---
+comments_list() {
+  local task_id="" project_id=""
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --task) task_id="$2"; shift 2 ;;
+      --project) project_id="$2"; shift 2 ;;
+      *) shift ;;
+    esac
+  done
+  if [[ -n "$task_id" ]]; then
+    api GET "/comments?task_id=$task_id"
+  elif [[ -n "$project_id" ]]; then
+    api GET "/comments?project_id=$project_id"
+  else
+    die "task or project id required"
+  fi
+}
+
+comments_add() {
+  local content="" task_id="" project_id=""
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --content|-c) content="$2"; shift 2 ;;
+      --task) task_id="$2"; shift 2 ;;
+      --project) project_id="$2"; shift 2 ;;
+      *) [[ -z "$content" ]] && content="$1"; shift ;;
+    esac
+  done
+  [[ -n "$content" ]] || die "comment content required"
+  
+  local json
+  if [[ -n "$task_id" ]]; then
+    json=$(jq -nc --arg c "$content" --arg t "$task_id" '{content:$c,task_id:$t}')
+  elif [[ -n "$project_id" ]]; then
+    json=$(jq -nc --arg c "$content" --arg p "$project_id" '{content:$c,project_id:$p}')
+  else
+    die "task or project id required"
+  fi
+  api POST "/comments" -d "$json"
+}
+
+comments_delete() {
+  [[ -n "${1:-}" ]] || die "comment id required"
+  api DELETE "/comments/$1"
+  echo '{"success":true}'
+}
+
+# --- Quick views (using filters) ---
+today() {
+  tasks_list --filter "today"
+}
+
+overdue() {
+  tasks_list --filter "overdue"
+}
+
+upcoming() {
+  tasks_list --filter "7 days"
+}
+
+# --- Main ---
+usage() {
+  cat <<EOF
+todoist - Todoist REST API v2 CLI
+
+Usage: todoist <command> [args]
+
+Environment:
+  TODOIST_API_TOKEN    API token (required)
+
+Commands:
+  Tasks:
+    tasks [--filter F] [--project ID]   List tasks
+    task <id>                           Get task by id
+    add <content> [options]             Create task
+      --content, -c   Task content
+      --project, -p   Project id
+      --due, -d       Due string (e.g., "tomorrow", "every day")
+      --priority      Priority (1-4, 4 is urgent)
+      --labels, -l    Comma-separated labels
+      --description   Task description
+    update <id> [options]               Update task
+    complete <id>                       Complete task
+    reopen <id>                         Reopen task
+    delete-task <id>                    Delete task
+
+  Projects:
+    projects                            List projects
+    project <id>                        Get project
+    add-project <name> [options]        Create project
+      --color         Color name
+      --parent        Parent project id
+      --favorite      Mark as favorite
+    update-project <id> [options]       Update project
+    delete-project <id>                 Delete project
+
+  Sections:
+    sections [project_id]               List sections
+    add-section --name N --project P    Create section
+    delete-section <id>                 Delete section
+
+  Labels:
+    labels                              List labels
+    add-label <name> [--color C]        Create label
+    delete-label <id>                   Delete label
+
+  Comments:
+    comments --task <id>                List task comments
+    comments --project <id>             List project comments
+    add-comment <content> --task <id>   Add comment to task
+    delete-comment <id>                 Delete comment
+
+  Quick Views:
+    today                               Tasks due today
+    overdue                             Overdue tasks
+    upcoming                            Tasks in next 7 days
+
+Examples:
+  todoist tasks
+  todoist add "Buy milk" --due tomorrow --priority 2
+  todoist complete 1234567890
+  todoist projects
+  todoist add-project "Work" --color blue --favorite
+EOF
+}
+
+main() {
+  [[ $# -eq 0 ]] && { usage; exit 0; }
+  
+  local cmd="$1"; shift
+  
+  # Help doesn't need token
+  case "$cmd" in
+    help|--help|-h) usage; exit 0 ;;
+  esac
+  
+  check_token
+  
+  case "$cmd" in
+    tasks)          tasks_list "$@" ;;
+    task)           tasks_get "$@" ;;
+    add)            tasks_add "$@" ;;
+    update)         tasks_update "$@" ;;
+    complete)       tasks_complete "$@" ;;
+    reopen)         tasks_reopen "$@" ;;
+    delete-task)    tasks_delete "$@" ;;
+    
+    projects)       projects_list "$@" ;;
+    project)        projects_get "$@" ;;
+    add-project)    projects_add "$@" ;;
+    update-project) projects_update "$@" ;;
+    delete-project) projects_delete "$@" ;;
+    
+    sections)       sections_list "$@" ;;
+    add-section)    sections_add "$@" ;;
+    delete-section) sections_delete "$@" ;;
+    
+    labels)         labels_list "$@" ;;
+    add-label)      labels_add "$@" ;;
+    delete-label)   labels_delete "$@" ;;
+    
+    comments)       comments_list "$@" ;;
+    add-comment)    comments_add "$@" ;;
+    delete-comment) comments_delete "$@" ;;
+    
+    today)          today ;;
+    overdue)        overdue ;;
+    upcoming)       upcoming ;;
+    
+    *)              die "unknown command: $cmd" ;;
+  esac
+}
+
+main "$@"
