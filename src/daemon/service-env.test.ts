@@ -48,6 +48,7 @@ describe("buildServiceEnvironment", () => {
       port: 18789,
       token: "secret",
     });
+    expect(env.HOME).toBe("/home/user");
     if (process.platform === "win32") {
       expect(env.PATH).toBe("");
     } else {
