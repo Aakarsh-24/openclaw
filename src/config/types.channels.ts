@@ -1,6 +1,7 @@
 import type { DiscordConfig } from "./types.discord.js";
 import type { IMessageConfig } from "./types.imessage.js";
 import type { MSTeamsConfig } from "./types.msteams.js";
+import type { NextcloudTalkConfig } from "./types.nextcloud-talk.js";
 import type { SignalConfig } from "./types.signal.js";
 import type { SlackConfig } from "./types.slack.js";
 import type { TelegramConfig } from "./types.telegram.js";
@@ -20,5 +21,6 @@ export type ChannelsConfig = {
   signal?: SignalConfig;
   imessage?: IMessageConfig;
   msteams?: MSTeamsConfig;
+  "nextcloud-talk"?: NextcloudTalkConfig;
   [key: string]: unknown;
 };

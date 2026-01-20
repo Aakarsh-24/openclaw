@@ -24,3 +24,4 @@ export * from "./types.slack.js";
 export * from "./types.telegram.js";
 export * from "./types.tools.js";
 export * from "./types.whatsapp.js";
+export * from "./types.nextcloud-talk.js";

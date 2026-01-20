@@ -66,11 +66,15 @@ export type {
   MSTeamsConfig,
   MSTeamsReplyStyle,
   MSTeamsTeamConfig,
+  NextcloudTalkAccountConfig,
+  NextcloudTalkConfig,
+  NextcloudTalkRoomConfig,
 } from "../config/types.js";
 export {
   DiscordConfigSchema,
   IMessageConfigSchema,
   MSTeamsConfigSchema,
+  NextcloudTalkConfigSchema,
   SignalConfigSchema,
   SlackConfigSchema,
   TelegramConfigSchema,
@@ -229,3 +233,19 @@ export {
   normalizeWhatsAppMessagingTarget,
 } from "../channels/plugins/normalize/whatsapp.js";
 export { collectWhatsAppStatusIssues } from "../channels/plugins/status-issues/whatsapp.js";
+
+// Channel: Nextcloud Talk
+export {
+  listNextcloudTalkAccountIds,
+  resolveDefaultNextcloudTalkAccountId,
+  resolveNextcloudTalkAccount,
+  type ResolvedNextcloudTalkAccount,
+} from "../nextcloud-talk/accounts.js";
+export { nextcloudTalkOnboardingAdapter } from "../channels/plugins/onboarding/nextcloud-talk.js";
+export {
+  looksLikeNextcloudTalkTargetId,
+  normalizeNextcloudTalkMessagingTarget,
+} from "../channels/plugins/normalize/nextcloud-talk.js";
+export { sendMessageNextcloudTalk } from "../nextcloud-talk/send.js";
+export { monitorNextcloudTalkProvider } from "../nextcloud-talk/monitor.js";
+export type { NextcloudTalkInboundMessage } from "../nextcloud-talk/types.js";
