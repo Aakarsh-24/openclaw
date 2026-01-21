@@ -8,6 +8,7 @@ import {
   resolveSessionKey,
   resolveStorePath,
 } from "../../config/sessions.js";
+import { normalizeChannelId } from "../../channels/plugins/index.js";
 import { normalizeMainKey } from "../../routing/session-key.js";
 
 export function getSessionSnapshot(
@@ -34,6 +35,16 @@ export function getSessionSnapshot(
     );
   const store = loadSessionStore(resolveStorePath(sessionCfg?.store));
   const entry = store[key];
+
+  // Channel-specific idle override
+  const rawChannel = entry?.lastChannel ?? entry?.channel;
+  const channelKey = rawChannel?.trim()
+    ? (normalizeChannelId(rawChannel) ?? rawChannel.trim().toLowerCase())
+    : undefined;
+  const channelIdleMinutes = channelKey
+    ? sessionCfg?.channelIdleMinutes?.[channelKey]
+    : undefined;
+
   const isThread = resolveThreadFlag({
     sessionKey: key,
     messageThreadId: ctx?.messageThreadId ?? null,
@@ -42,7 +53,8 @@ export function getSessionSnapshot(
     parentSessionKey: ctx?.parentSessionKey ?? null,
   });
   const resetType = resolveSessionResetType({ sessionKey: key, isGroup: ctx?.isGroup, isThread });
-  const idleMinutesOverride = isHeartbeat ? sessionCfg?.heartbeatIdleMinutes : undefined;
+  // Prefer channel-specific idle, then heartbeat override
+  const idleMinutesOverride = channelIdleMinutes ?? (isHeartbeat ? sessionCfg?.heartbeatIdleMinutes : undefined);
   const resetPolicy = resolveSessionResetPolicy({
     sessionCfg,
     resetType,

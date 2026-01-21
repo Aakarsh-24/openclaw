@@ -77,6 +77,8 @@ export type SessionConfig = {
   identityLinks?: Record<string, string[]>;
   resetTriggers?: string[];
   idleMinutes?: number;
+  /** Channel-specific idle overrides (e.g. { discord: 10080 }). */
+  channelIdleMinutes?: Record<string, number>;
   heartbeatIdleMinutes?: number;
   reset?: SessionResetConfig;
   resetByType?: SessionResetByTypeConfig;

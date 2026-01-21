@@ -24,6 +24,7 @@ export const SessionSchema = z
     identityLinks: z.record(z.string(), z.array(z.string())).optional(),
     resetTriggers: z.array(z.string()).optional(),
     idleMinutes: z.number().int().positive().optional(),
+    channelIdleMinutes: z.record(z.string(), z.number().int().positive()).optional(),
     heartbeatIdleMinutes: z.number().int().positive().optional(),
     reset: SessionResetConfigSchema.optional(),
     resetByType: z

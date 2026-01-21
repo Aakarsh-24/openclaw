@@ -27,6 +27,7 @@ import { normalizeMainKey } from "../../routing/session-key.js";
 import { resolveCommandAuthorization } from "../command-auth.js";
 import type { MsgContext, TemplateContext } from "../templating.js";
 import { normalizeChatType } from "../../channels/chat-type.js";
+import { normalizeChannelId } from "../../channels/plugins/index.js";
 import { stripMentions, stripStructuralPrefixes } from "./mentions.js";
 import { formatInboundBodyWithSenderMeta } from "./inbound-sender-meta.js";
 import { normalizeInboundTextNewlines } from "./inbound-text.js";
@@ -106,9 +107,25 @@ export async function initSessionState(params: {
     sessionKey: sessionCtxForState.SessionKey,
     config: cfg,
   });
+  const groupResolution = resolveGroupSessionKey(sessionCtxForState) ?? undefined;
   const resetTriggers = sessionCfg?.resetTriggers?.length
     ? sessionCfg.resetTriggers
     : DEFAULT_RESET_TRIGGERS;
+  const rawChannel =
+    groupResolution?.channel ??
+    (ctx.OriginatingChannel as string | undefined) ??
+    ctx.Surface ??
+    ctx.Provider;
+  const channelKey = rawChannel?.trim()
+    ? (normalizeChannelId(rawChannel) ?? rawChannel.trim().toLowerCase())
+    : undefined;
+  const channelIdleMinutes = channelKey
+    ? sessionCfg?.channelIdleMinutes?.[channelKey]
+    : undefined;
+  const idleMinutes = Math.max(
+    channelIdleMinutes ?? sessionCfg?.idleMinutes ?? DEFAULT_IDLE_MINUTES,
+    1,
+  );
   const sessionScope = sessionCfg?.scope ?? "per-sender";
   const storePath = resolveStorePath(sessionCfg?.store, { agentId });
 
@@ -129,7 +146,6 @@ export async function initSessionState(params: {
   let persistedModelOverride: string | undefined;
   let persistedProviderOverride: string | undefined;
 
-  const groupResolution = resolveGroupSessionKey(sessionCtxForState) ?? undefined;
   const normalizedChatType = normalizeChatType(ctx.ChatType);
   const isGroup =
     normalizedChatType != null && normalizedChatType !== "direct" ? true : Boolean(groupResolution);
