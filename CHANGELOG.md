@@ -6,7 +6,6 @@ Docs: https://docs.clawd.bot
 
 ### Fixes
 - Agents: scrub Anthropic refusal test token from prompts and add a live refusal regression probe.
-- CLI: fix duplicate UpdateStepResult import in update CLI wiring. (#1367, refs #1366) Thanks @24601.
 
 ## 2026.1.20
 
