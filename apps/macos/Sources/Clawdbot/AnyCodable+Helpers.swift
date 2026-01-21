@@ -2,10 +2,6 @@ import ClawdbotKit
 import ClawdbotProtocol
 import Foundation
 
-// Prefer the ClawdbotKit wrapper to keep gateway request payloads consistent.
-typealias AnyCodable = ClawdbotKit.AnyCodable
-typealias InstanceIdentity = ClawdbotKit.InstanceIdentity
-
 extension AnyCodable {
     var stringValue: String? { self.value as? String }
     var boolValue: Bool? { self.value as? Bool }
