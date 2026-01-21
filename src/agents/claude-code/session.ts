@@ -131,6 +131,9 @@ export async function startSession(params: ClaudeCodeSessionParams): Promise<Ses
   // Build command arguments
   const args: string[] = [];
 
+  // Enable JSON streaming output (takopi-style) for direct session_id extraction
+  args.push("--output-format", "stream-json", "--verbose");
+
   // Resume existing session or start new
   if (params.resumeToken) {
     args.push("--resume", params.resumeToken);
@@ -228,22 +231,42 @@ export async function startSession(params: ClaudeCodeSessionParams): Promise<Ses
 
 /**
  * Setup handlers for the child process.
+ * Uses takopi-style JSON stream parsing for direct session_id extraction.
  */
 function setupProcessHandlers(session: ClaudeCodeSessionData): void {
   const { child } = session;
   if (!child) return;
 
-  // Capture stdout (Claude Code output)
-  child.stdout.on("data", (data: Buffer) => {
-    const text = data.toString();
-    log.debug(`[${session.id}] stdout: ${text.slice(0, 100)}...`);
+  // Buffer for partial JSON lines
+  let stdoutBuffer = "";
 
-    // Check for session token in output if we don't have it yet
-    if (!session.resumeToken) {
-      const tokenMatch = text.match(/Resume token: ([a-f0-9-]{36})/i);
-      if (tokenMatch) {
-        session.resumeToken = tokenMatch[1];
-        log.info(`[${session.id}] Found resume token: ${session.resumeToken}`);
+  // Capture stdout (JSON stream from --output-format stream-json)
+  child.stdout.on("data", (data: Buffer) => {
+    stdoutBuffer += data.toString();
+
+    // Process complete lines
+    const lines = stdoutBuffer.split("\n");
+    stdoutBuffer = lines.pop() ?? ""; // Keep incomplete line in buffer
+
+    for (const line of lines) {
+      if (!line.trim()) continue;
+
+      // Parse JSON event
+      try {
+        const event = JSON.parse(line);
+        processJsonStreamEvent(session, event);
+      } catch {
+        // Not valid JSON - might be non-JSON output, log for debugging
+        log.debug(`[${session.id}] non-JSON stdout: ${line.slice(0, 100)}`);
+
+        // Fallback: check for session token in text output
+        if (!session.resumeToken) {
+          const tokenMatch = line.match(/Resume token: ([a-f0-9-]{36})/i);
+          if (tokenMatch) {
+            session.resumeToken = tokenMatch[1];
+            log.info(`[${session.id}] Found resume token (fallback): ${session.resumeToken}`);
+          }
+        }
       }
     }
   });
@@ -251,7 +274,7 @@ function setupProcessHandlers(session: ClaudeCodeSessionData): void {
   // Capture stderr
   child.stderr.on("data", (data: Buffer) => {
     const text = data.toString();
-    log.warn(`[${session.id}] stderr: ${text}`);
+    log.debug(`[${session.id}] stderr: ${text.slice(0, 200)}`);
   });
 
   // Handle process exit
@@ -286,82 +309,77 @@ function setupProcessHandlers(session: ClaudeCodeSessionData): void {
 }
 
 /**
- * Start watching the session file for new events.
+ * Start watching for session file location.
+ *
+ * Note: With takopi-style JSON streaming, we get events directly from stdout.
+ * This watcher now only tracks the session file location for:
+ * - Reconnection after restart (future feature)
+ * - Session history/debugging
+ *
+ * It does NOT parse events from file - that would duplicate JSON stream events.
  */
 function startSessionFileWatcher(session: ClaudeCodeSessionData): void {
   const abortController = new AbortController();
   session.watcherAbort = abortController;
 
-  // Poll for session file and events
+  // Poll to find session file location (but don't parse events - JSON stream does that)
   const pollInterval = setInterval(() => {
     if (abortController.signal.aborted) {
       clearInterval(pollInterval);
       return;
     }
 
-    // Find session file if we don't have it yet
-    if (!session.sessionFile && session.resumeToken) {
+    // Already have session file, nothing to do
+    if (session.sessionFile) {
+      return;
+    }
+
+    // Find session file by resumeToken (if we have it from JSON stream)
+    if (session.resumeToken) {
       const sessionFile = findSessionFile(session.resumeToken);
       if (sessionFile) {
         session.sessionFile = sessionFile;
-        const parser = new SessionParser(sessionFile);
-        // Don't skip to end - we'll filter by timestamp instead
-        // This ensures we catch new events even if Claude writes before we start watching
-        session.parser = parser;
         log.info(`[${session.id}] Found session file: ${sessionFile}`);
+        return;
       }
     }
 
-    // Also try to find by scanning the session directory
+    // Fallback: scan directory for new session files
+    // Only used if JSON stream init event hasn't arrived yet
     // IMPORTANT: Only pick up files created AFTER this session started
-    // to avoid picking up old session files from previous runs
-    if (!session.sessionFile) {
-      const sessionDir = getSessionDir(session.workingDir);
-      if (fs.existsSync(sessionDir)) {
-        const files = fs
-          .readdirSync(sessionDir)
-          .filter((f) => f.endsWith(".jsonl"))
-          .map((f) => {
-            const filePath = path.join(sessionDir, f);
-            const stat = fs.statSync(filePath);
-            return {
-              name: f,
-              path: filePath,
-              mtime: stat.mtime.getTime(),
-              // Use birthtime (creation time) if available, otherwise mtime
-              ctime: stat.birthtime?.getTime() ?? stat.mtime.getTime(),
-            };
-          })
-          // Only consider files created AFTER session started (with 5s grace)
-          .filter((f) => f.ctime >= session.startedAt - 5000)
-          .sort((a, b) => b.mtime - a.mtime);
-
-        if (files.length > 0) {
-          session.sessionFile = files[0].path;
-          // Extract token from filename
-          const tokenMatch = files[0].name.match(/([a-f0-9-]{36})\.jsonl$/);
-          if (tokenMatch && !session.resumeToken) {
-            session.resumeToken = tokenMatch[1];
-          }
-          // Create parser for this session file
-          const parser = new SessionParser(session.sessionFile);
-          // Don't skip to end - we'll filter by timestamp instead
-          session.parser = parser;
-          log.info(`[${session.id}] Found session file: ${session.sessionFile}`);
-        }
-      }
+    const sessionDir = getSessionDir(session.workingDir);
+    if (!fs.existsSync(sessionDir)) {
+      return;
     }
 
-    // Parse new events from session file using the parser
-    if (session.sessionFile && session.parser) {
-      const parser = session.parser as SessionParser;
-      const newEvents = parser.parseNew();
-      if (newEvents.length > 0) {
-        log.debug(`[${session.id}] Parsed ${newEvents.length} new events`);
+    const files = fs
+      .readdirSync(sessionDir)
+      .filter((f) => f.endsWith(".jsonl"))
+      .map((f) => {
+        const filePath = path.join(sessionDir, f);
+        const stat = fs.statSync(filePath);
+        return {
+          name: f,
+          path: filePath,
+          mtime: stat.mtime.getTime(),
+          ctime: stat.birthtime?.getTime() ?? stat.mtime.getTime(),
+        };
+      })
+      // Only consider files created AFTER session started (with 5s grace)
+      .filter((f) => f.ctime >= session.startedAt - 5000)
+      .sort((a, b) => b.mtime - a.mtime);
+
+    if (files.length > 0) {
+      session.sessionFile = files[0].path;
+      // Extract token from filename only if we don't have one from JSON stream
+      const tokenMatch = files[0].name.match(/([a-f0-9-]{36})\.jsonl$/);
+      if (tokenMatch && !session.resumeToken) {
+        session.resumeToken = tokenMatch[1];
+        log.info(
+          `[${session.id}] Got resumeToken from file scan (fallback): ${session.resumeToken}`,
+        );
       }
-      for (const event of newEvents) {
-        processEvent(session, event);
-      }
+      log.info(`[${session.id}] Found session file: ${session.sessionFile}`);
     }
   }, 1000);
 
@@ -369,6 +387,123 @@ function startSessionFileWatcher(session: ClaudeCodeSessionData): void {
   abortController.signal.addEventListener("abort", () => {
     clearInterval(pollInterval);
   });
+}
+
+/**
+ * Process a JSON stream event from Claude's --output-format stream-json.
+ * Takopi-style: extracts session_id from init event, converts to SessionEvent.
+ */
+function processJsonStreamEvent(
+  session: ClaudeCodeSessionData,
+  jsonEvent: Record<string, unknown>,
+): void {
+  const eventType = jsonEvent.type as string | undefined;
+
+  // Handle system init event - extract session_id directly (takopi approach)
+  if (eventType === "system") {
+    const subtype = jsonEvent.subtype as string | undefined;
+    if (subtype === "init" && jsonEvent.session_id) {
+      const sessionId = jsonEvent.session_id as string;
+      if (!session.resumeToken || session.resumeToken !== sessionId) {
+        session.resumeToken = sessionId;
+        log.info(`[${session.id}] Got session_id from init event: ${sessionId}`);
+      }
+      // Also update status
+      if (session.status === "starting") {
+        session.status = "running";
+      }
+      notifyStateChange(session);
+    }
+    return;
+  }
+
+  // Handle result event - session completed
+  if (eventType === "result") {
+    const isError = jsonEvent.is_error as boolean | undefined;
+    const resultText = jsonEvent.result as string | undefined;
+
+    // Convert to SessionEvent
+    const event: SessionEvent = {
+      type: "assistant_message",
+      timestamp: new Date(),
+      text: resultText || (isError ? "Session ended with error" : "Session completed"),
+    };
+    processEvent(session, event);
+
+    // Mark session as completed
+    if (isError) {
+      session.status = "failed";
+    }
+    return;
+  }
+
+  // Handle assistant message - extract text and tool use
+  if (eventType === "assistant") {
+    const message = jsonEvent.message as Record<string, unknown> | undefined;
+    if (message) {
+      const content = message.content as Array<Record<string, unknown>> | undefined;
+      if (content && Array.isArray(content)) {
+        for (const block of content) {
+          const blockType = block.type as string | undefined;
+
+          // Text block - assistant message
+          if (blockType === "text" && block.text) {
+            const event: SessionEvent = {
+              type: "assistant_message",
+              timestamp: new Date(),
+              text: block.text as string,
+            };
+            processEvent(session, event);
+          }
+
+          // Tool use block
+          if (blockType === "tool_use") {
+            const event: SessionEvent = {
+              type: "tool_use",
+              timestamp: new Date(),
+              toolName: block.name as string | undefined,
+              toolInput: JSON.stringify(block.input ?? {}),
+            };
+            processEvent(session, event);
+          }
+        }
+      }
+    }
+    return;
+  }
+
+  // Handle user message - tool results
+  if (eventType === "user") {
+    const message = jsonEvent.message as Record<string, unknown> | undefined;
+    if (message) {
+      const content = message.content as Array<Record<string, unknown>> | string | undefined;
+      if (Array.isArray(content)) {
+        for (const block of content) {
+          const blockType = block.type as string | undefined;
+          if (blockType === "tool_result") {
+            const event: SessionEvent = {
+              type: "tool_result",
+              timestamp: new Date(),
+              toolUseId: block.tool_use_id as string | undefined,
+              result:
+                typeof block.content === "string" ? block.content : JSON.stringify(block.content),
+              isError: block.is_error as boolean | undefined,
+            };
+            processEvent(session, event);
+          }
+        }
+      } else if (typeof content === "string") {
+        // Plain user message
+        const event: SessionEvent = {
+          type: "user_message",
+          timestamp: new Date(),
+          text: content,
+        };
+        processEvent(session, event);
+      }
+    }
+    return;
+  }
 }
 
 /**

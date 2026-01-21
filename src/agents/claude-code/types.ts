@@ -58,6 +58,12 @@ export interface SessionEvent {
   text?: string;
   toolName?: string;
   toolInput?: string;
+  /** For tool_result events: the tool_use_id this result corresponds to */
+  toolUseId?: string;
+  /** For tool_result events: the result content */
+  result?: string;
+  /** For tool_result events: whether the result is an error */
+  isError?: boolean;
   isWaitingForInput?: boolean;
   raw?: Record<string, unknown>;
 }
