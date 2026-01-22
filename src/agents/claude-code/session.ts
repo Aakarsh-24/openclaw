@@ -628,10 +628,24 @@ function processEvent(session: ClaudeCodeSessionData, event: SessionEvent): void
  * Notify state change callback.
  */
 function notifyStateChange(session: ClaudeCodeSessionData): void {
-  if (!session.onStateChange) return;
-
   const state = getSessionState(session);
-  session.onStateChange(state);
+
+  // Log state change for debugging bubble sync issues
+  log.info(
+    `[${session.id}] State change: status=${state.status}, token=${session.resumeToken?.slice(0, 8) || "none"}, hasCallback=${!!session.onStateChange}`,
+  );
+
+  if (!session.onStateChange) {
+    log.warn(`[${session.id}] No onStateChange callback registered - bubble will NOT be updated`);
+    return;
+  }
+
+  try {
+    session.onStateChange(state);
+    log.debug(`[${session.id}] onStateChange callback executed successfully`);
+  } catch (err) {
+    log.error(`[${session.id}] onStateChange callback failed: ${err}`);
+  }
 }
 
 /**

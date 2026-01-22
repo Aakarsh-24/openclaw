@@ -17,6 +17,8 @@ import {
   getGitBranch,
   getSession,
   getSessionState,
+  getSessionByToken,
+  sendInput,
 } from "../claude-code/index.js";
 import {
   createSessionBubble,
@@ -180,6 +182,43 @@ The session will run in background. You'll receive questions via conversation.`,
       log.info(
         `[RESUME] Final token decision: forced=${forcedToken?.slice(0, 8) || "none"}, passed=${passedToken?.slice(0, 8) || "none"}, using=${resumeToken?.slice(0, 8) || "NEW SESSION"}`,
       );
+
+      // Check if session is already actively running - prevent duplicate resume
+      if (resumeToken) {
+        const existingSession = getSessionByToken(resumeToken);
+        if (existingSession) {
+          // Only prevent duplicate if session is actually running
+          // If session is done/completed/cancelled/failed, we should spawn a new process to resume
+          const isRunning = existingSession.status === "running";
+
+          if (isRunning) {
+            log.info(
+              `[DUPLICATE PREVENTION] Session ${resumeToken.slice(0, 8)}... is actively running (id=${existingSession.id}, status=${existingSession.status}), sending input instead of spawning new`,
+            );
+
+            // Send the prompt as input to the existing session
+            const inputSent = sendInput(existingSession.id, prompt);
+            if (inputSent) {
+              return jsonResult({
+                status: "already_running",
+                message:
+                  "Session is already active - your message was sent to the existing session",
+                sessionId: existingSession.id,
+                resumeToken: existingSession.resumeToken,
+                bubbleExists: true,
+              });
+            } else {
+              log.warn(`[DUPLICATE PREVENTION] Failed to send input to existing session`);
+              // Fall through to spawn new session if input failed
+            }
+          } else {
+            log.info(
+              `[DUPLICATE PREVENTION] Session ${resumeToken.slice(0, 8)}... exists but is not running (status=${existingSession.status}), will spawn new process to resume`,
+            );
+            // Fall through to spawn new session
+          }
+        }
+      }
 
       const planningDecisions = Array.isArray(params.planningDecisions)
         ? (params.planningDecisions as string[])

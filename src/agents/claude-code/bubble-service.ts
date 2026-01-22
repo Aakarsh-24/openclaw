@@ -434,8 +434,17 @@ export async function updateSessionBubble(params: {
   const { sessionId, state } = params;
   const bubble = activeBubbles.get(sessionId);
 
+  // Log incoming update for debugging
+  const isSessionEnded =
+    state.status === "completed" || state.status === "cancelled" || state.status === "failed";
+  log.info(
+    `[${sessionId}] updateSessionBubble called: status=${state.status}, ended=${isSessionEnded}, hasBubble=${!!bubble}, token=${state.resumeToken?.slice(0, 8) || "none"}`,
+  );
+
   if (!bubble) {
-    log.warn(`[${sessionId}] No bubble to update`);
+    log.warn(
+      `[${sessionId}] No bubble found in activeBubbles (size=${activeBubbles.size}) - cannot update`,
+    );
     return false;
   }
 
@@ -446,10 +455,14 @@ export async function updateSessionBubble(params: {
   const now = Date.now();
 
   // Rate limiting: respect minimum edit interval
+  // IMPORTANT: Skip rate limiting for session end events - these must be shown immediately
   const timeSinceLastEdit = now - pending.lastEditAt;
-  if (timeSinceLastEdit < pending.minEditInterval) {
+  if (timeSinceLastEdit < pending.minEditInterval && !isSessionEnded) {
     // Schedule retry after interval
     const delay = pending.minEditInterval - timeSinceLastEdit;
+    log.debug(
+      `[${sessionId}] Rate limited (${timeSinceLastEdit}ms < ${pending.minEditInterval}ms), will retry in ${delay}ms`,
+    );
     setTimeout(() => {
       // Re-trigger update if still pending
       if (pending.eventSeq > pending.renderedSeq) {
@@ -457,6 +470,10 @@ export async function updateSessionBubble(params: {
       }
     }, delay);
     return true; // Will update later
+  }
+
+  if (isSessionEnded) {
+    log.info(`[${sessionId}] Session ended - bypassing rate limit to ensure final state is shown`);
   }
 
   // Generate new content using hybrid format
@@ -482,7 +499,9 @@ export async function updateSessionBubble(params: {
     pending.lastEditAt = now;
     bubble.lastUpdate = now;
 
-    log.debug(`[${sessionId}] Updated bubble (seq ${pending.renderedSeq})`);
+    log.info(
+      `[${sessionId}] Updated bubble (seq ${pending.renderedSeq}, status=${state.status}, ended=${isSessionEnded})`,
+    );
     return true;
   } catch (err) {
     // Telegram returns error if message content hasn't changed
