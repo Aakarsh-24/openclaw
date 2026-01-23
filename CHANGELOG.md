@@ -2,10 +2,114 @@
 
 Docs: https://docs.clawd.bot
 
-## 2026.1.20
+## 2026.1.22 (unreleased)
+
+### Changes
+- Highlight: Mattermost plugin channel support with pairing + allowlist gating. (#1428) Thanks @damoahdominic.
+- Highlight: OpenProse plugin skill pack with `/prose` slash command, plugin-shipped skills, and docs. https://docs.clawd.bot/prose
+- TUI: run local shell commands with `!` after per-session consent, and warn when local exec stays disabled. (#1463) Thanks @vignesh07.
+- Highlight: Lobster optional plugin tool for typed workflows + approval gates. https://docs.clawd.bot/tools/lobster
+- Agents: add identity avatar config support and Control UI avatar rendering. (#1329, #1424) Thanks @dlauer.
+- Memory: prevent CLI hangs by deferring vector probes, adding sqlite-vec/embedding timeouts, and showing sync progress early.
+- Docs: add troubleshooting entry for gateway.mode blocking gateway start. https://docs.clawd.bot/gateway/troubleshooting
+- Docs: add /model allowlist troubleshooting note. (#1405)
+- Docs: add per-message Gmail search example for gog. (#1220) Thanks @mbelinky.
+- UI: show per-session assistant identity in the Control UI. (#1420) Thanks @robbyczgw-cla.
+- Onboarding: remove the run setup-token auth option (paste setup-token or reuse CLI creds instead).
+- Signal: add typing indicators and DM read receipts via signal-cli.
+- MSTeams: add file uploads, adaptive cards, and attachment handling improvements. (#1410) Thanks @Evizero.
+- CLI: add `clawdbot update wizard` for interactive channel selection and restart prompts. https://docs.clawd.bot/cli/update
+- macOS: add attach-only debug toggle + `--attach-only`/`--no-launchd` flag to skip launchd installs.
+
+### Breaking
+- **BREAKING:** Envelope and system event timestamps now default to host-local time (was UTC) so agents don’t have to constantly convert.
+
+### Fixes
+- BlueBubbles: stop typing indicator on idle/no-reply. (#1439) Thanks @Nicell.
+- Message tool: keep path/filePath as-is for send; hydrate buffers only for sendAttachment. (#1444) Thanks @hopyky.
+- Auto-reply: only report a model switch when session state is available. (#1465) Thanks @robbyczgw-cla.
+- Control UI: resolve local avatar URLs with basePath across injection + identity RPC. (#1457) Thanks @dlauer.
+- Agents: surface concrete API error details instead of generic AI service errors.
+- Exec approvals: allow per-segment allowlists for chained shell commands on gateway + node hosts. (#1458) Thanks @czekaj.
+- Agents: make OpenAI sessions image-sanitize-only; gate tool-id/repair sanitization by provider.
+<<<<<<< Updated upstream
+- Agents: make tool summaries more readable and only show optional params when set.
+- Mattermost (plugin): enforce pairing/allowlist gating, keep @username targets, and clarify plugin-only docs. (#1428) Thanks @damoahdominic.
+||||||| Stash base
+=======
+- Agents: centralize transcript sanitization in the runner; keep <final> tags and error turns intact.
+>>>>>>> Stashed changes
+- Docs: fix gog auth services example to include docs scope. (#1454) Thanks @zerone0x.
+- macOS: prefer linked channels in gateway summary to avoid false “not linked” status.
+- Providers: improve GitHub Copilot integration (enterprise support, base URL, and auth flow alignment).
+
+## 2026.1.21-2
+
+### Fixes
+- Control UI: ignore bootstrap identity placeholder text for avatar values and fall back to the default avatar. https://docs.clawd.bot/cli/agents https://docs.clawd.bot/web/control-ui
+- Slack: remove deprecated `filetype` field from `files.uploadV2` to eliminate API warnings. (#1447)
+
+## 2026.1.21
 
 ### Highlights
-- Nostr: add the Nostr channel plugin with profile management + onboarding defaults. (#1323) https://docs.clawd.bot/channels/nostr
+- Lobster optional plugin tool for typed workflows + approval gates. https://docs.clawd.bot/tools/lobster
+- Custom assistant identity + avatars in the Control UI. https://docs.clawd.bot/cli/agents https://docs.clawd.bot/web/control-ui
+- Cache optimizations: cache-ttl pruning + defaults reduce token spend on cold requests. https://docs.clawd.bot/concepts/session-pruning
+- Exec approvals + elevated ask/full modes. https://docs.clawd.bot/tools/exec-approvals https://docs.clawd.bot/tools/elevated
+- Signal typing/read receipts + MSTeams attachments. https://docs.clawd.bot/channels/signal https://docs.clawd.bot/channels/msteams
+- `/models` UX refresh + `clawdbot update wizard`. https://docs.clawd.bot/cli/models https://docs.clawd.bot/cli/update
+
+### Changes
+- Highlight: Lobster optional plugin tool for typed workflows + approval gates. https://docs.clawd.bot/tools/lobster (#1152) Thanks @vignesh07.
+- Agents/UI: add identity avatar config support and Control UI avatar rendering. (#1329, #1424) Thanks @dlauer. https://docs.clawd.bot/gateway/configuration https://docs.clawd.bot/cli/agents
+- Control UI: add custom assistant identity support and per-session identity display. (#1420) Thanks @robbyczgw-cla. https://docs.clawd.bot/web/control-ui
+- CLI: add `clawdbot update wizard` with interactive channel selection + restart prompts, plus preflight checks before rebasing. https://docs.clawd.bot/cli/update
+- Models/Commands: add `/models`, improve `/model` listing UX, and expand `clawdbot models` paging. (#1398) Thanks @vignesh07. https://docs.clawd.bot/cli/models
+- CLI: move gateway service commands under `clawdbot gateway`, flatten node service commands under `clawdbot node`, and add `gateway probe` for reachability. https://docs.clawd.bot/cli/gateway https://docs.clawd.bot/cli/node
+- Exec: add elevated ask/full modes, tighten allowlist gating, and render approvals tables on write. https://docs.clawd.bot/tools/elevated https://docs.clawd.bot/tools/exec-approvals
+- Exec approvals: default to local host, add gateway/node targeting + target details, support wildcard agent allowlists, and tighten allowlist parsing/safe bins. https://docs.clawd.bot/cli/approvals https://docs.clawd.bot/tools/exec-approvals
+- Heartbeat: allow explicit session keys and active hours. (#1256) Thanks @zknicker. https://docs.clawd.bot/gateway/heartbeat
+- Sessions: add per-channel idle durations via `sessions.channelIdleMinutes`. (#1353) Thanks @cash-echo-bot.
+- Nodes: run exec-style, expose PATH in status/describe, and bootstrap PATH for node-host execution. https://docs.clawd.bot/cli/node
+- Cache: add `cache.ttlPrune` mode and auth-aware defaults for cache TTL behavior.
+- Queue: add per-channel debounce overrides for auto-reply. https://docs.clawd.bot/concepts/queue
+- Discord: add wildcard channel config support. (#1334) Thanks @pvoo. https://docs.clawd.bot/channels/discord
+- Signal: add typing indicators and DM read receipts via signal-cli. https://docs.clawd.bot/channels/signal
+- MSTeams: add file uploads, adaptive cards, and attachment handling improvements. (#1410) Thanks @Evizero. https://docs.clawd.bot/channels/msteams
+- Onboarding: remove the run setup-token auth option (paste setup-token or reuse CLI creds instead).
+- macOS: refresh Settings (location access in Permissions, connection mode in menu, remove CLI install UI).
+- Diagnostics: add cache trace config for debugging. (#1370) Thanks @parubets.
+- Docs: Lobster guides + org URL updates, /model allowlist troubleshooting, Gmail message search examples, gateway.mode troubleshooting, prompt injection guidance, npm prefix/node CLI notes, control UI dev gatewayUrl note, tool_use FAQ, showcase video, and sharp/node-gyp workaround. (#1427, #1220, #1405) Thanks @vignesh07, @mbelinky.
+
+### Breaking
+- **BREAKING:** Control UI now rejects insecure HTTP without device identity by default. Use HTTPS (Tailscale Serve) or set `gateway.controlUi.allowInsecureAuth: true` to allow token-only auth. https://docs.clawd.bot/web/control-ui#insecure-http
+- **BREAKING:** Envelope and system event timestamps now default to host-local time (was UTC) so agents don’t have to constantly convert.
+
+### Fixes
+- Streaming/Typing/Media: keep reply tags across streamed chunks, start typing indicators at run start, and accept MEDIA paths with spaces/tilde while preferring the message tool hint for image replies.
+- Agents/Providers: drop unsigned thinking blocks for Claude models (Google Antigravity) and enforce alphanumeric tool call ids for strict providers (Mistral/OpenRouter). (#1372) Thanks @zerone0x.
+- Exec approvals: treat main as the default agent, align node/gateway allowlist prechecks, validate resolved paths, avoid allowlist resolve races, and avoid null optional params. (#1417, #1414, #1425) Thanks @czekaj.
+- Exec/Windows: resolve Windows exec paths with extensions and handle safe-bin exe names.
+- Nodes/macOS: prompt on allowlist miss for node exec approvals, persist allowlist decisions, and flatten node invoke errors. (#1394) Thanks @ngutman.
+- Gateway: prevent multiple gateways from sharing the same config/state (singleton lock), keep auto bind loopback-first with explicit tailnet binding, and improve SSH auth handling. (#1380)
+- Control UI: remove the chat stop button, keep the composer aligned to the bottom edge, stabilize session previews, and refresh the debug panel on route-driven tab changes. (#1373) Thanks @yazinsai.
+- UI/config: export `SECTION_META` for config form modules. (#1418) Thanks @MaudeBot.
+- macOS: keep chat pinned during streaming replies, include Textual resources, respect wildcard exec approvals, allow SSH agent auth, and default distribution builds to universal binaries. (#1279, #1362, #1384, #1396) Thanks @ameno-, @JustYannicc.
+- BlueBubbles: resolve short message IDs safely, expose full IDs in templates, and harden short-id fetch wrappers. (#1369, #1387) Thanks @tyler6204.
+- Models/Configure: inherit session model overrides in threads/topics, map OpenCode Zen models to the correct APIs, narrow Anthropic OAuth allowlist handling, seed allowlist fallbacks, list the full catalog when no allowlist is set, and limit `/model` list output. (#1376, #1416)
+- Memory: prevent CLI hangs by deferring vector probes, add sqlite-vec/embedding timeouts, and make session memory indexing async.
+- Cron: cap reminder context history to 10 messages and honor `contextMessages`. (#1103) Thanks @mkbehr.
+- Cache: restore the 1h cache TTL option and reset the pruning window.
+- Zalo Personal: tolerate ANSI/log-prefixed JSON output from `zca`. (#1379) Thanks @ptn1411.
+- Browser: suppress Chrome restore prompts for managed profiles. (#1419) Thanks @jamesgroat.
+- Infra: preserve fetch helper methods/preconnect when wrapping abort signals and normalize Telegram fetch aborts.
+- Config/Doctor: avoid stack traces for invalid configs, log the config path, avoid WhatsApp config resurrection, and warn when `gateway.mode` is unset. (#900)
+- CLI: read Codex CLI account_id for workspace billing. (#1422) Thanks @aj47.
+- Logs/Status: align rolling log filenames with local time and report sandboxed runtime in `clawdbot status`. (#1343)
+- Embedded runner: persist injected history images so attachments aren’t reloaded each turn. (#1374) Thanks @Nicell.
+- Nodes/Subagents: include agent/node/gateway context in tool failure logs and ensure subagent list uses the command session.
+
+## 2026.1.20
 
 ### Changes
 - Control UI: add copy-as-markdown with error feedback. (#1345) https://docs.clawd.bot/web/control-ui
@@ -38,6 +142,7 @@ Docs: https://docs.clawd.bot
 - Plugins: move channel catalog metadata into plugin manifests. (#1290) https://docs.clawd.bot/plugins/manifest
 - Plugins: align Nextcloud Talk policy helpers with core patterns. (#1290) https://docs.clawd.bot/plugins/manifest
 - Plugins/UI: let channel plugin metadata drive UI labels/icons and cron channel options. (#1306) https://docs.clawd.bot/web/control-ui
+- Agents/UI: add agent avatar support in identity config, IDENTITY.md, and the Control UI. (#1329) https://docs.clawd.bot/gateway/configuration
 - Plugins: add plugin slots with a dedicated memory slot selector. https://docs.clawd.bot/plugins/agent-tools
 - Plugins: ship the bundled BlueBubbles channel plugin (disabled by default). https://docs.clawd.bot/channels/bluebubbles
 - Plugins: migrate bundled messaging extensions to the plugin SDK and resolve plugin-sdk imports in the loader.
@@ -47,6 +152,7 @@ Docs: https://docs.clawd.bot
 - Plugins: auto-enable bundled channel/provider plugins when configuration is present.
 - Plugins: sync plugin sources on channel switches and update npm-installed plugins during `clawdbot update`.
 - Plugins: share npm plugin update logic between `clawdbot update` and `clawdbot plugins update`.
+
 - Gateway/API: add `/v1/responses` (OpenResponses) with item-based input + semantic streaming events. (#1229)
 - Gateway/API: expand `/v1/responses` to support file/image inputs, tool_choice, usage, and output limits. (#1229)
 - Usage: add `/usage cost` summaries and macOS menu cost charts. https://docs.clawd.bot/reference/api-usage-costs

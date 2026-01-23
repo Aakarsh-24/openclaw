@@ -10,7 +10,7 @@ import type { ClawdbotConfig } from "../config/config.js";
 import { CONFIG_PATH_CLAWDBOT } from "../config/config.js";
 import { resolveSessionTranscriptsDirForAgent } from "../config/sessions.js";
 import { callGateway } from "../gateway/call.js";
-import { normalizeControlUiBasePath } from "../gateway/control-ui.js";
+import { normalizeControlUiBasePath } from "../gateway/control-ui-shared.js";
 import { isSafeExecutableValue } from "../infra/exec-safety.js";
 import { pickPrimaryTailnetIPv4 } from "../infra/tailnet.js";
 import { isWSL } from "../infra/wsl.js";
@@ -366,7 +366,7 @@ export const DEFAULT_WORKSPACE = DEFAULT_AGENT_WORKSPACE_DIR;
 
 export function resolveControlUiLinks(params: {
   port: number;
-  bind?: "auto" | "lan" | "loopback" | "custom";
+  bind?: "auto" | "lan" | "loopback" | "custom" | "tailnet";
   customBindHost?: string;
   basePath?: string;
 }): { httpUrl: string; wsUrl: string } {
@@ -378,7 +378,7 @@ export function resolveControlUiLinks(params: {
     if (bind === "custom" && customBindHost && isValidIPv4(customBindHost)) {
       return customBindHost;
     }
-    if (bind === "auto" && tailnetIPv4) return tailnetIPv4 ?? "127.0.0.1";
+    if (bind === "tailnet" && tailnetIPv4) return tailnetIPv4 ?? "127.0.0.1";
     return "127.0.0.1";
   })();
   const basePath = normalizeControlUiBasePath(params.basePath);

@@ -98,6 +98,7 @@ export {
 export type { RuntimeEnv } from "../runtime.js";
 export type { WizardPrompter } from "../wizard/prompts.js";
 export { DEFAULT_ACCOUNT_ID, normalizeAccountId } from "../routing/session-key.js";
+export { resolveAckReaction } from "../agents/identity.js";
 export type { ReplyPayload } from "../auto-reply/types.js";
 export { SILENT_REPLY_TOKEN, isSilentReplyText } from "../auto-reply/tokens.js";
 export {
@@ -205,6 +206,8 @@ export type {
   DiagnosticWebhookProcessedEvent,
   DiagnosticWebhookReceivedEvent,
 } from "../infra/diagnostic-events.js";
+export { detectMime, extensionForMime, getFileExtension } from "../media/mime.js";
+export { extractOriginalFilename } from "../media/store.js";
 
 // Channel: Discord
 export {
@@ -234,6 +237,7 @@ export {
   looksLikeSlackTargetId,
   normalizeSlackMessagingTarget,
 } from "../channels/plugins/normalize/slack.js";
+export { buildSlackThreadingToolContext } from "../slack/threading-tool-context.js";
 
 // Channel: Telegram
 export {
@@ -280,3 +284,6 @@ export { collectWhatsAppStatusIssues } from "../channels/plugins/status-issues/w
 
 // Channel: BlueBubbles
 export { collectBlueBubblesStatusIssues } from "../channels/plugins/status-issues/bluebubbles.js";
+
+// Media utilities
+export { loadWebMedia, type WebMediaResult } from "../web/media.js";

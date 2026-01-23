@@ -114,6 +114,12 @@ const FIELD_LABELS: Record<string, string> = {
   "diagnostics.otel.logs": "OpenTelemetry Logs Enabled",
   "diagnostics.otel.sampleRate": "OpenTelemetry Trace Sample Rate",
   "diagnostics.otel.flushIntervalMs": "OpenTelemetry Flush Interval (ms)",
+  "diagnostics.cacheTrace.enabled": "Cache Trace Enabled",
+  "diagnostics.cacheTrace.filePath": "Cache Trace File Path",
+  "diagnostics.cacheTrace.includeMessages": "Cache Trace Include Messages",
+  "diagnostics.cacheTrace.includePrompt": "Cache Trace Include Prompt",
+  "diagnostics.cacheTrace.includeSystem": "Cache Trace Include System",
+  "agents.list.*.identity.avatar": "Identity Avatar",
   "gateway.remote.url": "Remote Gateway URL",
   "gateway.remote.sshTarget": "Remote Gateway SSH Target",
   "gateway.remote.sshIdentity": "Remote Gateway SSH Identity",
@@ -156,11 +162,13 @@ const FIELD_LABELS: Record<string, string> = {
   "tools.exec.applyPatch.enabled": "Enable apply_patch",
   "tools.exec.applyPatch.allowModels": "apply_patch Model Allowlist",
   "tools.exec.notifyOnExit": "Exec Notify On Exit",
+  "tools.exec.approvalRunningNoticeMs": "Exec Approval Running Notice (ms)",
   "tools.exec.host": "Exec Host",
   "tools.exec.security": "Exec Security",
   "tools.exec.ask": "Exec Ask",
   "tools.exec.node": "Exec Node Binding",
   "tools.exec.pathPrepend": "Exec PATH Prepend",
+  "tools.exec.safeBins": "Exec Safe Bins",
   "tools.message.allowCrossContextSend": "Allow Cross-Context Messaging",
   "tools.message.crossContext.allowWithinProvider": "Allow Cross-Context (Same Provider)",
   "tools.message.crossContext.allowAcrossProviders": "Allow Cross-Context (Across Providers)",
@@ -181,6 +189,7 @@ const FIELD_LABELS: Record<string, string> = {
   "tools.web.fetch.maxRedirects": "Web Fetch Max Redirects",
   "tools.web.fetch.userAgent": "Web Fetch User-Agent",
   "gateway.controlUi.basePath": "Control UI Base Path",
+  "gateway.controlUi.allowInsecureAuth": "Allow Insecure Control UI Auth",
   "gateway.http.endpoints.chatCompletions.enabled": "OpenAI Chat Completions Endpoint",
   "gateway.reload.mode": "Config Reload Mode",
   "gateway.reload.debounceMs": "Config Reload Debounce (ms)",
@@ -189,6 +198,7 @@ const FIELD_LABELS: Record<string, string> = {
   "skills.load.watch": "Watch Skills",
   "skills.load.watchDebounceMs": "Skills Watch Debounce (ms)",
   "agents.defaults.workspace": "Workspace",
+  "agents.defaults.repoRoot": "Repo Root",
   "agents.defaults.bootstrapMaxChars": "Bootstrap Max Chars",
   "agents.defaults.envelopeTimezone": "Envelope Timezone",
   "agents.defaults.envelopeTimestamp": "Envelope Timestamp",
@@ -215,6 +225,8 @@ const FIELD_LABELS: Record<string, string> = {
   "agents.defaults.memorySearch.sync.onSearch": "Index on Search (Lazy)",
   "agents.defaults.memorySearch.sync.watch": "Watch Memory Files",
   "agents.defaults.memorySearch.sync.watchDebounceMs": "Memory Watch Debounce (ms)",
+  "agents.defaults.memorySearch.sync.sessions.deltaBytes": "Session Delta Bytes",
+  "agents.defaults.memorySearch.sync.sessions.deltaMessages": "Session Delta Messages",
   "agents.defaults.memorySearch.query.maxResults": "Memory Search Max Results",
   "agents.defaults.memorySearch.query.minScore": "Memory Search Min Score",
   "agents.defaults.memorySearch.query.hybrid.enabled": "Memory Search Hybrid",
@@ -249,6 +261,8 @@ const FIELD_LABELS: Record<string, string> = {
   "commands.restart": "Allow Restart",
   "commands.useAccessGroups": "Use Access Groups",
   "ui.seamColor": "Accent Color",
+  "ui.assistant.name": "Assistant Name",
+  "ui.assistant.avatar": "Assistant Avatar",
   "browser.controlUrl": "Browser Control URL",
   "browser.snapshotDefaults": "Browser Snapshot Defaults",
   "browser.snapshotDefaults.mode": "Browser Snapshot Mode",
@@ -265,6 +279,7 @@ const FIELD_LABELS: Record<string, string> = {
   "channels.telegram.customCommands": "Telegram Custom Commands",
   "channels.discord": "Discord",
   "channels.slack": "Slack",
+  "channels.mattermost": "Mattermost",
   "channels.signal": "Signal",
   "channels.imessage": "iMessage",
   "channels.bluebubbles": "BlueBubbles",
@@ -302,8 +317,14 @@ const FIELD_LABELS: Record<string, string> = {
   "channels.slack.userTokenReadOnly": "Slack User Token Read Only",
   "channels.slack.thread.historyScope": "Slack Thread History Scope",
   "channels.slack.thread.inheritParent": "Slack Thread Parent Inheritance",
+  "channels.mattermost.botToken": "Mattermost Bot Token",
+  "channels.mattermost.baseUrl": "Mattermost Base URL",
+  "channels.mattermost.chatmode": "Mattermost Chat Mode",
+  "channels.mattermost.oncharPrefixes": "Mattermost Onchar Prefixes",
+  "channels.mattermost.requireMention": "Mattermost Require Mention",
   "channels.signal.account": "Signal Account",
   "channels.imessage.cliPath": "iMessage CLI Path",
+  "agents.list[].identity.avatar": "Agent Avatar",
   "plugins.enabled": "Enable Plugins",
   "plugins.allow": "Plugin Allowlist",
   "plugins.deny": "Plugin Denylist",
@@ -333,10 +354,14 @@ const FIELD_HELP: Record<string, string> = {
   "gateway.remote.sshTarget":
     "Remote gateway over SSH (tunnels the gateway port to localhost). Format: user@host or user@host:port.",
   "gateway.remote.sshIdentity": "Optional SSH identity file path (passed to ssh -i).",
+  "agents.list[].identity.avatar":
+    "Avatar image path (relative to the agent workspace only) or a remote URL/data URL.",
   "gateway.auth.token": "Recommended for all gateways; required for non-loopback binds.",
   "gateway.auth.password": "Required for Tailscale funnel.",
   "gateway.controlUi.basePath":
     "Optional URL prefix where the Control UI is served (e.g. /clawdbot).",
+  "gateway.controlUi.allowInsecureAuth":
+    "Allow Control UI auth over insecure HTTP (token-only; not recommended).",
   "gateway.http.endpoints.chatCompletions.enabled":
     "Enable the OpenAI-compatible `POST /v1/chat/completions` endpoint (default: false).",
   "gateway.reload.mode": 'Hot reload strategy for config changes ("hybrid" recommended).',
@@ -345,6 +370,14 @@ const FIELD_HELP: Record<string, string> = {
     "Extra node.invoke commands to allow beyond the gateway defaults (array of command strings).",
   "gateway.nodes.denyCommands":
     "Commands to block even if present in node claims or default allowlist.",
+  "diagnostics.cacheTrace.enabled":
+    "Log cache trace snapshots for embedded agent runs (default: false).",
+  "diagnostics.cacheTrace.filePath":
+    "JSONL output path for cache trace logs (default: $CLAWDBOT_STATE_DIR/logs/cache-trace.jsonl).",
+  "diagnostics.cacheTrace.includeMessages":
+    "Include full message payloads in trace output (default: true).",
+  "diagnostics.cacheTrace.includePrompt": "Include prompt text in trace output (default: true).",
+  "diagnostics.cacheTrace.includeSystem": "Include system prompt in trace output (default: true).",
   "tools.exec.applyPatch.enabled":
     "Experimental. Enables apply_patch for OpenAI models when allowed by tool policy.",
   "tools.exec.applyPatch.allowModels":
@@ -352,6 +385,8 @@ const FIELD_HELP: Record<string, string> = {
   "tools.exec.notifyOnExit":
     "When true (default), backgrounded exec sessions enqueue a system event and request a heartbeat on exit.",
   "tools.exec.pathPrepend": "Directories to prepend to PATH for exec runs (gateway/sandbox).",
+  "tools.exec.safeBins":
+    "Allow stdin-only safe binaries to run without explicit allowlist entries.",
   "tools.message.allowCrossContextSend":
     "Legacy override: allow cross-context sends across all providers.",
   "tools.message.crossContext.allowWithinProvider":
@@ -400,6 +435,15 @@ const FIELD_HELP: Record<string, string> = {
     'Scope for Slack thread history context ("thread" isolates per thread; "channel" reuses channel history).',
   "channels.slack.thread.inheritParent":
     "If true, Slack thread sessions inherit the parent channel transcript (default: false).",
+  "channels.mattermost.botToken":
+    "Bot token from Mattermost System Console -> Integrations -> Bot Accounts.",
+  "channels.mattermost.baseUrl":
+    "Base URL for your Mattermost server (e.g., https://chat.example.com).",
+  "channels.mattermost.chatmode":
+    'Reply to channel messages on mention ("oncall"), on trigger chars (">" or "!") ("onchar"), or on every message ("onmessage").',
+  "channels.mattermost.oncharPrefixes": 'Trigger prefixes for onchar mode (default: [">", "!"]).',
+  "channels.mattermost.requireMention":
+    "Require @mention in channels before responding (default: true).",
   "auth.profiles": "Named auth profiles (provider + mode + optional email).",
   "auth.order": "Ordered auth profile IDs per provider (used for automatic failover).",
   "auth.cooldowns.billingBackoffHours":
@@ -410,6 +454,8 @@ const FIELD_HELP: Record<string, string> = {
   "auth.cooldowns.failureWindowHours": "Failure window (hours) for backoff counters (default: 24).",
   "agents.defaults.bootstrapMaxChars":
     "Max characters of each workspace bootstrap file injected into the system prompt before truncation (default: 20000).",
+  "agents.defaults.repoRoot":
+    "Optional repository root shown in the system prompt runtime line (overrides auto-detect).",
   "agents.defaults.envelopeTimezone":
     'Timezone for message envelopes ("utc", "local", "user", or an IANA timezone string).',
   "agents.defaults.envelopeTimestamp":
@@ -461,8 +507,12 @@ const FIELD_HELP: Record<string, string> = {
   "agents.defaults.memorySearch.cache.maxEntries":
     "Optional cap on cached embeddings (best-effort).",
   "agents.defaults.memorySearch.sync.onSearch":
-    "Lazy sync: reindex on first search after a change.",
+    "Lazy sync: schedule a reindex on search after changes.",
   "agents.defaults.memorySearch.sync.watch": "Watch memory files for changes (chokidar).",
+  "agents.defaults.memorySearch.sync.sessions.deltaBytes":
+    "Minimum appended bytes before session transcripts trigger reindex (default: 100000).",
+  "agents.defaults.memorySearch.sync.sessions.deltaMessages":
+    "Minimum appended JSONL lines before session transcripts trigger reindex (default: 50).",
   "plugins.enabled": "Enable plugin/extension loading (default: true).",
   "plugins.allow": "Optional allowlist of plugin ids; when set, only listed plugins load.",
   "plugins.deny": "Optional denylist of plugin ids; deny wins over allowlist.",
@@ -482,6 +532,8 @@ const FIELD_HELP: Record<string, string> = {
     "Resolved install directory (usually ~/.clawdbot/extensions/<id>).",
   "plugins.installs.*.version": "Version recorded at install time (if available).",
   "plugins.installs.*.installedAt": "ISO timestamp of last install/update.",
+  "agents.list.*.identity.avatar":
+    "Agent avatar (workspace-relative path, http(s) URL, or data URI).",
   "agents.defaults.model.primary": "Primary model (provider/model).",
   "agents.defaults.model.fallbacks":
     "Ordered fallback models (provider/model). Used when the primary model fails.",
@@ -513,6 +565,8 @@ const FIELD_HELP: Record<string, string> = {
     "Allow Telegram to write config in response to channel events/commands (default: true).",
   "channels.slack.configWrites":
     "Allow Slack to write config in response to channel events/commands (default: true).",
+  "channels.mattermost.configWrites":
+    "Allow Mattermost to write config in response to channel events/commands (default: true).",
   "channels.discord.configWrites":
     "Allow Discord to write config in response to channel events/commands (default: true).",
   "channels.whatsapp.configWrites":
@@ -587,6 +641,8 @@ const FIELD_PLACEHOLDERS: Record<string, string> = {
   "gateway.remote.tlsFingerprint": "sha256:ab12cd34…",
   "gateway.remote.sshTarget": "user@host",
   "gateway.controlUi.basePath": "/clawdbot",
+  "channels.mattermost.baseUrl": "https://chat.example.com",
+  "agents.list[].identity.avatar": "avatars/clawd.png",
 };
 
 const SENSITIVE_PATTERNS = [/token/i, /password/i, /secret/i, /api.?key/i];
