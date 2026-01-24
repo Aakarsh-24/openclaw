@@ -36,7 +36,7 @@ const GoogleChatAccountConfigSchema = z.object({
   webhookPublicUrl: z.string().optional(),
   // Policies
   allowFrom: z.array(z.string()).optional(),
-  dmPolicy: z.enum(["open", "allowlist", "paired"]).optional(),
+  dmPolicy: z.enum(["open", "allowlist", "pairing", "disabled"]).optional(),
   spacePolicy: z.enum(["open", "allowlist"]).optional(),
 });
 
@@ -54,7 +54,7 @@ const GoogleChatConfigSchema = z.object({
   webhookPublicUrl: z.string().optional(),
   // Policies
   allowFrom: z.array(z.string()).optional(),
-  dmPolicy: z.enum(["open", "allowlist", "paired"]).optional(),
+  dmPolicy: z.enum(["open", "allowlist", "pairing", "disabled"]).optional(),
   spacePolicy: z.enum(["open", "allowlist"]).optional(),
   accounts: z.record(z.string(), GoogleChatAccountConfigSchema).optional(),
 });
@@ -262,7 +262,7 @@ export const googlechatPlugin: ChannelPlugin<ResolvedGoogleChatAccount> = {
         account,
         threadKey: replyToId ?? undefined,
       });
-      return { provider: "googlechat", ...result };
+      return { channel: "googlechat", ...result };
     },
     sendMedia: async ({ to, text, mediaUrl, accountId, cfg, replyToId }) => {
       const account = resolveGoogleChatAccount({ cfg, accountId });
@@ -271,7 +271,7 @@ export const googlechatPlugin: ChannelPlugin<ResolvedGoogleChatAccount> = {
         caption: text,
         threadKey: replyToId ?? undefined,
       });
-      return { provider: "googlechat", ...result };
+      return { channel: "googlechat", ...result };
     },
   },
   gateway: {

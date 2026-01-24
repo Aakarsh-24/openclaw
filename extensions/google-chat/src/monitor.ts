@@ -209,7 +209,8 @@ async function processGoogleChatMessage(params: {
 async function monitorGoogleChatPubSubMode(
   options: MonitorOptions,
 ): Promise<void> {
-  const { account, runtime, abortSignal } = options;
+  const { account, runtime, config, abortSignal } = options;
+  const core = getGoogleChatRuntime();
 
   if (!account.credentialsPath || !account.subscriptionName) {
     throw new Error("Google Chat account not properly configured");
@@ -226,10 +227,18 @@ async function monitorGoogleChatPubSubMode(
     try {
       const event: GoogleChatEvent = JSON.parse(message.data.toString());
 
-      // Process Google Chat events
-      // TODO: Route to agent via runtime
-
       runtime.log?.(`[${account.accountId}] Received event: ${event.type}`);
+
+      // Only process MESSAGE events
+      if (event.type === "MESSAGE") {
+        await processGoogleChatMessage({
+          event,
+          account,
+          config,
+          runtime,
+          core,
+        });
+      }
 
       message.ack();
     } catch (error) {

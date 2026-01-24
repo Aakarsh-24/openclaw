@@ -47,11 +47,11 @@
           "default": []
         },
         "dmPolicy": {
-          "enum": ["open", "pairing", "closed"],
+          "enum": ["open", "allowlist", "pairing", "disabled"],
           "default": "pairing"
         },
         "spacePolicy": {
-          "enum": ["open", "pairing", "closed"],
+          "enum": ["open", "allowlist", "pairing", "disabled"],
           "default": "closed"
         },
         "historyLimit": {

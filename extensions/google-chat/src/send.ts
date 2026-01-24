@@ -76,11 +76,15 @@ export async function sendGoogleChatMedia(
 
   const spaceName = to.startsWith("spaces/") ? to : `spaces/${to}`;
 
+  // Google Chat doesn't have direct media upload like WhatsApp
+  // Embed media URL as a link in the message text
+  const caption = options.caption ?? "";
+  const text = caption
+    ? `${caption}\n\n${mediaUrl}`
+    : mediaUrl;
+
   const requestBody: chat_v1.Schema$Message = {
-    text: options.caption ?? "",
-    // Google Chat doesn't have direct media upload like WhatsApp
-    // Media URLs are embedded as links in text
-    // For proper media support, would need to use cards with images
+    text,
   };
 
   if (options.threadKey) {
