@@ -1,0 +1,130 @@
+{
+  "id": "claude-code-planning",
+  "name": "Claude Code Planning",
+  "description": "AI-to-AI orchestration for Claude Code sessions with planning context, bubble integration, and AI-driven blocker detection",
+  "version": "0.1.0",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled": {
+        "type": "boolean",
+        "default": true,
+        "description": "Enable the plugin"
+      },
+      "projectsBase": {
+        "type": "string",
+        "default": "~/clawd/projects",
+        "description": "Base directory for storing cached project contexts"
+      },
+      "projectDirs": {
+        "type": "array",
+        "items": { "type": "string" },
+        "default": ["~/Documents/agent", "~/Projects", "~/code"],
+        "description": "Directories to search when resolving project names (in order)"
+      },
+      "projects": {
+        "type": "object",
+        "additionalProperties": { "type": "string" },
+        "description": "Explicit project name to path mappings"
+      },
+      "stalenessDays": {
+        "type": "number",
+        "default": 7,
+        "minimum": 1,
+        "description": "Days before context is considered stale"
+      },
+      "permissionMode": {
+        "type": "string",
+        "enum": ["default", "acceptEdits", "bypassPermissions"],
+        "default": "default",
+        "description": "Default permission mode for Claude Code sessions"
+      },
+      "model": {
+        "type": "string",
+        "description": "Default model for Claude Code sessions (opus, sonnet, haiku)"
+      },
+      "telegram": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Telegram integration settings",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "default": false,
+            "description": "Enable Telegram bubble updates"
+          },
+          "chatId": {
+            "type": "string",
+            "description": "Telegram chat ID for status bubbles"
+          },
+          "threadId": {
+            "type": "number",
+            "description": "Telegram thread/topic ID for bubbles"
+          },
+          "accountId": {
+            "type": "string",
+            "description": "Account ID for multi-account Telegram setup"
+          }
+        }
+      }
+    }
+  },
+  "uiHints": {
+    "projectsBase": {
+      "label": "Projects Context Base",
+      "placeholder": "~/clawd/projects",
+      "help": "Where to store cached project contexts"
+    },
+    "projectDirs": {
+      "label": "Project Directories",
+      "help": "Directories to search when resolving project names (in order)"
+    },
+    "projects": {
+      "label": "Project Aliases",
+      "help": "Explicit project name to path mappings",
+      "advanced": true
+    },
+    "stalenessDays": {
+      "label": "Context Staleness (days)",
+      "placeholder": "7",
+      "help": "How long before cached context needs refresh"
+    },
+    "permissionMode": {
+      "label": "Default Permission Mode",
+      "help": "Permission mode for Claude Code sessions",
+      "advanced": true
+    },
+    "model": {
+      "label": "Default Model",
+      "help": "Default model for Claude Code sessions (opus, sonnet, haiku)",
+      "advanced": true
+    },
+    "telegram": {
+      "label": "Telegram Integration",
+      "help": "Configure Telegram bubble status updates",
+      "nested": {
+        "enabled": {
+          "label": "Enable Telegram Bubbles",
+          "help": "Show live session status in Telegram"
+        },
+        "chatId": {
+          "label": "Chat ID",
+          "placeholder": "-1001234567890",
+          "help": "Telegram chat ID for status bubbles"
+        },
+        "threadId": {
+          "label": "Thread ID",
+          "placeholder": "42",
+          "help": "Topic/thread ID for topic-based chats",
+          "advanced": true
+        },
+        "accountId": {
+          "label": "Account ID",
+          "help": "Account ID for multi-account setup",
+          "advanced": true
+        }
+      }
+    }
+  }
+}
