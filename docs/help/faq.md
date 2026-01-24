@@ -19,7 +19,10 @@ Quick answers plus deeper troubleshooting for real-world setups (local dev, VPS,
   - [Can I migrate my setup to a new machine (Mac mini) without redoing onboarding?](#can-i-migrate-my-setup-to-a-new-machine-mac-mini-without-redoing-onboarding)
   - [Where do I see what’s new in the latest version?](#where-do-i-see-whats-new-in-the-latest-version)
   - [I can't access docs.clawd.bot (SSL error). What now?](#i-cant-access-docsclawdbot-ssl-error-what-now)
+  - [What’s the difference between stable and beta?](#whats-the-difference-between-stable-and-beta)
   - [How do I install the beta version, and what’s the difference between beta and dev?](#how-do-i-install-the-beta-version-and-whats-the-difference-between-beta-and-dev)
+  - [How do I try the latest bits?](#how-do-i-try-the-latest-bits)
+  - [Installer stuck? How do I get more feedback?](#installer-stuck-how-do-i-get-more-feedback)
   - [The docs didn’t answer my question — how do I get a better answer?](#the-docs-didnt-answer-my-question--how-do-i-get-a-better-answer)
   - [How do I install Clawdbot on Linux?](#how-do-i-install-clawdbot-on-linux)
   - [How do I install Clawdbot on a VPS?](#how-do-i-install-clawdbot-on-a-vps)
@@ -37,11 +40,13 @@ Quick answers plus deeper troubleshooting for real-world setups (local dev, VPS,
   - [How do I keep hosted model traffic in a specific region?](#how-do-i-keep-hosted-model-traffic-in-a-specific-region)
   - [Do I have to buy a Mac Mini to install this?](#do-i-have-to-buy-a-mac-mini-to-install-this)
   - [Do I need a Mac mini for iMessage support?](#do-i-need-a-mac-mini-for-imessage-support)
+  - [If I buy a Mac mini to run Clawdbot, can I connect it to my MacBook Pro?](#if-i-buy-a-mac-mini-to-run-clawdbot-can-i-connect-it-to-my-macbook-pro)
   - [Can I use Bun?](#can-i-use-bun)
   - [Telegram: what goes in `allowFrom`?](#telegram-what-goes-in-allowfrom)
   - [Can multiple people use one WhatsApp number with different Clawdbots?](#can-multiple-people-use-one-whatsapp-number-with-different-clawdbots)
   - [Can I run a "fast chat" agent and an "Opus for coding" agent?](#can-i-run-a-fast-chat-agent-and-an-opus-for-coding-agent)
   - [Does Homebrew work on Linux?](#does-homebrew-work-on-linux)
+  - [What’s the difference between the hackable (git) install and npm install?](#whats-the-difference-between-the-hackable-git-install-and-npm-install)
   - [Can I switch between npm and git installs later?](#can-i-switch-between-npm-and-git-installs-later)
   - [Should I run the Gateway on my laptop or a VPS?](#should-i-run-the-gateway-on-my-laptop-or-a-vps)
 - [Skills and automation](#skills-and-automation)
@@ -95,6 +100,7 @@ Quick answers plus deeper troubleshooting for real-world setups (local dev, VPS,
   - [Why am I seeing “LLM request rejected: messages.N.content.X.tool_use.input: Field required”?](#why-am-i-seeing-llm-request-rejected-messagesncontentxtool_useinput-field-required)
   - [Why am I getting heartbeat messages every 30 minutes?](#why-am-i-getting-heartbeat-messages-every-30-minutes)
   - [Do I need to add a “bot account” to a WhatsApp group?](#do-i-need-to-add-a-bot-account-to-a-whatsapp-group)
+  - [How do I get the JID of a WhatsApp group?](#how-do-i-get-the-jid-of-a-whatsapp-group)
   - [Why doesn’t Clawdbot reply in a group?](#why-doesnt-clawdbot-reply-in-a-group)
   - [Do groups/threads share context with DMs?](#do-groupsthreads-share-context-with-dms)
   - [How many workspaces and agents can I create?](#how-many-workspaces-and-agents-can-i-create)
@@ -322,9 +328,22 @@ Please help us unblock it by reporting here: https://spa.xfinity.com/check_url_s
 If you still can't reach the site, the docs are mirrored on GitHub:
 https://github.com/clawdbot/clawdbot/tree/main/docs
 
+### What’s the difference between stable and beta?
+
+**Stable** and **beta** are **npm dist‑tags**, not separate code lines:
+- `latest` = stable
+- `beta` = early build for testing
+
+We ship builds to **beta**, test them, and once a build is solid we **promote
+that same version to `latest`**. That’s why beta and stable can point at the
+**same version**.
+
+See what changed:  
+https://github.com/clawdbot/clawdbot/blob/main/CHANGELOG.md
+
 ### How do I install the beta version, and what’s the difference between beta and dev?
 
-**Beta** is a prerelease tag (`vYYYY.M.D-beta.N`) published to the npm dist‑tag `beta`.  
+**Beta** is the npm dist‑tag `beta` (may match `latest`).  
 **Dev** is the moving head of `main` (git); when published, it uses the npm dist‑tag `dev`.
 
 One‑liners (macOS/Linux):
@@ -341,6 +360,55 @@ Windows installer (PowerShell):
 https://clawd.bot/install.ps1
 
 More detail: [Development channels](/install/development-channels) and [Installer flags](/install/installer).
+
+### How do I try the latest bits?
+
+Two options:
+
+1) **Dev channel (git checkout):**
+```bash
+clawdbot update --channel dev
+```
+This switches to the `main` branch and updates from source.
+
+2) **Hackable install (from the installer site):**
+```bash
+curl -fsSL https://clawd.bot/install.sh | bash -s -- --install-method git
+```
+That gives you a local repo you can edit, then update via git.
+
+If you prefer a clean clone manually, use:
+```bash
+git clone https://github.com/clawdbot/clawdbot.git
+cd clawdbot
+pnpm install
+pnpm build
+```
+
+Docs: [Update](/cli/update), [Development channels](/install/development-channels),
+[Install](/install).
+
+### Installer stuck? How do I get more feedback?
+
+Re-run the installer with **verbose output**:
+
+```bash
+curl -fsSL https://clawd.bot/install.sh | bash -s -- --verbose
+```
+
+Beta install with verbose:
+
+```bash
+curl -fsSL https://clawd.bot/install.sh | bash -s -- --beta --verbose
+```
+
+For a hackable (git) install:
+
+```bash
+curl -fsSL https://clawd.bot/install.sh | bash -s -- --install-method git --verbose
+```
+
+More options: [Installer flags](/install/installer).
 
 ### The docs didn’t answer my question — how do I get a better answer?
 
@@ -498,6 +566,19 @@ Common setups:
 Docs: [iMessage](/channels/imessage), [BlueBubbles](/channels/bluebubbles),
 [Mac remote mode](/platforms/mac/remote).
 
+### If I buy a Mac mini to run Clawdbot, can I connect it to my MacBook Pro?
+
+Yes. The **Mac mini can run the Gateway**, and your MacBook Pro can connect as a
+**node** (companion device). Nodes don’t run the Gateway — they provide extra
+capabilities like screen/camera/canvas and `system.run` on that device.
+
+Common pattern:
+- Gateway on the Mac mini (always‑on).
+- MacBook Pro runs the macOS app or a node host and pairs to the Gateway.
+- Use `clawdbot nodes status` / `clawdbot nodes list` to see it.
+
+Docs: [Nodes](/nodes), [Nodes CLI](/cli/nodes).
+
 ### Can I use Bun?
 
 Bun is **not recommended**. We see runtime bugs, especially with WhatsApp and Telegram.
@@ -543,9 +624,20 @@ brew install <formula>
 If you run Clawdbot via systemd, ensure the service PATH includes `/home/linuxbrew/.linuxbrew/bin` (or your brew prefix) so `brew`-installed tools resolve in non‑login shells.
 Recent builds also prepend common user bin dirs on Linux systemd services (for example `~/.local/bin`, `~/.npm-global/bin`, `~/.local/share/pnpm`, `~/.bun/bin`) and honor `PNPM_HOME`, `NPM_CONFIG_PREFIX`, `BUN_INSTALL`, `VOLTA_HOME`, `ASDF_DATA_DIR`, `NVM_DIR`, and `FNM_DIR` when set.
 
+### What’s the difference between the hackable (git) install and npm install?
+
+- **Hackable (git) install:** full source checkout, editable, best for contributors.
+  You run builds locally and can patch code/docs.
+- **npm install:** global CLI install, no repo, best for “just run it.”
+  Updates come from npm dist‑tags.
+
+Docs: [Getting started](/start/getting-started), [Updating](/install/updating).
+
 ### Can I switch between npm and git installs later?
 
 Yes. Install the other flavor, then run Doctor so the gateway service points at the new entrypoint.
+This **does not delete your data** — it only changes the Clawdbot code install. Your state
+(`~/.clawdbot`) and workspace (`~/clawd`) stay untouched.
 
 From npm → git:
 
@@ -567,6 +659,8 @@ clawdbot gateway restart
 ```
 
 Doctor detects a gateway service entrypoint mismatch and offers to rewrite the service config to match the current install (use `--repair` in automation).
+
+Backup tips: see [Backup strategy](/help/faq#whats-the-recommended-backup-strategy).
 
 ### Should I run the Gateway on my laptop or a VPS?
 
@@ -1253,6 +1347,25 @@ If you want only **you** to be able to trigger group replies:
   }
 }
 ```
+
+### How do I get the JID of a WhatsApp group?
+
+Option 1 (fastest): tail logs and send a test message in the group:
+
+```bash
+clawdbot logs --follow --json
+```
+
+Look for `chatId` (or `from`) ending in `@g.us`, like:
+`1234567890-1234567890@g.us`.
+
+Option 2 (if already configured/allowlisted): list groups from config:
+
+```bash
+clawdbot directory groups list --channel whatsapp
+```
+
+Docs: [WhatsApp](/channels/whatsapp), [Directory](/cli/directory), [Logs](/cli/logs).
 
 ### Why doesn’t Clawdbot reply in a group?
 

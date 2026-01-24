@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { ToolsSchema } from "./zod-schema.agent-runtime.js";
+import { ApprovalsSchema } from "./zod-schema.approvals.js";
 import { AgentsSchema, AudioSchema, BindingsSchema, BroadcastSchema } from "./zod-schema.agents.js";
 import { HexColorSchema, ModelsConfigSchema } from "./zod-schema.core.js";
 import { HookMappingSchema, HooksGmailSchema, InternalHooksSchema } from "./zod-schema.hooks.js";
@@ -220,6 +221,7 @@ export const ClawdbotSchema = z
       .optional(),
     messages: MessagesSchema,
     commands: CommandsSchema,
+    approvals: ApprovalsSchema,
     session: SessionSchema,
     cron: z
       .object({
@@ -332,6 +334,7 @@ export const ClawdbotSchema = z
         remote: z
           .object({
             url: z.string().optional(),
+            transport: z.union([z.literal("ssh"), z.literal("direct")]).optional(),
             token: z.string().optional(),
             password: z.string().optional(),
             tlsFingerprint: z.string().optional(),
