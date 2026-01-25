@@ -74,6 +74,8 @@ export async function resolveGatewayRuntimeConfig(params: {
   const canvasHostEnabled =
     process.env.CLAWDBOT_SKIP_CANVAS_HOST !== "1" && params.cfg.canvasHost?.enabled !== false;
 
+  const trustedProxies = params.cfg.gateway?.trustedProxies ?? [];
+
   assertGatewayAuthConfigured(resolvedAuth);
   if (tailscaleMode === "funnel" && authMode !== "password") {
     throw new Error(
@@ -87,6 +89,20 @@ export async function resolveGatewayRuntimeConfig(params: {
     throw new Error(
       `refusing to bind gateway to ${bindHost}:${params.port} without auth (set gateway.auth.token or CLAWDBOT_GATEWAY_TOKEN, or pass --token)`,
     );
+  }
+
+  // Trusted-proxy mode validations
+  if (authMode === "trusted-proxy") {
+    if (isLoopbackHost(bindHost)) {
+      throw new Error(
+        "gateway auth mode=trusted-proxy makes no sense with bind=loopback; use bind=lan or bind=custom with gateway.trustedProxies configured",
+      );
+    }
+    if (trustedProxies.length === 0) {
+      throw new Error(
+        "gateway auth mode=trusted-proxy requires gateway.trustedProxies to be configured with at least one proxy IP",
+      );
+    }
   }
 
   return {
