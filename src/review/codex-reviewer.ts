@@ -6,9 +6,8 @@
 
 import { exec } from "child_process";
 import { promisify } from "util";
-import { writeFileSync, unlinkSync } from "fs";
-import { mkdtempSync } from "fs";
-import { join } from "path";
+import { mkdtempSync, writeFileSync, unlinkSync, rmSync, rmdirSync } from "node:fs";
+import { join } from "node:path";
 import type {
   CodexReview,
   ReviewRequest,
@@ -35,6 +34,9 @@ const DEFAULT_TMUX_TARGET = "%2"; // カエデ (CodeGen) のペイン
 /** P1-7修正: 一時ファイルの最大サイズ (4000文字) */
 const MAX_COMMAND_LENGTH = 4000;
 
+/** P1-10修正: 終了マーカー */
+const END_MARKER = "CODEX_REVIEW_COMPLETE";
+
 /**
  * シェルコマンド用に文字列をエスケープ
  * tmux send-keys に安全に渡すためのエスケープ処理
@@ -54,9 +56,78 @@ function escapeShellString(str: string): string {
 }
 
 /**
+ * P1-9修正: センチネル間の出力を抽出
+ *
+ * @param output - キャプチャされた出力全体
+ * @param startMarker - 開始マーカー
+ * @param endMarker - 終了マーカー
+ * @returns センチネル間の出力
+ */
+function extractBetweenSentinels(output: string, startMarker: string, endMarker: string): string {
+  const startIndex = output.indexOf(startMarker);
+  if (startIndex === -1) {
+    console.warn("[CodexReviewer] Start sentinel not found");
+    return output; // フォールバック: 全出力を返す
+  }
+
+  const afterStart = output.slice(startIndex + startMarker.length);
+  const endIndex = afterStart.indexOf(endMarker);
+
+  if (endIndex === -1) {
+    console.warn("[CodexReviewer] End sentinel not found");
+    return afterStart.trim(); // フォールバック: 開始マーカー後を返す
+  }
+
+  return afterStart.slice(0, endIndex).trim();
+}
+
+/**
+ * P1-10修正: 終了マーカー検出まで待機
+ *
+ * @param target - tmuxターゲット
+ * @param marker - 検出するマーカー
+ * @param timeout - タイムアウト（ミリ秒）
+ * @param interval - ポーリング間隔（ミリ秒）
+ */
+async function waitForMarker(
+  target: string,
+  marker: string,
+  timeout: number,
+  interval: number = 500,
+): Promise<boolean> {
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < timeout) {
+    try {
+      // capture-paneで現在のペイン内容を取得
+      const captureCommand = `tmux capture-pane -t ${target} -p -S -`;
+      const { stdout: captured } = await execAsync(captureCommand, {
+        timeout: 5000,
+      });
+
+      // マーカーが含まれているか確認
+      if (captured.includes(marker)) {
+        return true;
+      }
+
+      // マーカーがない場合は待機して再試行
+      await sleep(interval);
+    } catch {
+      // キャプチャエラー時は待機して再試行
+      await sleep(interval);
+    }
+  }
+
+  // タイムアウト
+  console.warn(`[CodexReviewer] Timeout waiting for marker: ${marker}`);
+  return false;
+}
+
+/**
  * tmuxコマンドを実行
  *
- * P1-8修正: capture-paneで出力を取得する
+ * P1-9修正: センチネルマーカーで出力を区切る
+ * P1-10修正: 終了マーカー検出まで待機
  *
  * @param command - 実行するコマンド
  * @param target - tmuxターゲット (ペインID)
@@ -71,20 +142,41 @@ async function execTmux(
   const { timeout = DEFAULT_TIMEOUT, env = {} } = options;
 
   try {
-    // tmux send-keys でコマンドを送信 (コマンドインジェクション対策)
-    const escapedCommand = escapeShellString(command);
-    const sendCommand = `tmux send-keys -t ${target} "${escapedCommand}" Enter`;
+    // P1-9修正: ユニークなセンチネルマーカーを生成
+    const timestamp = Date.now();
+    const sentinelStart = `__CODEX_START_${timestamp}__`;
+    const sentinelEnd = `__CODEX_END_${timestamp}__`;
 
-    // コマンド送信
+    // コマンド実行後に終了マーカーを表示するように変更
+    // codex reviewコマンドの後でechoを追加
+    const fullCommand = `${command}; echo "${END_MARKER}"`;
+
+    // tmux send-keys でコマンドを送信 (コマンドインジェクション対策)
+    const escapedCommand = escapeShellString(fullCommand);
+
+    // P1-9修正: 開始センチネルを送信
+    const startCommand = `tmux send-keys -t ${target} "${escapeShellString(`echo "${sentinelStart}"`)}" Enter`;
+    await execAsync(startCommand, {
+      timeout,
+      env: { ...process.env, ...env },
+    });
+
+    // メインコマンドを送信
+    const sendCommand = `tmux send-keys -t ${target} "${escapedCommand}" Enter`;
     await execAsync(sendCommand, {
       timeout,
       env: { ...process.env, ...env },
     });
 
-    // P1-8修正: 実行完了を待ってから出力をキャプチャ
-    // コマンド実行に十分な時間を待つ（デフォルトでtimeoutの80%を待機）
-    const waitTime = Math.min(timeout * 0.8, 30000); // 最大30秒待機
-    await sleep(waitTime);
+    // P1-9修正: 終了センチネルを送信
+    const endCommand = `tmux send-keys -t ${target} "${escapeShellString(`echo "${sentinelEnd}"`)}" Enter`;
+    await execAsync(endCommand, {
+      timeout,
+      env: { ...process.env, ...env },
+    });
+
+    // P1-10修正: 終了マーカー検出まで待機（固定待機時間ではなく）
+    const markerFound = await waitForMarker(target, END_MARKER, timeout);
 
     // capture-paneでペインの内容を取得
     const captureCommand = `tmux capture-pane -t ${target} -p -S -`;
@@ -92,9 +184,12 @@ async function execTmux(
       timeout: 5000,
     });
 
+    // P1-9修正: センチネル間の出力を抽出
+    const stdout = extractBetweenSentinels(captured, sentinelStart, sentinelEnd);
+
     return {
-      success: true,
-      stdout: captured.trim(),
+      success: markerFound, // マーカー検出の有無を成功判定に使用
+      stdout,
       stderr: "",
       exitCode: 0,
     };
@@ -221,8 +316,7 @@ function buildCodexCommand(
             // クリーンアップエラーは無視
           }
           try {
-            // 一時ディレクトリの削除（rmdirは空の場合のみ成功）
-            const { rmdirSync } = require("fs");
+            // P2-1修正: importしたrmdirSyncを使用
             rmdirSync(tempDir);
           } catch {
             // ディレクトリが空でない場合は無視
