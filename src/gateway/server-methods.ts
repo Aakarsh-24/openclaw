@@ -7,6 +7,7 @@ import { configHandlers } from "./server-methods/config.js";
 import { connectHandlers } from "./server-methods/connect.js";
 import { cronHandlers } from "./server-methods/cron.js";
 import { deviceHandlers } from "./server-methods/devices.js";
+import { dmPairingHandlers } from "./server-methods/dm-pairing.js";
 import { execApprovalsHandlers } from "./server-methods/exec-approvals.js";
 import { healthHandlers } from "./server-methods/health.js";
 import { logsHandlers } from "./server-methods/logs.js";
@@ -45,6 +46,9 @@ const PAIRING_METHODS = new Set([
   "device.token.rotate",
   "device.token.revoke",
   "node.rename",
+  "dm.pair.list",
+  "dm.pair.approve",
+  "dm.pair.reject",
 ]);
 const ADMIN_METHOD_PREFIXES = ["exec.approvals."];
 const READ_METHODS = new Set([
@@ -152,6 +156,7 @@ export const coreGatewayHandlers: GatewayRequestHandlers = {
   ...chatHandlers,
   ...cronHandlers,
   ...deviceHandlers,
+  ...dmPairingHandlers,
   ...execApprovalsHandlers,
   ...webHandlers,
   ...modelsHandlers,

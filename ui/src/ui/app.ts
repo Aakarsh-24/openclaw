@@ -32,6 +32,13 @@ import type {
   ExecApprovalsSnapshot,
 } from "./controllers/exec-approvals";
 import type { DevicePairingList } from "./controllers/devices";
+import {
+  createDMPairingState,
+  loadDMPairing,
+  approveDMPairing,
+  rejectDMPairing,
+  type DMPairingState,
+} from "./controllers/dm-pairing";
 import type { ExecApprovalRequest } from "./controllers/exec-approval";
 import {
   resetToolStream as resetToolStreamInternal,
@@ -140,6 +147,7 @@ export class ClawdbotApp extends LitElement {
   @state() devicesLoading = false;
   @state() devicesError: string | null = null;
   @state() devicesList: DevicePairingList | null = null;
+  @state() dmPairingState: DMPairingState = createDMPairingState();
   @state() execApprovalsLoading = false;
   @state() execApprovalsSaving = false;
   @state() execApprovalsDirty = false;

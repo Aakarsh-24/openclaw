@@ -48,6 +48,11 @@ import {
   revokeDeviceToken,
   rotateDeviceToken,
 } from "./controllers/devices";
+import {
+  loadDMPairing,
+  approveDMPairing,
+  rejectDMPairing,
+} from "./controllers/dm-pairing";
 import { renderSkills } from "./views/skills";
 import { renderChatControls, renderTab, renderThemeToggle } from "./app-render.helpers";
 import { loadChannels } from "./controllers/channels";
@@ -349,6 +354,10 @@ export function renderApp(state: AppViewState) {
               devicesLoading: state.devicesLoading,
               devicesError: state.devicesError,
               devicesList: state.devicesList,
+              dmPairingState: state.dmPairingState,
+              onDMPairingRefresh: () => loadDMPairing(state.dmPairingState),
+              onDMPairingApprove: (channel, code) => approveDMPairing(state.dmPairingState, channel, code),
+              onDMPairingReject: (channel, code) => rejectDMPairing(state.dmPairingState, channel, code),
               configForm: state.configForm ?? (state.configSnapshot?.config as Record<string, unknown> | null),
               configLoading: state.configLoading,
               configSaving: state.configSaving,
