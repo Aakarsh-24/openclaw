@@ -41,17 +41,24 @@ export function checkContextWarning(params: {
     urgent: DEFAULT_CONTEXT_WARNING_THRESHOLD_URGENT,
   };
 
-  if (!totalTokens || !contextTokens || contextTokens <= 0) {
+  // Ensure thresholds are valid (urgent must be >= soft)
+  const validatedThresholds = {
+    soft: Math.min(thresholds.soft, thresholds.urgent),
+    urgent: Math.max(thresholds.soft, thresholds.urgent),
+  };
+
+  if (totalTokens === undefined || !contextTokens || contextTokens <= 0) {
     return { level: "none", percentUsed: 0, message: null };
   }
 
-  const percentUsed = Math.round((totalTokens / contextTokens) * 100);
+  // Cap at 100% to avoid confusing messages like "105% context used"
+  const percentUsed = Math.min(100, Math.round((totalTokens / contextTokens) * 100));
 
   // Determine current warning level
   let level: ContextWarningLevel = "none";
-  if (percentUsed >= thresholds.urgent) {
+  if (percentUsed >= validatedThresholds.urgent) {
     level = "urgent";
-  } else if (percentUsed >= thresholds.soft) {
+  } else if (percentUsed >= validatedThresholds.soft) {
     level = "soft";
   }
 

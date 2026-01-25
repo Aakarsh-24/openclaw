@@ -108,6 +108,36 @@ describe("context-warnings", () => {
       expect(result.level).toBe("soft");
       expect(result.message).not.toBeNull();
     });
+
+    it("treats zero totalTokens as valid (not undefined)", () => {
+      const result = checkContextWarning({
+        totalTokens: 0,
+        contextTokens: 10000,
+      });
+      expect(result.level).toBe("none");
+      expect(result.percentUsed).toBe(0);
+      // Key: this should work, not bail out early
+    });
+
+    it("caps percentUsed at 100% when tokens exceed context", () => {
+      const result = checkContextWarning({
+        totalTokens: 15000, // 150% of context
+        contextTokens: 10000,
+      });
+      expect(result.level).toBe("urgent");
+      expect(result.percentUsed).toBe(100); // Capped, not 150
+    });
+
+    it("handles inverted thresholds gracefully", () => {
+      // User mistakenly passes soft > urgent
+      const result = checkContextWarning({
+        totalTokens: 8500,
+        contextTokens: 10000,
+        thresholds: { soft: 90, urgent: 75 }, // Inverted!
+      });
+      // Should auto-correct: soft=75, urgent=90
+      expect(result.level).toBe("soft"); // 85% is between corrected 75-90
+    });
   });
 
   describe("formatContextWarning", () => {

@@ -506,10 +506,11 @@ export async function agentCommand(
       contextWarningMessage = storeResult.contextWarning.message;
     }
 
-    // Append context warning to payloads if present (copy to avoid mutating result)
-    const payloads = contextWarningMessage
-      ? [...(result.payloads ?? []), { text: `\n\n---\n${contextWarningMessage}` }]
-      : (result.payloads ?? []);
+    // Copy payloads to avoid mutating result
+    const payloads = [...(result.payloads ?? [])];
+    if (contextWarningMessage) {
+      payloads.push({ text: `\n\n---\n${contextWarningMessage}` });
+    }
     return await deliverAgentCommandResult({
       cfg,
       deps,
