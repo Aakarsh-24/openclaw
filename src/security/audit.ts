@@ -287,6 +287,66 @@ function collectGatewayConfigFindings(cfg: ClawdbotConfig): SecurityAuditFinding
     });
   }
 
+  // Trusted-proxy auth mode findings
+  if (auth.mode === "trusted-proxy") {
+    const trustedProxies = cfg.gateway?.trustedProxies ?? [];
+    const trustedProxyConfig = cfg.gateway?.auth?.trustedProxy;
+
+    findings.push({
+      checkId: "gateway.trusted_proxy_auth",
+      severity: "critical",
+      title: "Trusted-proxy auth mode enabled",
+      detail:
+        'gateway.auth.mode="trusted-proxy" delegates authentication to a reverse proxy. ' +
+        "Ensure your proxy (Pomerium, Caddy, nginx) handles auth correctly and that gateway.trustedProxies " +
+        "only contains IPs of your actual proxy servers.",
+      remediation:
+        "Verify: (1) Your proxy terminates TLS and authenticates users. " +
+        "(2) gateway.trustedProxies is restricted to proxy IPs only. " +
+        "(3) Direct access to the Gateway port is blocked by firewall. " +
+        "See /gateway/trusted-proxy-auth for setup guidance.",
+    });
+
+    if (trustedProxies.length === 0) {
+      findings.push({
+        checkId: "gateway.trusted_proxy_no_proxies",
+        severity: "critical",
+        title: "Trusted-proxy auth enabled but no trusted proxies configured",
+        detail:
+          'gateway.auth.mode="trusted-proxy" but gateway.trustedProxies is empty. ' +
+          "All requests will be rejected.",
+        remediation: "Set gateway.trustedProxies to the IP(s) of your reverse proxy.",
+      });
+    }
+
+    if (!trustedProxyConfig?.userHeader) {
+      findings.push({
+        checkId: "gateway.trusted_proxy_no_user_header",
+        severity: "critical",
+        title: "Trusted-proxy auth missing userHeader config",
+        detail:
+          'gateway.auth.mode="trusted-proxy" but gateway.auth.trustedProxy.userHeader is not configured.',
+        remediation:
+          "Set gateway.auth.trustedProxy.userHeader to the header name your proxy uses " +
+          '(e.g., "x-forwarded-user", "x-pomerium-claim-email").',
+      });
+    }
+
+    const allowUsers = trustedProxyConfig?.allowUsers ?? [];
+    if (allowUsers.length === 0) {
+      findings.push({
+        checkId: "gateway.trusted_proxy_no_allowlist",
+        severity: "warn",
+        title: "Trusted-proxy auth allows all authenticated users",
+        detail:
+          "gateway.auth.trustedProxy.allowUsers is empty, so any user authenticated by your proxy can access the Gateway.",
+        remediation:
+          "Consider setting gateway.auth.trustedProxy.allowUsers to restrict access to specific users " +
+          '(e.g., ["nick@example.com"]).',
+      });
+    }
+  }
+
   return findings;
 }
 
