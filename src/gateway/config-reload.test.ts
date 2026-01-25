@@ -118,6 +118,6 @@ describe("resolveGatewayReloadSettings", () => {
   it("uses defaults when unset", () => {
     const settings = resolveGatewayReloadSettings({});
     expect(settings.mode).toBe("hybrid");
-    expect(settings.debounceMs).toBe(300);
+    expect(settings.debounceMs).toBe(5000);
   });
 });

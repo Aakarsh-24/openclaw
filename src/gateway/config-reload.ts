@@ -40,7 +40,7 @@ type ReloadAction =
 
 const DEFAULT_RELOAD_SETTINGS: GatewayReloadSettings = {
   mode: "hybrid",
-  debounceMs: 300,
+  debounceMs: 5000,
 };
 
 const BASE_RELOAD_RULES: ReloadRule[] = [
@@ -66,6 +66,7 @@ const BASE_RELOAD_RULES_TAIL: ReloadRule[] = [
   { prefix: "identity", kind: "none" },
   { prefix: "wizard", kind: "none" },
   { prefix: "logging", kind: "none" },
+  { prefix: "meta", kind: "none" },
   { prefix: "models", kind: "none" },
   { prefix: "agents", kind: "none" },
   { prefix: "tools", kind: "none" },
