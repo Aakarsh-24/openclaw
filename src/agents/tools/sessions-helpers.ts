@@ -1,12 +1,43 @@
 import type { ClawdbotConfig } from "../../config/config.js";
 import { callGateway } from "../../gateway/call.js";
+import { isAcpSessionKey, normalizeMainKey } from "../../routing/session-key.js";
 import { sanitizeUserFacingText } from "../pi-embedded-helpers.js";
 import {
   stripDowngradedToolCallText,
   stripMinimaxToolCallXml,
   stripThinkingTagsFromText,
 } from "../pi-embedded-utils.js";
-import { isAcpSessionKey, normalizeMainKey } from "../../routing/session-key.js";
+import TOOL_DISPLAY_JSON from "../tool-display.json" with { type: "json" };
+
+type ToolDisplaySpec = {
+  emoji?: string;
+  title?: string;
+  label?: string;
+};
+
+type ToolDisplayConfig = {
+  fallback?: ToolDisplaySpec;
+  tools?: Record<string, ToolDisplaySpec>;
+};
+
+const TOOL_DISPLAY_CONFIG = TOOL_DISPLAY_JSON as ToolDisplayConfig;
+const TOOL_DISPLAY_FALLBACK = TOOL_DISPLAY_CONFIG.fallback ?? { emoji: "🧩" };
+const TOOL_DISPLAY_TOOLS = TOOL_DISPLAY_CONFIG.tools ?? {};
+
+const TOOL_SUMMARY_PREFIXES = (() => {
+  const prefixes = new Set<string>();
+  const fallbackEmoji = TOOL_DISPLAY_FALLBACK.emoji ?? "🧩";
+  prefixes.add(`${fallbackEmoji} Tool`);
+
+  for (const spec of Object.values(TOOL_DISPLAY_TOOLS)) {
+    const emoji = spec.emoji ?? fallbackEmoji;
+    const label = spec.label ?? spec.title;
+    if (!label) continue;
+    prefixes.add(`${emoji} ${label}`);
+  }
+
+  return prefixes;
+})();
 
 export type SessionKind = "main" | "group" | "cron" | "hook" | "node" | "other";
 
@@ -296,10 +327,9 @@ export function stripToolMessages(messages: unknown[]): unknown[] {
     // Common transcript leak formats.
     if (/^Tool:\s*/i.test(trimmed)) return true;
 
-    // Emoji + label prefix, e.g. "🔧 Tool: ...", "🛠 Sessions: ...", "📎 Attachments: ...".
-    // We intentionally keep this somewhat strict to avoid stripping legitimate assistant text.
-    if (/^[\p{Extended_Pictographic}]\s*[A-Za-z][A-Za-z0-9 _/-]{0,60}:\s+/u.test(trimmed)) {
-      return true;
+    // Only strip emoji-prefixed lines that match known tool summary prefixes.
+    for (const prefix of TOOL_SUMMARY_PREFIXES) {
+      if (trimmed.startsWith(`${prefix}:`)) return true;
     }
 
     return false;
