@@ -3,6 +3,52 @@ import { describe, expect, it, vi } from "vitest";
 import { wrapFetchWithAbortSignal } from "./fetch.js";
 
 describe("wrapFetchWithAbortSignal", () => {
+  it("adds duplex: half for requests with body (Node.js 22+)", async () => {
+    let seenInit: RequestInit | undefined;
+    const fetchImpl = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      seenInit = init;
+      return {} as Response;
+    });
+
+    const wrapped = wrapFetchWithAbortSignal(fetchImpl);
+    await wrapped("https://example.com", { body: "test body", method: "POST" });
+
+    expect(fetchImpl).toHaveBeenCalledOnce();
+    expect((seenInit as Record<string, unknown>)?.duplex).toBe("half");
+  });
+
+  it("does not add duplex for requests without body", async () => {
+    let seenInit: RequestInit | undefined;
+    const fetchImpl = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      seenInit = init;
+      return {} as Response;
+    });
+
+    const wrapped = wrapFetchWithAbortSignal(fetchImpl);
+    await wrapped("https://example.com", { method: "GET" });
+
+    expect(fetchImpl).toHaveBeenCalledOnce();
+    expect((seenInit as Record<string, unknown>)?.duplex).toBeUndefined();
+  });
+
+  it("preserves existing duplex option if already set", async () => {
+    let seenInit: RequestInit | undefined;
+    const fetchImpl = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      seenInit = init;
+      return {} as Response;
+    });
+
+    const wrapped = wrapFetchWithAbortSignal(fetchImpl);
+    await wrapped("https://example.com", {
+      body: "test body",
+      method: "POST",
+      duplex: "full",
+    } as RequestInit);
+
+    expect(fetchImpl).toHaveBeenCalledOnce();
+    expect((seenInit as Record<string, unknown>)?.duplex).toBe("full");
+  });
+
   it("converts foreign abort signals to native controllers", async () => {
     let seenSignal: AbortSignal | undefined;
     const fetchImpl = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
