@@ -86,10 +86,9 @@ async function processTwitchMessage(params: {
     OriginatingTo: `twitch:channel:${message.channel}`,
   });
 
-  const storePath = core.channel.session.resolveStorePath(
-    config as Parameters<typeof core.channel.session.resolveStorePath>[0],
-    { agentId: route.agentId },
-  );
+  const storePath = core.channel.session.resolveStorePath(cfg.session?.store, {
+    agentId: route.agentId,
+  });
   await core.channel.session.recordInboundSession({
     storePath,
     sessionKey: ctxPayload.SessionKey ?? route.sessionKey,
