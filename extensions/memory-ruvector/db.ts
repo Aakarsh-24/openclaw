@@ -283,15 +283,15 @@ export class RuvectorDatabase implements RuvectorDB {
       .map((r) => ({
         document: {
           id: r.id,
-          content: r.metadata.content as string,
+          content: (r.metadata.content as string | undefined) ?? "",
           vector: [], // Don't return vector to save memory
-          direction: r.metadata.direction as "inbound" | "outbound",
-          channel: r.metadata.channel as string,
+          direction: (r.metadata.direction as "inbound" | "outbound" | undefined) ?? "inbound",
+          channel: (r.metadata.channel as string | undefined) ?? "",
           user: r.metadata.user as string | undefined,
           conversationId: r.metadata.conversationId as string | undefined,
           sessionKey: r.metadata.sessionKey as string | undefined,
           agentId: r.metadata.agentId as string | undefined,
-          timestamp: r.metadata.timestamp as number,
+          timestamp: (r.metadata.timestamp as number | undefined) ?? Date.now(),
           metadata: r.metadata,
         },
         score: r.score,
@@ -455,6 +455,11 @@ export class RuvectorDatabase implements RuvectorDB {
     if (this.useInMemory || !this.graph) {
       // In-memory fallback: traverse edges manually
       return this.findRelatedInMemory(id, relationship, depth);
+    }
+
+    // Validate relationship to prevent Cypher injection (allow alphanumeric and underscore only)
+    if (relationship && !/^[A-Za-z_][A-Za-z0-9_]*$/.test(relationship)) {
+      throw new Error(`ruvector: invalid relationship type "${relationship}" - must be alphanumeric`);
     }
 
     // Use Cypher to find related nodes with their properties

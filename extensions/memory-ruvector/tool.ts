@@ -603,8 +603,10 @@ export function createRuvectorRecallTool(options: CreateRuvectorRecallToolOption
                   relationship,
                 });
               }
-            } catch {
-              // Skip entries that can't be fetched
+            } catch (err) {
+              // Skip entries that can't be fetched but log for debugging
+              const errMsg = err instanceof Error ? err.message : String(err);
+              api.logger.debug?.(`ruvector_recall: failed to fetch graph entry ${id}: ${errMsg}`);
             }
           }
 

@@ -592,8 +592,10 @@ function registerLocalMode(api: ClawdbotPluginApi, config: RuvectorConfig): void
                       source: "graph",
                     });
                   }
-                } catch {
-                  // Skip graph expansion errors
+                } catch (err) {
+                  // Skip graph expansion errors but log for debugging
+                  const msg = err instanceof Error ? err.message : String(err);
+                  api.logger.debug?.(`ruvector_recall: graph expansion failed: ${msg}`);
                 }
               }
 
@@ -772,8 +774,10 @@ function registerLocalMode(api: ClawdbotPluginApi, config: RuvectorConfig): void
               try {
                 const created = await graphDb.linkMessages(id, targetId, "RELATED_TO");
                 if (created) edgesCreated++;
-              } catch {
-                // Skip failed edges
+              } catch (err) {
+                // Skip failed edges but log for debugging
+                const msg = err instanceof Error ? err.message : String(err);
+                api.logger.debug?.(`ruvector_learn: failed to create edge to ${targetId}: ${msg}`);
               }
             }
           }
@@ -1294,8 +1298,14 @@ function rerankWithPatterns(
     for (const pattern of similarPatterns) {
       // Pattern centroid contains [query, result], extract result portion
       const dim = queryVector.length;
+      // Validate centroid has expected structure before slicing
+      if (pattern.centroid.length < dim * 2) {
+        continue; // Skip malformed pattern
+      }
       const patternResultCentroid = pattern.centroid.slice(dim, dim * 2);
 
+      // result.document.vector is intentionally [] to save memory, so pattern boosting
+      // only works when vectors are available (e.g., from graph expansion with vectors)
       if (patternResultCentroid.length > 0 && result.document.vector.length > 0) {
         const similarity = cosineSimilarity(result.document.vector, patternResultCentroid);
         patternBoost += similarity * pattern.avgQuality * boostFactor;
