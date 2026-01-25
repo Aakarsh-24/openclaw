@@ -7,7 +7,7 @@ read_when:
 
 # Brave Search API
 
-Clawdbot uses Brave Search as the default provider for `web_search`.
+Clawdbot supports Brave Search as a web search provider for `web_search`.
 
 ## Get an API key
 

@@ -166,8 +166,6 @@ export const ToolsWebSearchSchema = z
     perplexity: z
       .object({
         apiKey: z.string().optional(),
-        baseUrl: z.string().optional(),
-        model: z.string().optional(),
       })
       .strict()
       .optional(),
