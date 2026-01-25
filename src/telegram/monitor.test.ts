@@ -76,6 +76,11 @@ vi.mock("../auto-reply/reply.js", () => ({
   }),
 }));
 
+vi.mock("../infra/backoff.js", () => ({
+  computeBackoff: () => 0,
+  sleepWithAbort: async () => undefined,
+}));
+
 describe("monitorTelegramProvider (grammY)", () => {
   beforeEach(() => {
     loadConfig.mockReturnValue({
@@ -139,5 +144,19 @@ describe("monitorTelegramProvider (grammY)", () => {
       getFile: vi.fn(async () => ({})),
     });
     expect(api.sendMessage).not.toHaveBeenCalled();
+  });
+
+  it("retries polling on transient fetch/network errors instead of crashing", async () => {
+    runSpy.mockImplementationOnce(() => ({
+      task: () => Promise.reject(new TypeError("fetch failed")),
+      stop: vi.fn(),
+    }));
+    runSpy.mockImplementationOnce(() => ({
+      task: () => Promise.resolve(),
+      stop: vi.fn(),
+    }));
+
+    await expect(monitorTelegramProvider({ token: "tok" })).resolves.toBeUndefined();
+    expect(runSpy).toHaveBeenCalledTimes(2);
   });
 });

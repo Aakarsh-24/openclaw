@@ -69,6 +69,43 @@ const isGetUpdatesConflict = (err: unknown) => {
   return haystack.includes("getupdates");
 };
 
+const isRetryableNetworkError = (err: unknown) => {
+  // undici / fetch typically throws TypeError("fetch failed") with an optional `cause`
+  // that carries the real code (ECONNRESET/ENOTFOUND/ETIMEDOUT/etc).
+  if (!err) return false;
+  const message =
+    typeof err === "string"
+      ? err
+      : typeof err === "object" && "message" in err
+        ? String((err as { message?: unknown }).message ?? "")
+        : "";
+
+  const cause =
+    typeof err === "object" && err !== null && "cause" in err
+      ? (err as { cause?: unknown }).cause
+      : undefined;
+  const causeCode =
+    typeof cause === "object" && cause !== null && "code" in cause
+      ? String((cause as { code?: unknown }).code ?? "")
+      : "";
+  const causeErrno =
+    typeof cause === "object" && cause !== null && "errno" in cause
+      ? String((cause as { errno?: unknown }).errno ?? "")
+      : "";
+
+  const haystack = `${message} ${causeCode} ${causeErrno}`.toLowerCase();
+
+  return (
+    haystack.includes("fetch failed") ||
+    haystack.includes("econnrefused") ||
+    haystack.includes("econnreset") ||
+    haystack.includes("enetunreach") ||
+    haystack.includes("etimedout") ||
+    haystack.includes("enotfound") ||
+    haystack.includes("eai_again")
+  );
+};
+
 export async function monitorTelegramProvider(opts: MonitorTelegramOpts = {}) {
   const cfg = opts.config ?? loadConfig();
   const account = resolveTelegramAccount({
@@ -152,12 +189,28 @@ export async function monitorTelegramProvider(opts: MonitorTelegramOpts = {}) {
       if (opts.abortSignal?.aborted) {
         throw err;
       }
-      if (!isGetUpdatesConflict(err)) {
+
+      const isConflict = isGetUpdatesConflict(err);
+      const isNetwork = isRetryableNetworkError(err);
+
+      // If it's not an expected/retryable polling failure, fail fast.
+      if (!isConflict && !isNetwork) {
         throw err;
       }
+
       restartAttempts += 1;
       const delayMs = computeBackoff(TELEGRAM_POLL_RESTART_POLICY, restartAttempts);
-      log(`Telegram getUpdates conflict; retrying in ${formatDurationMs(delayMs)}.`);
+
+      if (isConflict) {
+        log(`Telegram getUpdates conflict; retrying in ${formatDurationMs(delayMs)}.`);
+      } else {
+        log(
+          `Telegram getUpdates network error (${String(
+            (err as { message?: unknown })?.message ?? err,
+          )}); retrying in ${formatDurationMs(delayMs)}.`,
+        );
+      }
+
       try {
         await sleepWithAbort(delayMs, opts.abortSignal);
       } catch (sleepErr) {
