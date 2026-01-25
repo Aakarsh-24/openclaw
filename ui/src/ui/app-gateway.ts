@@ -10,12 +10,7 @@ import type { Tab } from "./navigation";
 import type { UiSettings } from "./storage";
 import { handleAgentEvent, resetToolStream, type AgentEventPayload } from "./app-tool-stream";
 import { flushChatQueueForEvent } from "./app-chat";
-import {
-  applySettings,
-  loadCron,
-  refreshActiveTab,
-  setLastActiveSessionKey,
-} from "./app-settings";
+import { applySettings, loadCron, refreshActiveTab, setLastActiveSessionKey } from "./app-settings";
 import { handleChatEvent, type ChatEventPayload } from "./controllers/chat";
 import {
   addExecApproval,
@@ -75,8 +70,7 @@ function normalizeSessionKeyForDefaults(
     raw === "main" ||
     raw === mainKey ||
     (defaultAgentId &&
-      (raw === `agent:${defaultAgentId}:main` ||
-        raw === `agent:${defaultAgentId}:${mainKey}`));
+      (raw === `agent:${defaultAgentId}:main` || raw === `agent:${defaultAgentId}:${mainKey}`));
   return isAlias ? mainSessionKey : raw;
 }
 
@@ -185,9 +179,7 @@ function handleGatewayEventUnsafe(host: GatewayHost, evt: GatewayEventFrame) {
     const state = handleChatEvent(host as unknown as ClawdbotApp, payload);
     if (state === "final" || state === "error" || state === "aborted") {
       resetToolStream(host as unknown as Parameters<typeof resetToolStream>[0]);
-      void flushChatQueueForEvent(
-        host as unknown as Parameters<typeof flushChatQueueForEvent>[0],
-      );
+      void flushChatQueueForEvent(host as unknown as Parameters<typeof flushChatQueueForEvent>[0]);
     }
     if (state === "final") void loadChatHistory(host as unknown as ClawdbotApp);
     return;

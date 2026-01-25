@@ -144,9 +144,7 @@ export async function abortChatRun(state: ChatState): Promise<boolean> {
   try {
     await state.client.request(
       "chat.abort",
-      runId
-        ? { sessionKey: state.sessionKey, runId }
-        : { sessionKey: state.sessionKey },
+      runId ? { sessionKey: state.sessionKey, runId } : { sessionKey: state.sessionKey },
     );
     return true;
   } catch (err) {
@@ -155,10 +153,7 @@ export async function abortChatRun(state: ChatState): Promise<boolean> {
   }
 }
 
-export function handleChatEvent(
-  state: ChatState,
-  payload?: ChatEventPayload,
-) {
+export function handleChatEvent(state: ChatState, payload?: ChatEventPayload) {
   if (!payload) return null;
   if (payload.sessionKey !== state.sessionKey) return null;
 

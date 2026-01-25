@@ -57,8 +57,7 @@ export function renderDebug(props: DebugProps) {
             <span>Method</span>
             <input
               .value=${props.callMethod}
-              @input=${(e: Event) =>
-                props.onCallMethodChange((e.target as HTMLInputElement).value)}
+              @input=${(e: Event) => props.onCallMethodChange((e.target as HTMLInputElement).value)}
               placeholder="system-presence"
             />
           </label>
@@ -75,14 +74,18 @@ export function renderDebug(props: DebugProps) {
         <div class="row" style="margin-top: 12px;">
           <button class="btn primary" @click=${props.onCall}>Call</button>
         </div>
-        ${props.callError
-          ? html`<div class="callout danger" style="margin-top: 12px;">
+        ${
+          props.callError
+            ? html`<div class="callout danger" style="margin-top: 12px;">
               ${props.callError}
             </div>`
-          : nothing}
-        ${props.callResult
-          ? html`<pre class="code-block" style="margin-top: 12px;">${props.callResult}</pre>`
-          : nothing}
+            : nothing
+        }
+        ${
+          props.callResult
+            ? html`<pre class="code-block" style="margin-top: 12px;">${props.callResult}</pre>`
+            : nothing
+        }
       </div>
     </section>
 
@@ -99,9 +102,12 @@ export function renderDebug(props: DebugProps) {
     <section class="card" style="margin-top: 18px;">
       <div class="card-title">Event Log</div>
       <div class="card-sub">Latest gateway events.</div>
-      ${props.eventLog.length === 0
-        ? html`<div class="muted" style="margin-top: 12px;">No events yet.</div>`
-        : html`
+      ${
+        props.eventLog.length === 0
+          ? html`
+              <div class="muted" style="margin-top: 12px">No events yet.</div>
+            `
+          : html`
             <div class="list" style="margin-top: 12px;">
               ${props.eventLog.map(
                 (evt) => html`
@@ -117,7 +123,8 @@ export function renderDebug(props: DebugProps) {
                 `,
               )}
             </div>
-          `}
+          `
+      }
     </section>
   `;
 }

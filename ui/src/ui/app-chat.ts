@@ -82,7 +82,10 @@ async function sendChatMessageNow(
     host.chatAttachments = opts.previousAttachments;
   }
   if (ok) {
-    setLastActiveSessionKey(host as unknown as Parameters<typeof setLastActiveSessionKey>[0], host.sessionKey);
+    setLastActiveSessionKey(
+      host as unknown as Parameters<typeof setLastActiveSessionKey>[0],
+      host.sessionKey,
+    );
   }
   if (ok && opts?.restoreDraft && opts.previousDraft?.trim()) {
     host.chatMessage = opts.previousDraft;
@@ -170,7 +173,9 @@ type SessionDefaultsSnapshot = {
 function resolveAgentIdForSession(host: ChatHost): string | null {
   const parsed = parseAgentSessionKey(host.sessionKey);
   if (parsed?.agentId) return parsed.agentId;
-  const snapshot = host.hello?.snapshot as { sessionDefaults?: SessionDefaultsSnapshot } | undefined;
+  const snapshot = host.hello?.snapshot as
+    | { sessionDefaults?: SessionDefaultsSnapshot }
+    | undefined;
   const fallback = snapshot?.sessionDefaults?.defaultAgentId?.trim();
   return fallback || "main";
 }

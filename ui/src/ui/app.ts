@@ -1,4 +1,4 @@
-import { LitElement, html, nothing } from "lit";
+import { LitElement } from "lit";
 import { customElement, state } from "lit/decorators.js";
 
 import type { GatewayBrowserClient, GatewayHelloOk } from "./gateway";
@@ -27,10 +27,7 @@ import type {
 import { type ChatAttachment, type ChatQueueItem, type CronFormState } from "./ui-types";
 import type { EventLogEntry } from "./app-events";
 import { DEFAULT_CRON_FORM, DEFAULT_LOG_LEVEL_FILTERS } from "./app-defaults";
-import type {
-  ExecApprovalsFile,
-  ExecApprovalsSnapshot,
-} from "./controllers/exec-approvals";
+import type { ExecApprovalsFile, ExecApprovalsSnapshot } from "./controllers/exec-approvals";
 import type { DevicePairingList } from "./controllers/devices";
 import type { ExecApprovalRequest } from "./controllers/exec-approval";
 import {
@@ -259,9 +256,7 @@ export class ClawdbotApp extends LitElement {
   private toolStreamOrder: string[] = [];
   basePath = "";
   private popStateHandler = () =>
-    onPopStateInternal(
-      this as unknown as Parameters<typeof onPopStateInternal>[0],
-    );
+    onPopStateInternal(this as unknown as Parameters<typeof onPopStateInternal>[0]);
   private themeMedia: MediaQueryList | null = null;
   private themeMediaHandler: ((event: MediaQueryListEvent) => void) | null = null;
   private topbarObserver: ResizeObserver | null = null;
@@ -285,16 +280,11 @@ export class ClawdbotApp extends LitElement {
   }
 
   protected updated(changed: Map<PropertyKey, unknown>) {
-    handleUpdated(
-      this as unknown as Parameters<typeof handleUpdated>[0],
-      changed,
-    );
+    handleUpdated(this as unknown as Parameters<typeof handleUpdated>[0], changed);
   }
 
   connect() {
-    connectGatewayInternal(
-      this as unknown as Parameters<typeof connectGatewayInternal>[0],
-    );
+    connectGatewayInternal(this as unknown as Parameters<typeof connectGatewayInternal>[0]);
   }
 
   handleChatScroll(event: Event) {
@@ -316,15 +306,11 @@ export class ClawdbotApp extends LitElement {
   }
 
   resetToolStream() {
-    resetToolStreamInternal(
-      this as unknown as Parameters<typeof resetToolStreamInternal>[0],
-    );
+    resetToolStreamInternal(this as unknown as Parameters<typeof resetToolStreamInternal>[0]);
   }
 
   resetChatScroll() {
-    resetChatScrollInternal(
-      this as unknown as Parameters<typeof resetChatScrollInternal>[0],
-    );
+    resetChatScrollInternal(this as unknown as Parameters<typeof resetChatScrollInternal>[0]);
   }
 
   async loadAssistantIdentity() {
@@ -332,10 +318,7 @@ export class ClawdbotApp extends LitElement {
   }
 
   applySettings(next: UiSettings) {
-    applySettingsInternal(
-      this as unknown as Parameters<typeof applySettingsInternal>[0],
-      next,
-    );
+    applySettingsInternal(this as unknown as Parameters<typeof applySettingsInternal>[0], next);
   }
 
   setTab(next: Tab) {
@@ -343,29 +326,19 @@ export class ClawdbotApp extends LitElement {
   }
 
   setTheme(next: ThemeMode, context?: Parameters<typeof setThemeInternal>[2]) {
-    setThemeInternal(
-      this as unknown as Parameters<typeof setThemeInternal>[0],
-      next,
-      context,
-    );
+    setThemeInternal(this as unknown as Parameters<typeof setThemeInternal>[0], next, context);
   }
 
   async loadOverview() {
-    await loadOverviewInternal(
-      this as unknown as Parameters<typeof loadOverviewInternal>[0],
-    );
+    await loadOverviewInternal(this as unknown as Parameters<typeof loadOverviewInternal>[0]);
   }
 
   async loadCron() {
-    await loadCronInternal(
-      this as unknown as Parameters<typeof loadCronInternal>[0],
-    );
+    await loadCronInternal(this as unknown as Parameters<typeof loadCronInternal>[0]);
   }
 
   async handleAbortChat() {
-    await handleAbortChatInternal(
-      this as unknown as Parameters<typeof handleAbortChatInternal>[0],
-    );
+    await handleAbortChatInternal(this as unknown as Parameters<typeof handleAbortChatInternal>[0]);
   }
 
   removeQueuedMessage(id: string) {

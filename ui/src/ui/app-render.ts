@@ -1,35 +1,9 @@
 import { html, nothing } from "lit";
 
-import type { GatewayBrowserClient, GatewayHelloOk } from "./gateway";
 import type { AppViewState } from "./app-view-state";
 import { parseAgentSessionKey } from "../../../src/routing/session-key.js";
-import {
-  TAB_GROUPS,
-  iconForTab,
-  pathForTab,
-  subtitleForTab,
-  titleForTab,
-  type Tab,
-} from "./navigation";
+import { TAB_GROUPS, subtitleForTab, titleForTab } from "./navigation";
 import { icons } from "./icons";
-import type { UiSettings } from "./storage";
-import type { ThemeMode } from "./theme";
-import type { ThemeTransitionContext } from "./theme-transition";
-import type {
-  ConfigSnapshot,
-  CronJob,
-  CronRunLogEntry,
-  CronStatus,
-  HealthSnapshot,
-  LogEntry,
-  LogLevel,
-  PresenceEntry,
-  ChannelsStatusSnapshot,
-  SessionsListResult,
-  SkillStatusReport,
-  StatusSummary,
-} from "./types";
-import type { ChatQueueItem, CronFormState } from "./ui-types";
 import { refreshChatAvatar } from "./app-chat";
 import { renderChat } from "./views/chat";
 import { renderConfig } from "./views/config";
@@ -60,7 +34,6 @@ import {
   saveSkillApiKey,
   updateSkillEdit,
   updateSkillEnabled,
-  type SkillMessage,
 } from "./controllers/skills";
 import { loadNodes } from "./controllers/nodes";
 import { loadChatHistory } from "./controllers/chat";
@@ -78,7 +51,13 @@ import {
   saveExecApprovals,
   updateExecApprovalsFormValue,
 } from "./controllers/exec-approvals";
-import { loadCronRuns, toggleCronJob, runCronJob, removeCronJob, addCronJob } from "./controllers/cron";
+import {
+  loadCronRuns,
+  toggleCronJob,
+  runCronJob,
+  removeCronJob,
+  addCronJob,
+} from "./controllers/cron";
 import { loadDebug, callDebugMethod } from "./controllers/debug";
 import { loadLogs } from "./controllers/logs";
 
@@ -88,10 +67,7 @@ const AVATAR_HTTP_RE = /^https?:\/\//i;
 function resolveAssistantAvatarUrl(state: AppViewState): string | undefined {
   const list = state.agentsList?.agents ?? [];
   const parsed = parseAgentSessionKey(state.sessionKey);
-  const agentId =
-    parsed?.agentId ??
-    state.agentsList?.defaultId ??
-    "main";
+  const agentId = parsed?.agentId ?? state.agentsList?.defaultId ?? "main";
   const agent = list.find((entry) => entry.id === agentId);
   const identity = agent?.identity;
   const candidate = identity?.avatarUrl ?? identity?.avatar;
@@ -198,234 +174,246 @@ export function renderApp(state: AppViewState) {
             <div class="page-sub">${subtitleForTab(state.tab)}</div>
           </div>
           <div class="page-meta">
-            ${state.lastError
-              ? html`<div class="pill danger">${state.lastError}</div>`
-              : nothing}
+            ${state.lastError ? html`<div class="pill danger">${state.lastError}</div>` : nothing}
             ${isChat ? renderChatControls(state) : nothing}
           </div>
         </section>
 
-        ${state.tab === "overview"
-          ? renderOverview({
-              connected: state.connected,
-              hello: state.hello,
-              settings: state.settings,
-              password: state.password,
-              lastError: state.lastError,
-              presenceCount,
-              sessionsCount,
-              cronEnabled: state.cronStatus?.enabled ?? null,
-              cronNext,
-              lastChannelsRefresh: state.channelsLastSuccess,
-              onSettingsChange: (next) => state.applySettings(next),
-              onPasswordChange: (next) => (state.password = next),
-              onSessionKeyChange: (next) => {
-                state.sessionKey = next;
-                state.chatMessage = "";
-                state.resetToolStream();
-                state.applySettings({
-                  ...state.settings,
-                  sessionKey: next,
-                  lastActiveSessionKey: next,
-                });
-                void state.loadAssistantIdentity();
-              },
-              onConnect: () => state.connect(),
-              onRefresh: () => state.loadOverview(),
-            })
-          : nothing}
+        ${
+          state.tab === "overview"
+            ? renderOverview({
+                connected: state.connected,
+                hello: state.hello,
+                settings: state.settings,
+                password: state.password,
+                lastError: state.lastError,
+                presenceCount,
+                sessionsCount,
+                cronEnabled: state.cronStatus?.enabled ?? null,
+                cronNext,
+                lastChannelsRefresh: state.channelsLastSuccess,
+                onSettingsChange: (next) => state.applySettings(next),
+                onPasswordChange: (next) => (state.password = next),
+                onSessionKeyChange: (next) => {
+                  state.sessionKey = next;
+                  state.chatMessage = "";
+                  state.resetToolStream();
+                  state.applySettings({
+                    ...state.settings,
+                    sessionKey: next,
+                    lastActiveSessionKey: next,
+                  });
+                  void state.loadAssistantIdentity();
+                },
+                onConnect: () => state.connect(),
+                onRefresh: () => state.loadOverview(),
+              })
+            : nothing
+        }
 
-        ${state.tab === "channels"
-          ? renderChannels({
-              connected: state.connected,
-              loading: state.channelsLoading,
-              snapshot: state.channelsSnapshot,
-              lastError: state.channelsError,
-              lastSuccessAt: state.channelsLastSuccess,
-              whatsappMessage: state.whatsappLoginMessage,
-              whatsappQrDataUrl: state.whatsappLoginQrDataUrl,
-              whatsappConnected: state.whatsappLoginConnected,
-              whatsappBusy: state.whatsappBusy,
-              configSchema: state.configSchema,
-              configSchemaLoading: state.configSchemaLoading,
-              configForm: state.configForm,
-              configUiHints: state.configUiHints,
-              configSaving: state.configSaving,
-              configFormDirty: state.configFormDirty,
-              nostrProfileFormState: state.nostrProfileFormState,
-              nostrProfileAccountId: state.nostrProfileAccountId,
-              onRefresh: (probe) => loadChannels(state, probe),
-              onWhatsAppStart: (force) => state.handleWhatsAppStart(force),
-              onWhatsAppWait: () => state.handleWhatsAppWait(),
-              onWhatsAppLogout: () => state.handleWhatsAppLogout(),
-              onConfigPatch: (path, value) => updateConfigFormValue(state, path, value),
-              onConfigSave: () => state.handleChannelConfigSave(),
-              onConfigReload: () => state.handleChannelConfigReload(),
-              onNostrProfileEdit: (accountId, profile) =>
-                state.handleNostrProfileEdit(accountId, profile),
-              onNostrProfileCancel: () => state.handleNostrProfileCancel(),
-              onNostrProfileFieldChange: (field, value) =>
-                state.handleNostrProfileFieldChange(field, value),
-              onNostrProfileSave: () => state.handleNostrProfileSave(),
-              onNostrProfileImport: () => state.handleNostrProfileImport(),
-              onNostrProfileToggleAdvanced: () => state.handleNostrProfileToggleAdvanced(),
-            })
-          : nothing}
+        ${
+          state.tab === "channels"
+            ? renderChannels({
+                connected: state.connected,
+                loading: state.channelsLoading,
+                snapshot: state.channelsSnapshot,
+                lastError: state.channelsError,
+                lastSuccessAt: state.channelsLastSuccess,
+                whatsappMessage: state.whatsappLoginMessage,
+                whatsappQrDataUrl: state.whatsappLoginQrDataUrl,
+                whatsappConnected: state.whatsappLoginConnected,
+                whatsappBusy: state.whatsappBusy,
+                configSchema: state.configSchema,
+                configSchemaLoading: state.configSchemaLoading,
+                configForm: state.configForm,
+                configUiHints: state.configUiHints,
+                configSaving: state.configSaving,
+                configFormDirty: state.configFormDirty,
+                nostrProfileFormState: state.nostrProfileFormState,
+                nostrProfileAccountId: state.nostrProfileAccountId,
+                onRefresh: (probe) => loadChannels(state, probe),
+                onWhatsAppStart: (force) => state.handleWhatsAppStart(force),
+                onWhatsAppWait: () => state.handleWhatsAppWait(),
+                onWhatsAppLogout: () => state.handleWhatsAppLogout(),
+                onConfigPatch: (path, value) => updateConfigFormValue(state, path, value),
+                onConfigSave: () => state.handleChannelConfigSave(),
+                onConfigReload: () => state.handleChannelConfigReload(),
+                onNostrProfileEdit: (accountId, profile) =>
+                  state.handleNostrProfileEdit(accountId, profile),
+                onNostrProfileCancel: () => state.handleNostrProfileCancel(),
+                onNostrProfileFieldChange: (field, value) =>
+                  state.handleNostrProfileFieldChange(field, value),
+                onNostrProfileSave: () => state.handleNostrProfileSave(),
+                onNostrProfileImport: () => state.handleNostrProfileImport(),
+                onNostrProfileToggleAdvanced: () => state.handleNostrProfileToggleAdvanced(),
+              })
+            : nothing
+        }
 
-        ${state.tab === "instances"
-          ? renderInstances({
-              loading: state.presenceLoading,
-              entries: state.presenceEntries,
-              lastError: state.presenceError,
-              statusMessage: state.presenceStatus,
-              onRefresh: () => loadPresence(state),
-            })
-          : nothing}
+        ${
+          state.tab === "instances"
+            ? renderInstances({
+                loading: state.presenceLoading,
+                entries: state.presenceEntries,
+                lastError: state.presenceError,
+                statusMessage: state.presenceStatus,
+                onRefresh: () => loadPresence(state),
+              })
+            : nothing
+        }
 
-        ${state.tab === "sessions"
-          ? renderSessions({
-              loading: state.sessionsLoading,
-              result: state.sessionsResult,
-              error: state.sessionsError,
-              activeMinutes: state.sessionsFilterActive,
-              limit: state.sessionsFilterLimit,
-              includeGlobal: state.sessionsIncludeGlobal,
-              includeUnknown: state.sessionsIncludeUnknown,
-              basePath: state.basePath,
-              onFiltersChange: (next) => {
-                state.sessionsFilterActive = next.activeMinutes;
-                state.sessionsFilterLimit = next.limit;
-                state.sessionsIncludeGlobal = next.includeGlobal;
-                state.sessionsIncludeUnknown = next.includeUnknown;
-	              },
-	              onRefresh: () => loadSessions(state),
-	              onPatch: (key, patch) => patchSession(state, key, patch),
-	              onDelete: (key) => deleteSession(state, key),
-	            })
-	          : nothing}
+        ${
+          state.tab === "sessions"
+            ? renderSessions({
+                loading: state.sessionsLoading,
+                result: state.sessionsResult,
+                error: state.sessionsError,
+                activeMinutes: state.sessionsFilterActive,
+                limit: state.sessionsFilterLimit,
+                includeGlobal: state.sessionsIncludeGlobal,
+                includeUnknown: state.sessionsIncludeUnknown,
+                basePath: state.basePath,
+                onFiltersChange: (next) => {
+                  state.sessionsFilterActive = next.activeMinutes;
+                  state.sessionsFilterLimit = next.limit;
+                  state.sessionsIncludeGlobal = next.includeGlobal;
+                  state.sessionsIncludeUnknown = next.includeUnknown;
+                },
+                onRefresh: () => loadSessions(state),
+                onPatch: (key, patch) => patchSession(state, key, patch),
+                onDelete: (key) => deleteSession(state, key),
+              })
+            : nothing
+        }
 
-        ${state.tab === "cron"
-          ? renderCron({
-              loading: state.cronLoading,
-              status: state.cronStatus,
-              jobs: state.cronJobs,
-              error: state.cronError,
-              busy: state.cronBusy,
-              form: state.cronForm,
-              channels: state.channelsSnapshot?.channelMeta?.length
-                ? state.channelsSnapshot.channelMeta.map((entry) => entry.id)
-                : state.channelsSnapshot?.channelOrder ?? [],
-              channelLabels: state.channelsSnapshot?.channelLabels ?? {},
-              channelMeta: state.channelsSnapshot?.channelMeta ?? [],
-              runsJobId: state.cronRunsJobId,
-              runs: state.cronRuns,
-              onFormChange: (patch) => (state.cronForm = { ...state.cronForm, ...patch }),
-              onRefresh: () => state.loadCron(),
-              onAdd: () => addCronJob(state),
-              onToggle: (job, enabled) => toggleCronJob(state, job, enabled),
-              onRun: (job) => runCronJob(state, job),
-              onRemove: (job) => removeCronJob(state, job),
-              onLoadRuns: (jobId) => loadCronRuns(state, jobId),
-            })
-          : nothing}
+        ${
+          state.tab === "cron"
+            ? renderCron({
+                loading: state.cronLoading,
+                status: state.cronStatus,
+                jobs: state.cronJobs,
+                error: state.cronError,
+                busy: state.cronBusy,
+                form: state.cronForm,
+                channels: state.channelsSnapshot?.channelMeta?.length
+                  ? state.channelsSnapshot.channelMeta.map((entry) => entry.id)
+                  : (state.channelsSnapshot?.channelOrder ?? []),
+                channelLabels: state.channelsSnapshot?.channelLabels ?? {},
+                channelMeta: state.channelsSnapshot?.channelMeta ?? [],
+                runsJobId: state.cronRunsJobId,
+                runs: state.cronRuns,
+                onFormChange: (patch) => (state.cronForm = { ...state.cronForm, ...patch }),
+                onRefresh: () => state.loadCron(),
+                onAdd: () => addCronJob(state),
+                onToggle: (job, enabled) => toggleCronJob(state, job, enabled),
+                onRun: (job) => runCronJob(state, job),
+                onRemove: (job) => removeCronJob(state, job),
+                onLoadRuns: (jobId) => loadCronRuns(state, jobId),
+              })
+            : nothing
+        }
 
-        ${state.tab === "skills"
-          ? renderSkills({
-              loading: state.skillsLoading,
-              report: state.skillsReport,
-              error: state.skillsError,
-              filter: state.skillsFilter,
-              edits: state.skillEdits,
-              messages: state.skillMessages,
-              busyKey: state.skillsBusyKey,
-              onFilterChange: (next) => (state.skillsFilter = next),
-              onRefresh: () => loadSkills(state, { clearMessages: true }),
-              onToggle: (key, enabled) => updateSkillEnabled(state, key, enabled),
-              onEdit: (key, value) => updateSkillEdit(state, key, value),
-              onSaveKey: (key) => saveSkillApiKey(state, key),
-              onInstall: (skillKey, name, installId) =>
-                installSkill(state, skillKey, name, installId),
-            })
-          : nothing}
+        ${
+          state.tab === "skills"
+            ? renderSkills({
+                loading: state.skillsLoading,
+                report: state.skillsReport,
+                error: state.skillsError,
+                filter: state.skillsFilter,
+                edits: state.skillEdits,
+                messages: state.skillMessages,
+                busyKey: state.skillsBusyKey,
+                onFilterChange: (next) => (state.skillsFilter = next),
+                onRefresh: () => loadSkills(state, { clearMessages: true }),
+                onToggle: (key, enabled) => updateSkillEnabled(state, key, enabled),
+                onEdit: (key, value) => updateSkillEdit(state, key, value),
+                onSaveKey: (key) => saveSkillApiKey(state, key),
+                onInstall: (skillKey, name, installId) =>
+                  installSkill(state, skillKey, name, installId),
+              })
+            : nothing
+        }
 
-        ${state.tab === "nodes"
-          ? renderNodes({
-              loading: state.nodesLoading,
-              nodes: state.nodes,
-              devicesLoading: state.devicesLoading,
-              devicesError: state.devicesError,
-              devicesList: state.devicesList,
-              configForm: state.configForm ?? (state.configSnapshot?.config as Record<string, unknown> | null),
-              configLoading: state.configLoading,
-              configSaving: state.configSaving,
-              configDirty: state.configFormDirty,
-              configFormMode: state.configFormMode,
-              execApprovalsLoading: state.execApprovalsLoading,
-              execApprovalsSaving: state.execApprovalsSaving,
-              execApprovalsDirty: state.execApprovalsDirty,
-              execApprovalsSnapshot: state.execApprovalsSnapshot,
-              execApprovalsForm: state.execApprovalsForm,
-              execApprovalsSelectedAgent: state.execApprovalsSelectedAgent,
-              execApprovalsTarget: state.execApprovalsTarget,
-              execApprovalsTargetNodeId: state.execApprovalsTargetNodeId,
-              onRefresh: () => loadNodes(state),
-              onDevicesRefresh: () => loadDevices(state),
-              onDeviceApprove: (requestId) => approveDevicePairing(state, requestId),
-              onDeviceReject: (requestId) => rejectDevicePairing(state, requestId),
-              onDeviceRotate: (deviceId, role, scopes) =>
-                rotateDeviceToken(state, { deviceId, role, scopes }),
-              onDeviceRevoke: (deviceId, role) =>
-                revokeDeviceToken(state, { deviceId, role }),
-              onLoadConfig: () => loadConfig(state),
-              onLoadExecApprovals: () => {
-                const target =
-                  state.execApprovalsTarget === "node" && state.execApprovalsTargetNodeId
-                    ? { kind: "node" as const, nodeId: state.execApprovalsTargetNodeId }
-                    : { kind: "gateway" as const };
-                return loadExecApprovals(state, target);
-              },
-              onBindDefault: (nodeId) => {
-                if (nodeId) {
-                  updateConfigFormValue(state, ["tools", "exec", "node"], nodeId);
-                } else {
-                  removeConfigFormValue(state, ["tools", "exec", "node"]);
-                }
-              },
-              onBindAgent: (agentIndex, nodeId) => {
-                const basePath = ["agents", "list", agentIndex, "tools", "exec", "node"];
-                if (nodeId) {
-                  updateConfigFormValue(state, basePath, nodeId);
-                } else {
-                  removeConfigFormValue(state, basePath);
-                }
-              },
-              onSaveBindings: () => saveConfig(state),
-              onExecApprovalsTargetChange: (kind, nodeId) => {
-                state.execApprovalsTarget = kind;
-                state.execApprovalsTargetNodeId = nodeId;
-                state.execApprovalsSnapshot = null;
-                state.execApprovalsForm = null;
-                state.execApprovalsDirty = false;
-                state.execApprovalsSelectedAgent = null;
-              },
-              onExecApprovalsSelectAgent: (agentId) => {
-                state.execApprovalsSelectedAgent = agentId;
-              },
-              onExecApprovalsPatch: (path, value) =>
-                updateExecApprovalsFormValue(state, path, value),
-              onExecApprovalsRemove: (path) =>
-                removeExecApprovalsFormValue(state, path),
-              onSaveExecApprovals: () => {
-                const target =
-                  state.execApprovalsTarget === "node" && state.execApprovalsTargetNodeId
-                    ? { kind: "node" as const, nodeId: state.execApprovalsTargetNodeId }
-                    : { kind: "gateway" as const };
-                return saveExecApprovals(state, target);
-              },
-            })
-          : nothing}
+        ${
+          state.tab === "nodes"
+            ? renderNodes({
+                loading: state.nodesLoading,
+                nodes: state.nodes,
+                devicesLoading: state.devicesLoading,
+                devicesError: state.devicesError,
+                devicesList: state.devicesList,
+                configForm:
+                  state.configForm ??
+                  (state.configSnapshot?.config as Record<string, unknown> | null),
+                configLoading: state.configLoading,
+                configSaving: state.configSaving,
+                configDirty: state.configFormDirty,
+                configFormMode: state.configFormMode,
+                execApprovalsLoading: state.execApprovalsLoading,
+                execApprovalsSaving: state.execApprovalsSaving,
+                execApprovalsDirty: state.execApprovalsDirty,
+                execApprovalsSnapshot: state.execApprovalsSnapshot,
+                execApprovalsForm: state.execApprovalsForm,
+                execApprovalsSelectedAgent: state.execApprovalsSelectedAgent,
+                execApprovalsTarget: state.execApprovalsTarget,
+                execApprovalsTargetNodeId: state.execApprovalsTargetNodeId,
+                onRefresh: () => loadNodes(state),
+                onDevicesRefresh: () => loadDevices(state),
+                onDeviceApprove: (requestId) => approveDevicePairing(state, requestId),
+                onDeviceReject: (requestId) => rejectDevicePairing(state, requestId),
+                onDeviceRotate: (deviceId, role, scopes) =>
+                  rotateDeviceToken(state, { deviceId, role, scopes }),
+                onDeviceRevoke: (deviceId, role) => revokeDeviceToken(state, { deviceId, role }),
+                onLoadConfig: () => loadConfig(state),
+                onLoadExecApprovals: () => {
+                  const target =
+                    state.execApprovalsTarget === "node" && state.execApprovalsTargetNodeId
+                      ? { kind: "node" as const, nodeId: state.execApprovalsTargetNodeId }
+                      : { kind: "gateway" as const };
+                  return loadExecApprovals(state, target);
+                },
+                onBindDefault: (nodeId) => {
+                  if (nodeId) {
+                    updateConfigFormValue(state, ["tools", "exec", "node"], nodeId);
+                  } else {
+                    removeConfigFormValue(state, ["tools", "exec", "node"]);
+                  }
+                },
+                onBindAgent: (agentIndex, nodeId) => {
+                  const basePath = ["agents", "list", agentIndex, "tools", "exec", "node"];
+                  if (nodeId) {
+                    updateConfigFormValue(state, basePath, nodeId);
+                  } else {
+                    removeConfigFormValue(state, basePath);
+                  }
+                },
+                onSaveBindings: () => saveConfig(state),
+                onExecApprovalsTargetChange: (kind, nodeId) => {
+                  state.execApprovalsTarget = kind;
+                  state.execApprovalsTargetNodeId = nodeId;
+                  state.execApprovalsSnapshot = null;
+                  state.execApprovalsForm = null;
+                  state.execApprovalsDirty = false;
+                  state.execApprovalsSelectedAgent = null;
+                },
+                onExecApprovalsSelectAgent: (agentId) => {
+                  state.execApprovalsSelectedAgent = agentId;
+                },
+                onExecApprovalsPatch: (path, value) =>
+                  updateExecApprovalsFormValue(state, path, value),
+                onExecApprovalsRemove: (path) => removeExecApprovalsFormValue(state, path),
+                onSaveExecApprovals: () => {
+                  const target =
+                    state.execApprovalsTarget === "node" && state.execApprovalsTargetNodeId
+                      ? { kind: "node" as const, nodeId: state.execApprovalsTargetNodeId }
+                      : { kind: "gateway" as const };
+                  return saveExecApprovals(state, target);
+                },
+              })
+            : nothing
+        }
 
-        ${state.tab === "chat"
+${state.tab === "chat"
           ? renderChat({
               sessionKey: state.sessionKey,
               onSessionKeyChange: (next) => {
@@ -499,83 +487,89 @@ export function renderApp(state: AppViewState) {
             })
           : nothing}
 
-        ${state.tab === "config"
-          ? renderConfig({
-              raw: state.configRaw,
-              originalRaw: state.configRawOriginal,
-              valid: state.configValid,
-              issues: state.configIssues,
-              loading: state.configLoading,
-              saving: state.configSaving,
-              applying: state.configApplying,
-              updating: state.updateRunning,
-              connected: state.connected,
-              schema: state.configSchema,
-              schemaLoading: state.configSchemaLoading,
-              uiHints: state.configUiHints,
-              formMode: state.configFormMode,
-              formValue: state.configForm,
-              originalValue: state.configFormOriginal,
-              searchQuery: state.configSearchQuery,
-              activeSection: state.configActiveSection,
-              activeSubsection: state.configActiveSubsection,
-              onRawChange: (next) => {
-                state.configRaw = next;
-              },
-              onFormModeChange: (mode) => (state.configFormMode = mode),
-              onFormPatch: (path, value) => updateConfigFormValue(state, path, value),
-              onSearchChange: (query) => (state.configSearchQuery = query),
-              onSectionChange: (section) => {
-                state.configActiveSection = section;
-                state.configActiveSubsection = null;
-              },
-              onSubsectionChange: (section) => (state.configActiveSubsection = section),
-              onReload: () => loadConfig(state),
-              onSave: () => saveConfig(state),
-              onApply: () => applyConfig(state),
-              onUpdate: () => runUpdate(state),
-            })
-          : nothing}
+        ${
+          state.tab === "config"
+            ? renderConfig({
+                raw: state.configRaw,
+                originalRaw: state.configRawOriginal,
+                valid: state.configValid,
+                issues: state.configIssues,
+                loading: state.configLoading,
+                saving: state.configSaving,
+                applying: state.configApplying,
+                updating: state.updateRunning,
+                connected: state.connected,
+                schema: state.configSchema,
+                schemaLoading: state.configSchemaLoading,
+                uiHints: state.configUiHints,
+                formMode: state.configFormMode,
+                formValue: state.configForm,
+                originalValue: state.configFormOriginal,
+                searchQuery: state.configSearchQuery,
+                activeSection: state.configActiveSection,
+                activeSubsection: state.configActiveSubsection,
+                onRawChange: (next) => {
+                  state.configRaw = next;
+                },
+                onFormModeChange: (mode) => (state.configFormMode = mode),
+                onFormPatch: (path, value) => updateConfigFormValue(state, path, value),
+                onSearchChange: (query) => (state.configSearchQuery = query),
+                onSectionChange: (section) => {
+                  state.configActiveSection = section;
+                  state.configActiveSubsection = null;
+                },
+                onSubsectionChange: (section) => (state.configActiveSubsection = section),
+                onReload: () => loadConfig(state),
+                onSave: () => saveConfig(state),
+                onApply: () => applyConfig(state),
+                onUpdate: () => runUpdate(state),
+              })
+            : nothing
+        }
 
-        ${state.tab === "debug"
-          ? renderDebug({
-              loading: state.debugLoading,
-              status: state.debugStatus,
-              health: state.debugHealth,
-              models: state.debugModels,
-              heartbeat: state.debugHeartbeat,
-              eventLog: state.eventLog,
-              callMethod: state.debugCallMethod,
-              callParams: state.debugCallParams,
-              callResult: state.debugCallResult,
-              callError: state.debugCallError,
-              onCallMethodChange: (next) => (state.debugCallMethod = next),
-              onCallParamsChange: (next) => (state.debugCallParams = next),
-              onRefresh: () => loadDebug(state),
-              onCall: () => callDebugMethod(state),
-            })
-          : nothing}
+        ${
+          state.tab === "debug"
+            ? renderDebug({
+                loading: state.debugLoading,
+                status: state.debugStatus,
+                health: state.debugHealth,
+                models: state.debugModels,
+                heartbeat: state.debugHeartbeat,
+                eventLog: state.eventLog,
+                callMethod: state.debugCallMethod,
+                callParams: state.debugCallParams,
+                callResult: state.debugCallResult,
+                callError: state.debugCallError,
+                onCallMethodChange: (next) => (state.debugCallMethod = next),
+                onCallParamsChange: (next) => (state.debugCallParams = next),
+                onRefresh: () => loadDebug(state),
+                onCall: () => callDebugMethod(state),
+              })
+            : nothing
+        }
 
-        ${state.tab === "logs"
-          ? renderLogs({
-              loading: state.logsLoading,
-              error: state.logsError,
-              file: state.logsFile,
-              entries: state.logsEntries,
-              filterText: state.logsFilterText,
-              levelFilters: state.logsLevelFilters,
-              autoFollow: state.logsAutoFollow,
-              truncated: state.logsTruncated,
-              onFilterTextChange: (next) => (state.logsFilterText = next),
-              onLevelToggle: (level, enabled) => {
-                state.logsLevelFilters = { ...state.logsLevelFilters, [level]: enabled };
-              },
-              onToggleAutoFollow: (next) => (state.logsAutoFollow = next),
-              onRefresh: () => loadLogs(state, { reset: true }),
-              onExport: (lines, label) => state.exportLogs(lines, label),
-              onScroll: (event) => state.handleLogsScroll(event),
-            })
-          : nothing}
+        ${
+          state.tab === "logs"
+            ? renderLogs({
+                loading: state.logsLoading,
+                error: state.logsError,
+                file: state.logsFile,
+                entries: state.logsEntries,
+                filterText: state.logsFilterText,
+                levelFilters: state.logsLevelFilters,
+                autoFollow: state.logsAutoFollow,
+                truncated: state.logsTruncated,
+                onFilterTextChange: (next) => (state.logsFilterText = next),
+                onLevelToggle: (level, enabled) => {
+                  state.logsLevelFilters = { ...state.logsLevelFilters, [level]: enabled };
+                },
+                onToggleAutoFollow: (next) => (state.logsAutoFollow = next),
+                onRefresh: () => loadLogs(state, { reset: true }),
+                onExport: (lines, label) => state.exportLogs(lines, label),
+                onScroll: (event) => state.handleLogsScroll(event),
+              })
+            : nothing
+        }
       </main>
       ${renderExecApprovalPrompt(state)}
     </div>
