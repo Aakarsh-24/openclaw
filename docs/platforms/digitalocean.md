@@ -1,5 +1,5 @@
 ---
-summary: "Clawdbot on DigitalOcean (cheapest paid VPS option)"
+summary: "Clawdbot on DigitalOcean (simple paid VPS option)"
 read_when:
   - Setting up Clawdbot on DigitalOcean
   - Looking for cheap VPS hosting for Clawdbot
@@ -11,22 +11,22 @@ read_when:
 
 Run a persistent Clawdbot Gateway on DigitalOcean for **$6/month** (or $4/mo with reserved pricing).
 
-If you want something even cheaper, see the [Oracle Cloud guide](/platforms/oracle) — it's **actually free forever**.
+If you want a $0/month option and don’t mind ARM + provider-specific setup, see the [Oracle Cloud guide](/platforms/oracle).
 
 ## Cost Comparison (2026)
 
 | Provider | Plan | Specs | Price/mo | Notes |
 |----------|------|-------|----------|-------|
-| **Oracle Cloud** | Always Free ARM | 4 OCPU, 24GB RAM | **$0** | Best value, requires ARM-compatible setup |
-| **Hetzner** | CX22 | 2 vCPU, 4GB RAM | €3.79 (~$4) | Cheapest paid, EU datacenters |
-| **DigitalOcean** | Basic | 1 vCPU, 1GB RAM | $6 | Easy UI, good docs |
-| **Vultr** | Cloud Compute | 1 vCPU, 1GB RAM | $6 | Many locations |
-| **Linode** | Nanode | 1 vCPU, 1GB RAM | $5 | Now part of Akamai |
+| Oracle Cloud | Always Free ARM | up to 4 OCPU, 24GB RAM | $0 | ARM, limited capacity / signup quirks |
+| Hetzner | CX22 | 2 vCPU, 4GB RAM | €3.79 (~$4) | Cheapest paid option |
+| DigitalOcean | Basic | 1 vCPU, 1GB RAM | $6 | Easy UI, good docs |
+| Vultr | Cloud Compute | 1 vCPU, 1GB RAM | $6 | Many locations |
+| Linode | Nanode | 1 vCPU, 1GB RAM | $5 | Now part of Akamai |
 
-**Recommendation:** 
-- **Free:** Oracle Cloud ARM (if you can handle the signup process)
-- **Paid:** Hetzner CX22 (best specs per dollar) — see [Hetzner guide](/platforms/hetzner)
-- **Easy:** DigitalOcean (this guide) — beginner-friendly UI
+**Picking a provider:**
+- DigitalOcean: simplest UX + predictable setup (this guide)
+- Hetzner: good price/perf (see [Hetzner guide](/platforms/hetzner))
+- Oracle Cloud: can be $0/month, but is more finicky and ARM-only (see [Oracle guide](/platforms/oracle))
 
 ---
 

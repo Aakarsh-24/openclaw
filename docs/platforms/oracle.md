@@ -1,28 +1,31 @@
 ---
-summary: "Clawdbot on Oracle Cloud (Always Free ARM, best value)"
+summary: "Clawdbot on Oracle Cloud (Always Free ARM)"
 read_when:
   - Setting up Clawdbot on Oracle Cloud
-  - Looking for free VPS hosting for Clawdbot
-  - Want 24/7 Clawdbot without paying anything
+  - Looking for low-cost VPS hosting for Clawdbot
+  - Want 24/7 Clawdbot on a small server
 ---
 
 # Clawdbot on Oracle Cloud (OCI)
 
 ## Goal
 
-Run a persistent Clawdbot Gateway on Oracle Cloud's **Always Free** ARM tier — **$0/month forever** with more resources than most paid VPS options.
+Run a persistent Clawdbot Gateway on Oracle Cloud's **Always Free** ARM tier.
+
+Oracle’s free tier can be a great fit for Clawdbot (especially if you already have an OCI account), but it comes with tradeoffs:
+
+- ARM architecture (most things work, but some binaries may be x86-only)
+- Capacity and signup can be finicky
 
 ## Cost Comparison (2026)
 
 | Provider | Plan | Specs | Price/mo | Notes |
 |----------|------|-------|----------|-------|
-| **Oracle Cloud** | Always Free ARM | 4 OCPU, 24GB RAM | **$0** | Best value, this guide |
-| **Hetzner** | CX22 | 2 vCPU, 4GB RAM | €3.79 (~$4) | Cheapest paid, EU datacenters |
-| **DigitalOcean** | Basic | 1 vCPU, 1GB RAM | $6 | Easy UI, good docs |
-| **Vultr** | Cloud Compute | 1 vCPU, 1GB RAM | $6 | Many locations |
-| **Linode** | Nanode | 1 vCPU, 1GB RAM | $5 | Now part of Akamai |
-
-**Why Oracle?** The Always Free tier gives you 4x the CPU and 24x the RAM of a $6 DigitalOcean droplet — for $0. The tradeoff is ARM architecture (most things work) and Oracle's signup process (can be finicky).
+| Oracle Cloud | Always Free ARM | up to 4 OCPU, 24GB RAM | $0 | ARM, limited capacity |
+| Hetzner | CX22 | 2 vCPU, 4GB RAM | ~ $4 | Cheapest paid option |
+| DigitalOcean | Basic | 1 vCPU, 1GB RAM | $6 | Easy UI, good docs |
+| Vultr | Cloud Compute | 1 vCPU, 1GB RAM | $6 | Many locations |
+| Linode | Nanode | 1 vCPU, 1GB RAM | $5 | Now part of Akamai |
 
 ---
 
@@ -91,22 +94,7 @@ tailscale status
 
 **From now on, connect via Tailscale:** `ssh ubuntu@clawdbot` (or use the Tailscale IP).
 
-## 5) Install Homebrew (ARM)
-
-```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
-# Add to PATH
-echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> ~/.bashrc
-echo 'export HOMEBREW_NO_AUTO_UPDATE=1' >> ~/.bashrc
-echo 'export HOMEBREW_NO_ENV_HINTS=1' >> ~/.bashrc
-source ~/.bashrc
-
-# Install GCC (needed for some packages on ARM)
-brew install gcc
-```
-
-## 6) Install Clawdbot
+## 5) Install Clawdbot
 
 ```bash
 curl -fsSL https://clawd.bot/install.sh | bash
@@ -115,23 +103,28 @@ source ~/.bashrc
 
 When prompted "How do you want to hatch your bot?", select **"Do this later"**.
 
-## 7) Configure Gateway with Tailscale Serve
+> Note: If you hit ARM-native build issues, start with system packages (e.g. `sudo apt install -y build-essential`) before reaching for Homebrew.
+
+## 6) Configure Gateway (loopback + token auth) and enable Tailscale Serve
+
+Use token auth as the default. It’s predictable and avoids needing any “insecure auth” Control UI flags.
 
 ```bash
+# Keep the Gateway private on the VM
 clawdbot config set gateway.bind loopback
+
+# Require auth for the Gateway + Control UI
+clawdbot config set gateway.auth.mode token
+clawdbot doctor --generate-gateway-token
+
+# Expose over Tailscale Serve (HTTPS + tailnet access)
 clawdbot config set gateway.tailscale.mode serve
 clawdbot config set gateway.trustedProxies '["127.0.0.1"]'
-clawdbot config set gateway.auth.allowTailscale true
-clawdbot config set gateway.controlUi.allowInsecureAuth true
+
 systemctl --user restart clawdbot-gateway
 ```
 
-This configures:
-- Gateway binds to loopback only (127.0.0.1)
-- Tailscale Serve provides HTTPS and handles external routing
-- Authentication via Tailscale identity headers (no tokens needed)
-
-## 8) Verify
+## 7) Verify
 
 ```bash
 # Check version
@@ -178,11 +171,11 @@ No SSH tunnel needed. Tailscale provides:
 
 ---
 
-## Security: Why VCN + Tailscale Is Enough
+## Security: VCN + Tailscale (recommended baseline)
 
-With the VCN locked down (only UDP 41641 open), you have **defense in depth** that makes traditional VPS hardening redundant.
+With the VCN locked down (only UDP 41641 open) and the Gateway bound to loopback, you get strong defense-in-depth: public traffic is blocked at the network edge, and admin access happens over your tailnet.
 
-**How it works:** The VCN blocks traffic at the network edge — before it reaches your instance. Combined with Tailscale SSH (which bypasses sshd entirely), there's no attack surface for typical threats.
+This setup often removes the *need* for extra host-based firewall rules purely to stop Internet-wide SSH brute force — but you should still keep the OS updated, run `clawdbot security audit`, and verify you aren’t accidentally listening on public interfaces.
 
 ### What's Already Protected
 
@@ -193,7 +186,7 @@ With the VCN locked down (only UDP 41641 open), you have **defense in depth** th
 | sshd hardening | No | Tailscale SSH doesn't use sshd |
 | Disable root login | No | Tailscale uses Tailscale identity, not system users |
 | SSH key-only auth | No | Tailscale authenticates via your tailnet |
-| Disable IPv6 | No | OCI free tier doesn't assign public IPv6 |
+| IPv6 hardening | Usually not | Depends on your VCN/subnet settings; verify what’s actually assigned/exposed |
 
 ### Still Recommended
 
