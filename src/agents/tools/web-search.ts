@@ -3,7 +3,7 @@ import { Type } from "@sinclair/typebox";
 import type { ClawdbotConfig } from "../../config/config.js";
 import { formatCliCommand } from "../../cli/command-format.js";
 import type { AnyAgentTool } from "./common.js";
-import { jsonResult, readNumberParam, readStringParam } from "./common.js";
+import { jsonResult, readNumberParam, readStringArrayParam, readStringParam } from "./common.js";
 import {
   CacheEntry,
   DEFAULT_CACHE_TTL_MINUTES,
@@ -27,6 +27,7 @@ const PERPLEXITY_SEARCH_ENDPOINT = "https://api.perplexity.ai/search";
 const SEARCH_CACHE = new Map<string, CacheEntry<Record<string, unknown>>>();
 const BRAVE_FRESHNESS_SHORTCUTS = new Set(["pd", "pw", "pm", "py"]);
 const BRAVE_FRESHNESS_RANGE = /^(\d{4}-\d{2}-\d{2})to(\d{4}-\d{2}-\d{2})$/;
+const PERPLEXITY_RECENCY_VALUES = new Set(["day", "week", "month", "year"]);
 
 function createWebSearchSchema(provider: (typeof SEARCH_PROVIDERS)[number]) {
   const baseSchema = {
@@ -44,21 +45,21 @@ function createWebSearchSchema(provider: (typeof SEARCH_PROVIDERS)[number]) {
           "2-letter country code for region-specific results (e.g., 'DE', 'US', 'ALL'). Default: 'US'.",
       }),
     ),
-    search_lang: Type.Optional(
-      Type.String({
-        description: "ISO language code for search results (e.g., 'de', 'en', 'fr').",
-      }),
-    ),
-    ui_lang: Type.Optional(
-      Type.String({
-        description: "ISO language code for UI elements.",
-      }),
-    ),
   } as const;
 
   if (provider === "brave") {
     return Type.Object({
       ...baseSchema,
+      search_lang: Type.Optional(
+        Type.String({
+          description: "ISO language code for search results (e.g., 'de', 'en', 'fr').",
+        }),
+      ),
+      ui_lang: Type.Optional(
+        Type.String({
+          description: "ISO language code for UI elements.",
+        }),
+      ),
       freshness: Type.Optional(
         Type.String({
           description:
@@ -68,7 +69,26 @@ function createWebSearchSchema(provider: (typeof SEARCH_PROVIDERS)[number]) {
     });
   }
 
-  return Type.Object(baseSchema);
+  // Perplexity provider schema
+  return Type.Object({
+    ...baseSchema,
+    recency: Type.Optional(
+      Type.String({
+        description: "Filter by time period: 'day', 'week', 'month', or 'year'.",
+      }),
+    ),
+    domain_filter: Type.Optional(
+      Type.Array(Type.String(), {
+        description:
+          "Domain filter (max 20). Allowlist: ['nature.com'] or denylist: ['-reddit.com']. Cannot mix.",
+      }),
+    ),
+    language_filter: Type.Optional(
+      Type.Array(Type.String(), {
+        description: "ISO 639-1 language codes (max 10). Example: ['en', 'de'].",
+      }),
+    ),
+  });
 }
 
 type WebSearchConfig = NonNullable<ClawdbotConfig["tools"]>["web"] extends infer Web
@@ -233,6 +253,8 @@ async function runPerplexitySearchApi(params: {
   timeoutSeconds: number;
   country?: string;
   searchDomainFilter?: string[];
+  searchRecencyFilter?: string;
+  searchLanguageFilter?: string[];
 }): Promise<
   Array<{ title: string; url: string; description: string; published?: string; siteName?: string }>
 > {
@@ -245,8 +267,13 @@ async function runPerplexitySearchApi(params: {
     body.country = params.country;
   }
   if (params.searchDomainFilter && params.searchDomainFilter.length > 0) {
-    // Perplexity Search API accepts domain filter as array
     body.search_domain_filter = params.searchDomainFilter;
+  }
+  if (params.searchRecencyFilter) {
+    body.search_recency_filter = params.searchRecencyFilter;
+  }
+  if (params.searchLanguageFilter && params.searchLanguageFilter.length > 0) {
+    body.search_language_filter = params.searchLanguageFilter;
   }
 
   const res = await fetch(PERPLEXITY_SEARCH_ENDPOINT, {
@@ -290,11 +317,13 @@ async function runWebSearch(params: {
   ui_lang?: string;
   freshness?: string;
   searchDomainFilter?: string[];
+  searchRecencyFilter?: string;
+  searchLanguageFilter?: string[];
 }): Promise<Record<string, unknown>> {
   const cacheKey = normalizeCacheKey(
     params.provider === "brave"
       ? `${params.provider}:${params.query}:${params.count}:${params.country || "default"}:${params.search_lang || "default"}:${params.ui_lang || "default"}:${params.freshness || "default"}`
-      : `${params.provider}:${params.query}:${params.count}:${params.country || "default"}:${params.searchDomainFilter?.join(",") || "default"}`,
+      : `${params.provider}:${params.query}:${params.count}:${params.country || "default"}:${params.searchDomainFilter?.join(",") || "default"}:${params.searchRecencyFilter || "default"}:${params.searchLanguageFilter?.join(",") || "default"}`,
   );
   const cached = readCache(SEARCH_CACHE, cacheKey);
   if (cached) return { ...cached.value, cached: true };
@@ -309,6 +338,8 @@ async function runWebSearch(params: {
       timeoutSeconds: params.timeoutSeconds,
       country: params.country,
       searchDomainFilter: params.searchDomainFilter,
+      searchRecencyFilter: params.searchRecencyFilter,
+      searchLanguageFilter: params.searchLanguageFilter,
     });
 
     const payload = {
@@ -389,7 +420,7 @@ export function createWebSearchTool(options?: {
 
   const description =
     provider === "perplexity"
-      ? "Search the web using Perplexity Search API. Returns structured results (title, URL, snippet) for fast research. Supports region-specific search and domain filtering."
+      ? "Search the web using Perplexity Search API. Returns structured results (title, URL, snippet). Supports recency filter, domain filtering, and language filtering."
       : "Search the web using Brave Search API. Supports region-specific and localized search via country and language parameters. Returns titles, URLs, and snippets for fast research.";
 
   return {
@@ -423,6 +454,21 @@ export function createWebSearchTool(options?: {
           docs: "https://docs.clawd.bot/tools/web",
         });
       }
+      const rawRecency = readStringParam(params, "recency");
+      const recency =
+        rawRecency && PERPLEXITY_RECENCY_VALUES.has(rawRecency.toLowerCase())
+          ? rawRecency.toLowerCase()
+          : undefined;
+      if (rawRecency && !recency) {
+        return jsonResult({
+          error: "invalid_recency",
+          message: "recency must be one of: day, week, month, year.",
+          docs: "https://docs.clawd.bot/tools/web",
+        });
+      }
+      const domainFilter = readStringArrayParam(params, "domain_filter");
+      const languageFilter = readStringArrayParam(params, "language_filter");
+
       const result = await runWebSearch({
         query,
         count: resolveSearchCount(count, DEFAULT_SEARCH_COUNT),
@@ -434,7 +480,9 @@ export function createWebSearchTool(options?: {
         search_lang,
         ui_lang,
         freshness,
-        searchDomainFilter: undefined, // Could be added as a parameter in the future
+        searchDomainFilter: domainFilter,
+        searchRecencyFilter: recency,
+        searchLanguageFilter: languageFilter,
       });
       return jsonResult(result);
     },
@@ -444,4 +492,5 @@ export function createWebSearchTool(options?: {
 export const __testing = {
   normalizeFreshness,
   SEARCH_CACHE,
+  PERPLEXITY_RECENCY_VALUES,
 } as const;

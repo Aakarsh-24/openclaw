@@ -260,4 +260,178 @@ describe("web_search perplexity Search API", () => {
       typeof headers?.get === "function" ? headers.get("Authorization") : headers?.Authorization;
     expect(authHeader).toBe("Bearer pplx-config");
   });
+
+  it("passes recency filter to Perplexity Search API", async () => {
+    vi.stubEnv("PERPLEXITY_API_KEY", "pplx-test");
+    const mockFetch = vi.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ results: [] }),
+      } as Response),
+    );
+    // @ts-expect-error mock fetch
+    global.fetch = mockFetch;
+
+    const tool = createWebSearchTool({
+      config: { tools: { web: { search: { provider: "perplexity" } } } },
+      sandboxed: true,
+    });
+    await tool?.execute?.(1, { query: "test", recency: "week" });
+
+    expect(mockFetch).toHaveBeenCalled();
+    const body = JSON.parse(mockFetch.mock.calls[0]?.[1]?.body as string);
+    expect(body.search_recency_filter).toBe("week");
+  });
+
+  it("accepts all valid recency values", async () => {
+    vi.stubEnv("PERPLEXITY_API_KEY", "pplx-test");
+    const mockFetch = vi.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ results: [] }),
+      } as Response),
+    );
+    // @ts-expect-error mock fetch
+    global.fetch = mockFetch;
+
+    const tool = createWebSearchTool({
+      config: { tools: { web: { search: { provider: "perplexity" } } } },
+      sandboxed: true,
+    });
+
+    for (const recency of ["day", "week", "month", "year"]) {
+      webSearchTesting.SEARCH_CACHE.clear();
+      await tool?.execute?.(1, { query: `test-${recency}`, recency });
+      const body = JSON.parse(mockFetch.mock.calls.at(-1)?.[1]?.body as string);
+      expect(body.search_recency_filter).toBe(recency);
+    }
+  });
+
+  it("rejects invalid recency values", async () => {
+    vi.stubEnv("PERPLEXITY_API_KEY", "pplx-test");
+    const mockFetch = vi.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ results: [] }),
+      } as Response),
+    );
+    // @ts-expect-error mock fetch
+    global.fetch = mockFetch;
+
+    const tool = createWebSearchTool({
+      config: { tools: { web: { search: { provider: "perplexity" } } } },
+      sandboxed: true,
+    });
+    const result = await tool?.execute?.(1, { query: "test", recency: "yesterday" });
+
+    expect(mockFetch).not.toHaveBeenCalled();
+    expect(result?.details).toMatchObject({ error: "invalid_recency" });
+  });
+
+  it("passes domain filter to Perplexity Search API", async () => {
+    vi.stubEnv("PERPLEXITY_API_KEY", "pplx-test");
+    const mockFetch = vi.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ results: [] }),
+      } as Response),
+    );
+    // @ts-expect-error mock fetch
+    global.fetch = mockFetch;
+
+    const tool = createWebSearchTool({
+      config: { tools: { web: { search: { provider: "perplexity" } } } },
+      sandboxed: true,
+    });
+    await tool?.execute?.(1, {
+      query: "test",
+      domain_filter: ["nature.com", "science.org"],
+    });
+
+    expect(mockFetch).toHaveBeenCalled();
+    const body = JSON.parse(mockFetch.mock.calls[0]?.[1]?.body as string);
+    expect(body.search_domain_filter).toEqual(["nature.com", "science.org"]);
+  });
+
+  it("passes denylist domain filter to Perplexity Search API", async () => {
+    vi.stubEnv("PERPLEXITY_API_KEY", "pplx-test");
+    const mockFetch = vi.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ results: [] }),
+      } as Response),
+    );
+    // @ts-expect-error mock fetch
+    global.fetch = mockFetch;
+
+    const tool = createWebSearchTool({
+      config: { tools: { web: { search: { provider: "perplexity" } } } },
+      sandboxed: true,
+    });
+    await tool?.execute?.(1, {
+      query: "test",
+      domain_filter: ["-reddit.com", "-pinterest.com"],
+    });
+
+    expect(mockFetch).toHaveBeenCalled();
+    const body = JSON.parse(mockFetch.mock.calls[0]?.[1]?.body as string);
+    expect(body.search_domain_filter).toEqual(["-reddit.com", "-pinterest.com"]);
+  });
+
+  it("passes language filter to Perplexity Search API", async () => {
+    vi.stubEnv("PERPLEXITY_API_KEY", "pplx-test");
+    const mockFetch = vi.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ results: [] }),
+      } as Response),
+    );
+    // @ts-expect-error mock fetch
+    global.fetch = mockFetch;
+
+    const tool = createWebSearchTool({
+      config: { tools: { web: { search: { provider: "perplexity" } } } },
+      sandboxed: true,
+    });
+    await tool?.execute?.(1, {
+      query: "test",
+      language_filter: ["en", "de", "fr"],
+    });
+
+    expect(mockFetch).toHaveBeenCalled();
+    const body = JSON.parse(mockFetch.mock.calls[0]?.[1]?.body as string);
+    expect(body.search_language_filter).toEqual(["en", "de", "fr"]);
+  });
+
+  it("passes multiple filters together to Perplexity Search API", async () => {
+    vi.stubEnv("PERPLEXITY_API_KEY", "pplx-test");
+    const mockFetch = vi.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ results: [] }),
+      } as Response),
+    );
+    // @ts-expect-error mock fetch
+    global.fetch = mockFetch;
+
+    const tool = createWebSearchTool({
+      config: { tools: { web: { search: { provider: "perplexity" } } } },
+      sandboxed: true,
+    });
+    await tool?.execute?.(1, {
+      query: "climate research",
+      country: "US",
+      recency: "month",
+      domain_filter: ["nature.com", ".gov"],
+      language_filter: ["en"],
+    });
+
+    expect(mockFetch).toHaveBeenCalled();
+    const body = JSON.parse(mockFetch.mock.calls[0]?.[1]?.body as string);
+    expect(body.query).toBe("climate research");
+    expect(body.country).toBe("US");
+    expect(body.search_recency_filter).toBe("month");
+    expect(body.search_domain_filter).toEqual(["nature.com", ".gov"]);
+    expect(body.search_language_filter).toEqual(["en"]);
+  });
 });
