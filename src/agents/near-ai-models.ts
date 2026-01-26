@@ -53,7 +53,7 @@ export const NEAR_AI_MODEL_CATALOG = [
   {
     id: "zai-org/GLM-4.7",
     name: "GLM 4.7",
-    reasoning: false,
+    reasoning: true,
     input: ["text"],
     contextWindow: 131072,
     maxTokens: 8192,
