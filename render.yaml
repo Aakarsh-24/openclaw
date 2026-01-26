@@ -3,18 +3,16 @@ services:
     name: clawdbot
     runtime: docker
     plan: starter
-    healthCheckPath: /health
+    dockerCommand: node dist/index.js gateway --port 8080 --bind lan --auth password --allow-unconfigured
     envVars:
       - key: PORT
         value: "8080"
-      - key: SETUP_PASSWORD
+      - key: CLAWDBOT_GATEWAY_PASSWORD
         sync: false
       - key: CLAWDBOT_STATE_DIR
         value: /data/.clawdbot
       - key: CLAWDBOT_WORKSPACE_DIR
         value: /data/workspace
-      - key: CLAWDBOT_GATEWAY_TOKEN
-        generateValue: true
     disk:
       name: clawdbot-data
       mountPath: /data

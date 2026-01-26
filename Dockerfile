@@ -32,6 +32,4 @@ RUN pnpm ui:build
 
 ENV NODE_ENV=production
 
-# Run the gateway with settings suitable for Render deployment
-# Password auth allows browser-based login via SETUP_PASSWORD env var
-CMD ["node", "dist/index.js", "gateway", "--port", "8080", "--bind", "lan", "--auth", "password", "--allow-unconfigured"]
+CMD ["node", "dist/index.js"]
