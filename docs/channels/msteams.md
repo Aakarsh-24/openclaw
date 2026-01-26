@@ -12,30 +12,34 @@ Updated: 2026-01-21
 
 Status: text + DM attachments are supported; channel/group file sending requires `sharePointSiteId` + Graph permissions (see [Sending files in group chats](#sending-files-in-group-chats)). Polls are sent via Adaptive Cards.
 
-## Plugin required
-Microsoft Teams ships as a plugin and is not bundled with the core install.
+## Plugin setup
 
-**Breaking change (2026.1.15):** MS Teams moved out of core. If you use it, you must install the plugin.
+Microsoft Teams is bundled with Clawdbot. Its dependencies are automatically installed on
+first load when you enable the plugin.
 
-Explainable: keeps core installs lighter and lets MS Teams dependencies update independently.
+**Note (2026.1.15):** MS Teams is a plugin to keep core installs lighter and let its
+dependencies update independently.
 
-Install via CLI (npm registry):
+To enable, add `msteams` to your plugins allow list:
+
+```json5
+{
+  plugins: {
+    allow: ["msteams"]
+  }
+}
+```
+
+Alternatively, install explicitly from npm:
+
 ```bash
 clawdbot plugins install @clawdbot/msteams
 ```
 
-Local checkout (when running from a git repo):
-```bash
-clawdbot plugins install ./extensions/msteams
-```
-
-If you choose Teams during configure/onboarding and a git checkout is detected,
-Clawdbot will offer the local install path automatically.
-
 Details: [Plugins](/plugin)
 
 ## Quick setup (beginner)
-1) Install the Microsoft Teams plugin.
+1) Add `msteams` to your plugins allow list (or install via CLI).
 2) Create an **Azure Bot** (App ID + client secret + tenant ID).
 3) Configure Clawdbot with those credentials.
 4) Expose `/api/messages` (port 3978 by default) via a public URL or tunnel.

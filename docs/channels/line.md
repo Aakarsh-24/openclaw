@@ -16,18 +16,25 @@ Status: supported via plugin. Direct messages, group chats, media, locations, Fl
 messages, template messages, and quick replies are supported. Reactions and threads
 are not supported.
 
-## Plugin required
+## Plugin setup
 
-Install the LINE plugin:
+LINE is bundled with Clawdbot. Its dependencies are automatically installed on first load
+when you enable the plugin.
+
+To enable, add `line` to your plugins allow list:
+
+```json5
+{
+  plugins: {
+    allow: ["line"]
+  }
+}
+```
+
+Alternatively, install explicitly from npm:
 
 ```bash
 clawdbot plugins install @clawdbot/line
-```
-
-Local checkout (when running from a git repo):
-
-```bash
-clawdbot plugins install ./extensions/line
 ```
 
 ## Setup

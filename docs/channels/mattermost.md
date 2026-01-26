@@ -11,21 +11,28 @@ Status: supported via plugin (bot token + WebSocket events). Channels, groups, a
 Mattermost is a self-hostable team messaging platform; see the official site at
 [mattermost.com](https://mattermost.com) for product details and downloads.
 
-## Plugin required
-Mattermost ships as a plugin and is not bundled with the core install.
+## Plugin setup
 
-Install via CLI (npm registry):
+Mattermost is bundled with Clawdbot. Its dependencies are automatically installed on first
+load when you enable the plugin.
+
+To enable, add `mattermost` to your plugins allow list:
+
+```json5
+{
+  plugins: {
+    allow: ["mattermost"]
+  }
+}
+```
+
+The onboarding wizard and `clawdbot channels add` also offer to enable Mattermost.
+
+Alternatively, install explicitly from npm:
+
 ```bash
 clawdbot plugins install @clawdbot/mattermost
 ```
-
-Local checkout (when running from a git repo):
-```bash
-clawdbot plugins install ./extensions/mattermost
-```
-
-If you choose Mattermost during configure/onboarding and a git checkout is detected,
-Clawdbot will offer the local install path automatically.
 
 Details: [Plugins](/plugin)
 

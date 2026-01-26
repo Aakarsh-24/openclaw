@@ -10,11 +10,24 @@ Status: experimental. This integration automates a **personal Zalo account** via
 
 > **Warning:** This is an unofficial integration and may result in account suspension/ban. Use at your own risk.
 
-## Plugin required
-Zalo Personal ships as a plugin and is not bundled with the core install.
-- Install via CLI: `clawdbot plugins install @clawdbot/zalouser`
-- Or from a source checkout: `clawdbot plugins install ./extensions/zalouser`
-- Details: [Plugins](/plugin)
+## Plugin setup
+
+Zalo Personal is bundled with Clawdbot. Its dependencies are automatically installed on first
+load when you enable the plugin.
+
+To enable, add `zalouser` to your plugins allow list:
+
+```json5
+{
+  plugins: {
+    allow: ["zalouser"]
+  }
+}
+```
+
+Alternatively, install explicitly from npm: `clawdbot plugins install @clawdbot/zalouser`
+
+Details: [Plugins](/plugin)
 
 ## Prerequisite: zca-cli
 The Gateway machine must have the `zca` binary available in `PATH`.
