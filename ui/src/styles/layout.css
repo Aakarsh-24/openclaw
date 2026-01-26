@@ -3,10 +3,10 @@
    =========================================== */
 
 .shell {
-  --shell-pad: 16px;
-  --shell-gap: 16px;
+  --shell-pad: 20px;
+  --shell-gap: 20px;
   --shell-nav-width: 220px;
-  --shell-topbar-height: 56px;
+  --shell-topbar-height: 64px;
   --shell-focus-duration: 200ms;
   --shell-focus-ease: var(--ease-out);
   height: 100vh;
@@ -195,7 +195,7 @@
   grid-area: nav;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 16px 12px;
+  padding: 20px 14px;
   background: var(--bg);
   scrollbar-width: none; /* Firefox */
   transition:
@@ -276,7 +276,7 @@
 
 /* Nav groups */
 .nav-group {
-  margin-bottom: 20px;
+  margin-bottom: 28px;
   display: grid;
   gap: 2px;
 }
@@ -301,24 +301,21 @@
   justify-content: space-between;
   gap: 8px;
   width: 100%;
-  padding: 6px 10px;
+  padding: 6px 14px;
   font-size: 11px;
   font-weight: 500;
-  color: var(--muted);
-  margin-bottom: 4px;
+  color: var(--muted-strong);
+  margin-bottom: 6px;
   background: transparent;
   border: none;
   cursor: pointer;
   text-align: left;
   border-radius: var(--radius-sm);
-  transition:
-    color var(--duration-fast) ease,
-    background var(--duration-fast) ease;
+  transition: color var(--duration-fast) ease;
 }
 
 .nav-label:hover {
-  color: var(--text);
-  background: var(--bg-hover);
+  color: var(--muted);
 }
 
 .nav-label--static {
@@ -351,7 +348,7 @@
   align-items: center;
   justify-content: flex-start;
   gap: 10px;
-  padding: 8px 10px;
+  padding: 10px 14px;
   border-radius: var(--radius-md);
   border: 1px solid transparent;
   background: transparent;
@@ -359,7 +356,6 @@
   cursor: pointer;
   text-decoration: none;
   transition:
-    border-color var(--duration-fast) ease,
     background var(--duration-fast) ease,
     color var(--duration-fast) ease;
 }
@@ -371,8 +367,6 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  opacity: 0.7;
-  transition: opacity var(--duration-fast) ease;
 }
 
 .nav-item__icon svg {
@@ -397,18 +391,9 @@
   text-decoration: none;
 }
 
-.nav-item:hover .nav-item__icon {
-  opacity: 1;
-}
-
 .nav-item.active {
   color: var(--text-strong);
-  background: var(--accent-subtle);
-}
-
-.nav-item.active .nav-item__icon {
-  opacity: 1;
-  color: var(--accent);
+  background: var(--bg-hover);
 }
 
 /* ===========================================
@@ -417,7 +402,7 @@
 
 .content {
   grid-area: content;
-  padding: 12px 16px 32px;
+  padding: 20px 24px 32px;
   display: flex;
   flex-direction: column;
   gap: 24px;
@@ -507,7 +492,7 @@
 
 .grid {
   display: grid;
-  gap: 20px;
+  gap: 24px;
 }
 
 .grid-cols-2 {

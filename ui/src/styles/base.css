@@ -22,19 +22,19 @@
   --chrome: rgba(18, 20, 26, 0.95);
   --chrome-strong: rgba(18, 20, 26, 0.98);
 
-  /* Text - Slightly warmer */
-  --text: #e4e4e7;
-  --text-strong: #fafafa;
-  --chat-text: #e4e4e7;
-  --muted: #71717a;
-  --muted-strong: #52525b;
-  --muted-foreground: #71717a;
+  /* Text - Softer for reduced contrast */
+  --text: #d4d4d8;
+  --text-strong: #f4f4f5;
+  --chat-text: #d4d4d8;
+  --muted: #a1a1aa;
+  --muted-strong: #71717a;
+  --muted-foreground: #a1a1aa;
 
-  /* Border - Subtle but defined */
-  --border: #27272a;
+  /* Border - Softer and more subtle */
+  --border: #2e2e33;
   --border-strong: #3f3f46;
   --border-hover: #52525b;
-  --input: #27272a;
+  --input: #2e2e33;
   --ring: #ff5c5c;
 
   /* Accent - Punchy signature red */
@@ -43,7 +43,7 @@
   --accent-muted: #ff5c5c;
   --accent-subtle: rgba(255, 92, 92, 0.15);
   --accent-foreground: #fafafa;
-  --accent-glow: rgba(255, 92, 92, 0.25);
+  --accent-glow: rgba(255, 92, 92, 0.15);
   --primary: #ff5c5c;
   --primary-foreground: #ffffff;
 
@@ -68,10 +68,10 @@
   --danger-subtle: rgba(239, 68, 68, 0.12);
   --info: #3b82f6;
 
-  /* Focus - With glow */
-  --focus: rgba(255, 92, 92, 0.25);
-  --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--ring);
-  --focus-glow: 0 0 0 2px var(--bg), 0 0 0 4px var(--ring), 0 0 20px var(--accent-glow);
+  /* Focus - Subtle ring without glow */
+  --focus: rgba(255, 92, 92, 0.15);
+  --focus-ring: 0 0 0 2px var(--bg), 0 0 0 3px var(--ring);
+  --focus-glow: 0 0 0 2px var(--bg), 0 0 0 3px var(--ring);
 
   /* Grid */
   --grid-line: rgba(255, 255, 255, 0.04);
@@ -198,8 +198,8 @@ body {
 
 body {
   margin: 0;
-  font: 400 14px/1.55 var(--font-body);
-  letter-spacing: -0.02em;
+  font: 400 14px/1.6 var(--font-body);
+  letter-spacing: -0.01em;
   background: var(--bg);
   color: var(--text);
   -webkit-font-smoothing: antialiased;
@@ -357,13 +357,7 @@ select {
   }
 }
 
-/* Stagger animation delays for grouped elements */
-.stagger-1 { animation-delay: 0ms; }
-.stagger-2 { animation-delay: 50ms; }
-.stagger-3 { animation-delay: 100ms; }
-.stagger-4 { animation-delay: 150ms; }
-.stagger-5 { animation-delay: 200ms; }
-.stagger-6 { animation-delay: 250ms; }
+/* Stagger animation delays removed for cleaner feel */
 
 /* Focus visible styles */
 :focus-visible {
