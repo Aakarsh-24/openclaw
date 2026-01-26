@@ -441,11 +441,13 @@ export function renderApp(state: AppViewState) {
       : nothing}
 
         ${state.tab === "chat"
+<<<<<<< HEAD
       ? renderChat({
         sessionKey: state.sessionKey,
         onSessionKeyChange: (next) => {
           state.sessionKey = next;
           state.chatMessage = "";
+          state.chatAttachments = [];
           state.chatStream = null;
           state.chatStreamStartedAt = null;
           state.chatRunId = null;
@@ -496,6 +498,8 @@ export function renderApp(state: AppViewState) {
         canAbort: Boolean(state.chatRunId),
         onAbort: () => void state.handleAbortChat(),
         onQueueRemove: (id) => state.removeQueuedMessage(id),
+        attachments: state.chatAttachments,
+        onAttachmentsChange: (next) => (state.chatAttachments = next),
         onNewSession: () =>
           state.handleSendChat("/new", { restoreDraft: true }),
         // Sidebar props for tool output viewing
