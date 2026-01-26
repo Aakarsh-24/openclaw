@@ -76,12 +76,15 @@
   },
   "plugins": {
     "entries": {
-      "discord": {
-        "enabled": true
-      },
       "checkins": {
         "enabled": true
+      },
+      "memory-core": {
+        "enabled": true
       }
+    },
+    "slots": {
+      "memory": "memory-core"
     }
   }
 }
