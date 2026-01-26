@@ -92,6 +92,18 @@ When generating context cues:
 2. Check calendar with fresh gog command
 3. Never say "I remember you were working on X" - always verify current state
 
+## EF Coaching Check
+
+When Simon is active:
+- Note if tasks mentioned but not started (offer support)
+- Track any wins since last heartbeat
+- Update streak if applicable
+
+One-liner options:
+- "Still working on [X]? I'm here."
+- "Nice progress today — [count] things done."
+- "Day [N] streak. Solid."
+
 ## Proactive Monitoring
 
 - If blogwatcher has new items, summarize and alert Simon
