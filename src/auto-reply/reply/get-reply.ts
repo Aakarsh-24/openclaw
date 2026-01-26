@@ -130,9 +130,13 @@ export async function getReplyFromConfig(
 
   // Handle /reset prune - delete session entry and transcript, then return confirmation
   if (resetTriggered && pruneRequested && previousSessionEntry) {
-    const transcriptPath = previousSessionEntry.sessionId
-      ? resolveSessionTranscriptPath(previousSessionEntry.sessionId, agentId)
-      : undefined;
+    // Prefer sessionFile from entry (includes thread suffix for topics),
+    // fall back to resolveSessionTranscriptPath for legacy sessions
+    const transcriptPath =
+      previousSessionEntry.sessionFile?.trim() ||
+      (previousSessionEntry.sessionId
+        ? resolveSessionTranscriptPath(previousSessionEntry.sessionId, agentId)
+        : undefined);
     await deleteSessionEntry({
       storePath,
       sessionKey,
