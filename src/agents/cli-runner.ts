@@ -30,7 +30,17 @@ import { FailoverError, resolveFailoverStatus } from "./failover-error.js";
 import { classifyFailoverReason, isFailoverErrorMessage } from "./pi-embedded-helpers.js";
 import type { EmbeddedPiRunResult } from "./pi-embedded-runner.js";
 
-const log = createSubsystemLogger("agent/claude-cli");
+/** Cache of per-provider loggers to avoid creating new ones on each call. */
+const providerLoggers = new Map<string, ReturnType<typeof createSubsystemLogger>>();
+
+function getProviderLogger(provider: string) {
+  let logger = providerLoggers.get(provider);
+  if (!logger) {
+    logger = createSubsystemLogger(`agent/${provider}`);
+    providerLoggers.set(provider, logger);
+  }
+  return logger;
+}
 
 export async function runCliAgent(params: {
   sessionId: string;
@@ -51,6 +61,7 @@ export async function runCliAgent(params: {
   images?: ImageContent[];
 }): Promise<EmbeddedPiRunResult> {
   const started = Date.now();
+  const log = getProviderLogger(params.provider);
   const resolvedWorkspace = resolveUserPath(params.workspaceDir);
   const workspaceDir = resolvedWorkspace;
 
@@ -76,7 +87,10 @@ export async function runCliAgent(params: {
     config: params.config,
     sessionKey: params.sessionKey,
     sessionId: params.sessionId,
-    warn: makeBootstrapWarn({ sessionLabel, warn: (message) => log.warn(message) }),
+    warn: makeBootstrapWarn({
+      sessionLabel,
+      warn: (message) => log.warn(message),
+    }),
   });
   const { defaultAgentId, sessionAgentId } = resolveSessionAgentIds({
     sessionKey: params.sessionKey,
