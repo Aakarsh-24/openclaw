@@ -101,6 +101,47 @@ const MAX_NETWORK_REQUESTS = 500;
 let cached: ConnectedBrowser | null = null;
 let connecting: Promise<ConnectedBrowser> | null = null;
 
+// Cache Page objects by targetId to handle extension relay profiles where CDP session fails.
+// This allows us to reuse the same Page object across requests without re-resolving.
+const pagesByTargetId = new Map<string, WeakRef<Page>>();
+const MAX_PAGE_CACHE = 50;
+
+function pageTargetIdKey(cdpUrl: string, targetId: string) {
+  return `${normalizeCdpUrl(cdpUrl)}::${targetId}`;
+}
+
+function cachePageByTargetId(cdpUrl: string, targetId: string, page: Page): void {
+  const key = pageTargetIdKey(cdpUrl, targetId);
+  pagesByTargetId.set(key, new WeakRef(page));
+
+  // Cleanup when page closes
+  page.once("close", () => {
+    const cached = pagesByTargetId.get(key);
+    if (cached?.deref() === page) {
+      pagesByTargetId.delete(key);
+    }
+  });
+
+  // Evict old entries if cache is full
+  while (pagesByTargetId.size > MAX_PAGE_CACHE) {
+    const first = pagesByTargetId.keys().next();
+    if (first.done) break;
+    pagesByTargetId.delete(first.value);
+  }
+}
+
+function getCachedPageByTargetId(cdpUrl: string, targetId: string): Page | null {
+  const key = pageTargetIdKey(cdpUrl, targetId);
+  const ref = pagesByTargetId.get(key);
+  if (!ref) return null;
+  const page = ref.deref();
+  if (!page || page.isClosed()) {
+    pagesByTargetId.delete(key);
+    return null;
+  }
+  return page;
+}
+
 function normalizeCdpUrl(raw: string) {
   return raw.replace(/\/$/, "");
 }
@@ -337,12 +378,78 @@ async function pageTargetId(page: Page): Promise<string | null> {
   }
 }
 
-async function findPageByTargetId(browser: Browser, targetId: string): Promise<Page | null> {
+async function findPageByTargetId(
+  browser: Browser,
+  targetId: string,
+  cdpUrl?: string,
+): Promise<Page | null> {
+  // First, check the cache for a previously resolved page
+  if (cdpUrl) {
+    const cachedPage = getCachedPageByTargetId(cdpUrl, targetId);
+    if (cachedPage) return cachedPage;
+  }
+
   const pages = await getAllPages(browser);
+
+  // Try the standard CDP session approach
   for (const page of pages) {
     const tid = await pageTargetId(page).catch(() => null);
-    if (tid && tid === targetId) return page;
+    if (tid && tid === targetId) {
+      // Cache the successful mapping
+      if (cdpUrl) cachePageByTargetId(cdpUrl, targetId, page);
+      return page;
+    }
   }
+
+  // If CDP sessions fail (e.g., extension relay), try URL+title matching via /json/list
+  // This is a fallback for when Target.attachToBrowserTarget is blocked
+  if (cdpUrl) {
+    try {
+      const baseUrl = cdpUrl
+        .replace(/\/+$/, "")
+        .replace(/^ws:/, "http:")
+        .replace(/\/cdp$/, "");
+      const response = await fetch(`${baseUrl}/json/list`);
+      if (response.ok) {
+        const targets = (await response.json()) as Array<{
+          id: string;
+          url: string;
+          title: string;
+        }>;
+        const target = targets.find((t) => t.id === targetId);
+        if (target) {
+          // Try to find a page with matching URL
+          const urlMatch = pages.filter((p) => p.url() === target.url);
+          if (urlMatch.length === 1) {
+            cachePageByTargetId(cdpUrl, targetId, urlMatch[0]);
+            return urlMatch[0];
+          }
+          // If multiple URL matches, try to narrow down by title
+          if (urlMatch.length > 1 && target.title) {
+            for (const page of urlMatch) {
+              const title = await page.title().catch(() => "");
+              if (title === target.title) {
+                cachePageByTargetId(cdpUrl, targetId, page);
+                return page;
+              }
+            }
+          }
+          // If we still have multiple matches, use index-based matching as last resort
+          const sameUrlTargets = targets.filter((t) => t.url === target.url);
+          if (sameUrlTargets.length === urlMatch.length) {
+            const idx = sameUrlTargets.findIndex((t) => t.id === targetId);
+            if (idx >= 0 && idx < urlMatch.length) {
+              cachePageByTargetId(cdpUrl, targetId, urlMatch[idx]);
+              return urlMatch[idx];
+            }
+          }
+        }
+      }
+    } catch {
+      // Ignore fetch errors and fall through to return null
+    }
+  }
+
   return null;
 }
 
@@ -355,12 +462,16 @@ export async function getPageForTargetId(opts: {
   if (!pages.length) throw new Error("No pages available in the connected browser.");
   const first = pages[0];
   if (!opts.targetId) return first;
-  const found = await findPageByTargetId(browser, opts.targetId);
+  const found = await findPageByTargetId(browser, opts.targetId, opts.cdpUrl);
   if (!found) {
     // Extension relays can block CDP attachment APIs (e.g. Target.attachToBrowserTarget),
     // which prevents us from resolving a page's targetId via newCDPSession(). If Playwright
     // only exposes a single Page, use it as a best-effort fallback.
-    if (pages.length === 1) return first;
+    if (pages.length === 1) {
+      // Cache this fallback mapping for future requests
+      cachePageByTargetId(opts.cdpUrl, opts.targetId, first);
+      return first;
+    }
     throw new Error("tab not found");
   }
   return found;
@@ -496,7 +607,7 @@ export async function closePageByTargetIdViaPlaywright(opts: {
   targetId: string;
 }): Promise<void> {
   const { browser } = await connectBrowser(opts.cdpUrl);
-  const page = await findPageByTargetId(browser, opts.targetId);
+  const page = await findPageByTargetId(browser, opts.targetId, opts.cdpUrl);
   if (!page) {
     throw new Error("tab not found");
   }
@@ -512,7 +623,7 @@ export async function focusPageByTargetIdViaPlaywright(opts: {
   targetId: string;
 }): Promise<void> {
   const { browser } = await connectBrowser(opts.cdpUrl);
-  const page = await findPageByTargetId(browser, opts.targetId);
+  const page = await findPageByTargetId(browser, opts.targetId, opts.cdpUrl);
   if (!page) {
     throw new Error("tab not found");
   }
