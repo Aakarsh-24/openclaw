@@ -7,21 +7,28 @@ read_when:
 
 Status: supported via plugin (webhook bot). Direct messages, rooms, reactions, and markdown messages are supported.
 
-## Plugin required
-Nextcloud Talk ships as a plugin and is not bundled with the core install.
+## Plugin setup
 
-Install via CLI (npm registry):
+Nextcloud Talk is bundled with Clawdbot. Its dependencies are automatically installed on first
+load when you enable the plugin.
+
+To enable, add `nextcloud-talk` to your plugins allow list:
+
+```json5
+{
+  plugins: {
+    allow: ["nextcloud-talk"]
+  }
+}
+```
+
+The onboarding wizard and `clawdbot channels add` also offer to enable Nextcloud Talk.
+
+Alternatively, install explicitly from npm:
+
 ```bash
 clawdbot plugins install @clawdbot/nextcloud-talk
 ```
-
-Local checkout (when running from a git repo):
-```bash
-clawdbot plugins install ./extensions/nextcloud-talk
-```
-
-If you choose Nextcloud Talk during configure/onboarding and a git checkout is detected,
-Clawdbot will offer the local install path automatically.
 
 Details: [Plugins](/plugin)
 

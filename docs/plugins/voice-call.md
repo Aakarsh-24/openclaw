@@ -28,21 +28,25 @@ The Voice Call plugin runs **inside the Gateway process**.
 
 If you use a remote Gateway, install/configure the plugin on the **machine running the Gateway**, then restart the Gateway to load it.
 
-## Install
+## Plugin setup
 
-### Option A: install from npm (recommended)
+Voice Call is bundled with Clawdbot. Its dependencies are automatically installed on first
+load when you enable the plugin.
+
+To enable, add `voice-call` to your plugins allow list:
+
+```json5
+{
+  plugins: {
+    allow: ["voice-call"]
+  }
+}
+```
+
+Alternatively, install explicitly from npm:
 
 ```bash
 clawdbot plugins install @clawdbot/voice-call
-```
-
-Restart the Gateway afterwards.
-
-### Option B: install from a local folder (dev, no copying)
-
-```bash
-clawdbot plugins install ./extensions/voice-call
-cd ./extensions/voice-call && pnpm install
 ```
 
 Restart the Gateway afterwards.

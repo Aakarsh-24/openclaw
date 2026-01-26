@@ -7,17 +7,31 @@ read_when:
 
 Status: experimental. Direct messages only; groups coming soon per Zalo docs.
 
-## Plugin required
-Zalo ships as a plugin and is not bundled with the core install.
-- Install via CLI: `clawdbot plugins install @clawdbot/zalo`
-- Or select **Zalo** during onboarding and confirm the install prompt
-- Details: [Plugins](/plugin)
+## Plugin setup
+
+Zalo is bundled with Clawdbot. Its dependencies are automatically installed on first load
+when you enable the plugin.
+
+To enable, add `zalo` to your plugins allow list:
+
+```json5
+{
+  plugins: {
+    allow: ["zalo"]
+  }
+}
+```
+
+Or select **Zalo** during onboarding. Alternatively, install explicitly from npm:
+
+```bash
+clawdbot plugins install @clawdbot/zalo
+```
+
+Details: [Plugins](/plugin)
 
 ## Quick setup (beginner)
-1) Install the Zalo plugin:
-   - From a source checkout: `clawdbot plugins install ./extensions/zalo`
-   - From npm (if published): `clawdbot plugins install @clawdbot/zalo`
-   - Or pick **Zalo** in onboarding and confirm the install prompt
+1) Add `zalo` to your plugins allow list (or install via CLI/onboarding).
 2) Set the token:
    - Env: `ZALO_BOT_TOKEN=...`
    - Or config: `channels.zalo.botToken: "..."`.

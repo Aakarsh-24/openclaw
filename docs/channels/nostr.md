@@ -10,33 +10,31 @@ read_when:
 
 Nostr is a decentralized protocol for social networking. This channel enables Clawdbot to receive and respond to encrypted direct messages (DMs) via NIP-04.
 
-## Install (on demand)
+## Plugin setup
 
-### Onboarding (recommended)
+Nostr is bundled with Clawdbot. Its dependencies are automatically installed on first load
+when you enable the plugin.
 
-- The onboarding wizard (`clawdbot onboard`) and `clawdbot channels add` list optional channel plugins.
-- Selecting Nostr prompts you to install the plugin on demand.
+To enable, add `nostr` to your plugins allow list:
 
-Install defaults:
+```json5
+{
+  plugins: {
+    allow: ["nostr"]
+  }
+}
+```
 
-- **Dev channel + git checkout available:** uses the local plugin path.
-- **Stable/Beta:** downloads from npm.
+The onboarding wizard (`clawdbot onboard`) and `clawdbot channels add` also offer to enable
+Nostr when you select it.
 
-You can always override the choice in the prompt.
-
-### Manual install
+Alternatively, install explicitly from npm:
 
 ```bash
 clawdbot plugins install @clawdbot/nostr
 ```
 
-Use a local checkout (dev workflows):
-
-```bash
-clawdbot plugins install --link <path-to-clawdbot>/extensions/nostr
-```
-
-Restart the Gateway after installing or enabling plugins.
+Restart the Gateway after enabling plugins.
 
 ## Quick setup
 

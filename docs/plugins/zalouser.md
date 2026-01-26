@@ -19,21 +19,25 @@ This plugin runs **inside the Gateway process**.
 
 If you use a remote Gateway, install/configure it on the **machine running the Gateway**, then restart the Gateway.
 
-## Install
+## Plugin setup
 
-### Option A: install from npm
+Zalo Personal is bundled with Clawdbot. Its dependencies are automatically installed on first
+load when you enable the plugin.
+
+To enable, add `zalouser` to your plugins allow list:
+
+```json5
+{
+  plugins: {
+    allow: ["zalouser"]
+  }
+}
+```
+
+Alternatively, install explicitly from npm:
 
 ```bash
 clawdbot plugins install @clawdbot/zalouser
-```
-
-Restart the Gateway afterwards.
-
-### Option B: install from a local folder (dev)
-
-```bash
-clawdbot plugins install ./extensions/zalouser
-cd ./extensions/zalouser && pnpm install
 ```
 
 Restart the Gateway afterwards.

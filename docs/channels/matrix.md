@@ -13,32 +13,32 @@ but it requires E2EE to be enabled.
 Status: supported via plugin (matrix-bot-sdk). Direct messages, rooms, threads, media, reactions,
 polls (send + poll-start as text), location, and E2EE (with crypto support).
 
-## Plugin required
+## Plugin setup
 
-Matrix ships as a plugin and is not bundled with the core install.
+Matrix is bundled with Clawdbot. Its dependencies are automatically installed on first load
+when you enable the plugin.
 
-Install via CLI (npm registry):
+To enable, add `matrix` to your plugins allow list:
+
+```json5
+{
+  plugins: {
+    allow: ["matrix"]
+  }
+}
+```
+
+Alternatively, install explicitly from npm:
 
 ```bash
 clawdbot plugins install @clawdbot/matrix
 ```
 
-Local checkout (when running from a git repo):
-
-```bash
-clawdbot plugins install ./extensions/matrix
-```
-
-If you choose Matrix during configure/onboarding and a git checkout is detected,
-Clawdbot will offer the local install path automatically.
-
 Details: [Plugins](/plugin)
 
 ## Setup
 
-1) Install the Matrix plugin:
-   - From npm: `clawdbot plugins install @clawdbot/matrix`
-   - From a local checkout: `clawdbot plugins install ./extensions/matrix`
+1) Add `matrix` to your plugins allow list (or install via CLI).
 2) Create a Matrix account on a homeserver:
    - Browse hosting options at [https://matrix.org/ecosystem/hosting/](https://matrix.org/ecosystem/hosting/)
    - Or host it yourself.
