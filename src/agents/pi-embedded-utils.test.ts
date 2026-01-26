@@ -1,6 +1,6 @@
 import type { AssistantMessage } from "@mariozechner/pi-ai";
 import { describe, expect, it } from "vitest";
-import { extractAssistantText } from "./pi-embedded-utils.js";
+import { extractAssistantText, formatReasoningMessage } from "./pi-embedded-utils.js";
 
 describe("extractAssistantText", () => {
   it("strips Minimax tool invocation XML from text", () => {
@@ -506,5 +506,30 @@ File contents here`,
 
     const result = extractAssistantText(msg);
     expect(result).toBe("StartMiddleEnd");
+  });
+});
+
+describe("formatReasoningMessage", () => {
+  it("returns empty string for empty input", () => {
+    expect(formatReasoningMessage("")).toBe("");
+    expect(formatReasoningMessage("   ")).toBe("");
+  });
+
+  it("wraps single line in italics", () => {
+    expect(formatReasoningMessage("Because it helps")).toBe("Reasoning:\n_Because it helps_");
+  });
+
+  it("wraps each line individually for multiline text", () => {
+    const input = "line one\nline two\nline three";
+    expect(formatReasoningMessage(input)).toBe("Reasoning:\n_line one_\n_line two_\n_line three_");
+  });
+
+  it("preserves empty lines without wrapping them", () => {
+    const input = "line one\n\nline three";
+    expect(formatReasoningMessage(input)).toBe("Reasoning:\n_line one_\n\n_line three_");
+  });
+
+  it("trims leading and trailing whitespace from input", () => {
+    expect(formatReasoningMessage("  text  ")).toBe("Reasoning:\n_text_");
   });
 });
