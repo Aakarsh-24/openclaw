@@ -1,0 +1,56 @@
+{
+  "id": "nylas",
+  "uiHints": {
+    "apiKey": {
+      "label": "API Key",
+      "help": "Nylas API key from dashboard.nylas.com",
+      "sensitive": true
+    },
+    "apiUri": {
+      "label": "API URI",
+      "help": "Use https://api.us.nylas.com (US) or https://api.eu.nylas.com (EU)",
+      "placeholder": "https://api.us.nylas.com"
+    },
+    "defaultGrantId": {
+      "label": "Default Grant ID",
+      "help": "Primary email account's grant ID from Nylas dashboard"
+    },
+    "defaultTimezone": {
+      "label": "Default Timezone",
+      "help": "Timezone for date/time operations (e.g., America/New_York)",
+      "placeholder": "America/New_York"
+    },
+    "grants": {
+      "label": "Named Grants",
+      "help": "Map of named grants for multi-account access (e.g., work: grant-id-1)",
+      "advanced": true
+    }
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled": {
+        "type": "boolean"
+      },
+      "apiKey": {
+        "type": "string"
+      },
+      "apiUri": {
+        "type": "string"
+      },
+      "defaultGrantId": {
+        "type": "string"
+      },
+      "defaultTimezone": {
+        "type": "string"
+      },
+      "grants": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
