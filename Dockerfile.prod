@@ -42,6 +42,16 @@ COPY extensions/memory-core ./
 RUN npm install --legacy-peer-deps esbuild && \
     npx esbuild index.ts --bundle --platform=node --format=esm --outfile=dist/index.js --external:clawdbot --external:clawdbot/*
 
+# Stage 2c: Build discord extension
+FROM node:22-slim AS discord-builder
+
+WORKDIR /build
+COPY extensions/discord ./
+
+# Add esbuild and build (skip peer deps to avoid unreleased clawdbot version)
+RUN npm install --legacy-peer-deps esbuild && \
+    npx esbuild index.ts --bundle --platform=node --format=esm --outfile=dist/index.js --external:clawdbot --external:clawdbot/*
+
 # Stage 3: Production image
 FROM node:22-bookworm-slim
 
@@ -56,6 +66,7 @@ COPY --from=clawdbot-builder /app/package.json ./package.json
 # Copy the pre-built extensions to staging (PVC will mount over /root/.clawdbot)
 COPY --from=checkins-builder /build /app/bundled-plugins/checkins
 COPY --from=memory-core-builder /build /app/bundled-plugins/memory-core
+COPY --from=discord-builder /build /app/bundled-plugins/discord
 
 # Copy default config
 COPY deploy/prod/clawdbot.json /app/clawdbot.default.json
@@ -73,6 +84,7 @@ echo "Installing plugins..."\n\
 mkdir -p /root/.clawdbot/extensions\n\
 cp -r /app/bundled-plugins/checkins /root/.clawdbot/extensions/\n\
 cp -r /app/bundled-plugins/memory-core /root/.clawdbot/extensions/\n\
+cp -r /app/bundled-plugins/discord /root/.clawdbot/extensions/\n\
 exec node /app/dist/entry.js gateway run\n\
 ' > /app/entrypoint.sh && chmod +x /app/entrypoint.sh
 
