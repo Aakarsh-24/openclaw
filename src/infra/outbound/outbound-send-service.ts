@@ -1,18 +1,12 @@
-import type { AgentToolResult } from '@mariozechner/pi-agent-core';
-import { dispatchChannelMessageAction } from '../../channels/plugins/message-actions.js';
-import type {
-  ChannelId,
-  ChannelThreadingToolContext,
-} from '../../channels/plugins/types.js';
-import type { ClawdbotConfig } from '../../config/config.js';
-import { appendAssistantMessageToSessionTranscript } from '../../config/sessions.js';
-import type {
-  GatewayClientMode,
-  GatewayClientName,
-} from '../../utils/message-channel.js';
-import type { OutboundSendDeps } from './deliver.js';
-import type { MessagePollResult, MessageSendResult } from './message.js';
-import { sendMessage, sendPoll } from './message.js';
+import type { AgentToolResult } from "@mariozechner/pi-agent-core";
+import { dispatchChannelMessageAction } from "../../channels/plugins/message-actions.js";
+import type { ChannelId, ChannelThreadingToolContext } from "../../channels/plugins/types.js";
+import type { ClawdbotConfig } from "../../config/config.js";
+import { appendAssistantMessageToSessionTranscript } from "../../config/sessions.js";
+import type { GatewayClientMode, GatewayClientName } from "../../utils/message-channel.js";
+import type { OutboundSendDeps } from "./deliver.js";
+import type { MessagePollResult, MessageSendResult } from "./message.js";
+import { sendMessage, sendPoll } from "./message.js";
 
 export type OutboundGatewayContext = {
   url?: string;
@@ -47,9 +41,9 @@ function extractToolPayload(result: AgentToolResult<unknown>): unknown {
     ? result.content.find(
         (block) =>
           block &&
-          typeof block === 'object' &&
-          (block as { type?: unknown }).type === 'text' &&
-          typeof (block as { text?: unknown }).text === 'string'
+          typeof block === "object" &&
+          (block as { type?: unknown }).type === "text" &&
+          typeof (block as { text?: unknown }).text === "string",
       )
     : undefined;
   const text = (textBlock as { text?: string } | undefined)?.text;
@@ -65,8 +59,8 @@ function extractToolPayload(result: AgentToolResult<unknown>): unknown {
 
 function throwIfAborted(abortSignal?: AbortSignal): void {
   if (abortSignal?.aborted) {
-    const err = new Error('Message send aborted');
-    err.name = 'AbortError';
+    const err = new Error("Message send aborted");
+    err.name = "AbortError";
     throw err;
   }
 }
@@ -87,7 +81,7 @@ export async function executeSendAction(params: {
     accuracy?: number;
   };
 }): Promise<{
-  handledBy: 'plugin' | 'core';
+  handledBy: "plugin" | "core";
   payload: unknown;
   toolResult?: AgentToolResult<unknown>;
   sendResult?: MessageSendResult;
@@ -96,7 +90,7 @@ export async function executeSendAction(params: {
   if (!params.ctx.dryRun) {
     const handled = await dispatchChannelMessageAction({
       channel: params.ctx.channel,
-      action: 'send',
+      action: "send",
       cfg: params.ctx.cfg,
       params: params.ctx.params,
       accountId: params.ctx.accountId ?? undefined,
@@ -119,7 +113,7 @@ export async function executeSendAction(params: {
         });
       }
       return {
-        handledBy: 'plugin',
+        handledBy: "plugin",
         payload: extractToolPayload(handled),
         toolResult: handled,
       };
@@ -146,7 +140,7 @@ export async function executeSendAction(params: {
   });
 
   return {
-    handledBy: 'core',
+    handledBy: "core",
     payload: result,
     sendResult: result,
   };
@@ -160,7 +154,7 @@ export async function executePollAction(params: {
   maxSelections: number;
   durationHours?: number;
 }): Promise<{
-  handledBy: 'plugin' | 'core';
+  handledBy: "plugin" | "core";
   payload: unknown;
   toolResult?: AgentToolResult<unknown>;
   pollResult?: MessagePollResult;
@@ -168,7 +162,7 @@ export async function executePollAction(params: {
   if (!params.ctx.dryRun) {
     const handled = await dispatchChannelMessageAction({
       channel: params.ctx.channel,
-      action: 'poll',
+      action: "poll",
       cfg: params.ctx.cfg,
       params: params.ctx.params,
       accountId: params.ctx.accountId ?? undefined,
@@ -178,7 +172,7 @@ export async function executePollAction(params: {
     });
     if (handled) {
       return {
-        handledBy: 'plugin',
+        handledBy: "plugin",
         payload: extractToolPayload(handled),
         toolResult: handled,
       };
@@ -198,7 +192,7 @@ export async function executePollAction(params: {
   });
 
   return {
-    handledBy: 'core',
+    handledBy: "core",
     payload: result,
     pollResult: result,
   };

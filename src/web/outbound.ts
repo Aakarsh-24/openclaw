@@ -1,21 +1,16 @@
-import { randomUUID } from 'node:crypto';
+import { randomUUID } from "node:crypto";
 
-import { loadConfig } from '../config/config.js';
-import { resolveMarkdownTableMode } from '../config/markdown-tables.js';
-import { getChildLogger } from '../logging/logger.js';
-import { createSubsystemLogger } from '../logging/subsystem.js';
-import { convertMarkdownTables } from '../markdown/tables.js';
-import { normalizePollInput, type PollInput } from '../polls.js';
-import { toWhatsappJid } from '../utils.js';
-import {
-  type ActiveWebSendOptions,
-  requireActiveWebListener,
-} from './active-listener.js';
-import { loadWebMedia } from './media.js';
+import { loadConfig } from "../config/config.js";
+import { resolveMarkdownTableMode } from "../config/markdown-tables.js";
+import { getChildLogger } from "../logging/logger.js";
+import { createSubsystemLogger } from "../logging/subsystem.js";
+import { convertMarkdownTables } from "../markdown/tables.js";
+import { normalizePollInput, type PollInput } from "../polls.js";
+import { toWhatsappJid } from "../utils.js";
+import { type ActiveWebSendOptions, requireActiveWebListener } from "./active-listener.js";
+import { loadWebMedia } from "./media.js";
 
-const outboundLog = createSubsystemLogger('gateway/channels/whatsapp').child(
-  'outbound'
-);
+const outboundLog = createSubsystemLogger("gateway/channels/whatsapp").child("outbound");
 
 export async function sendMessageWhatsApp(
   to: string,
@@ -32,22 +27,23 @@ export async function sendMessageWhatsApp(
       address?: string;
       accuracy?: number;
     };
-  }
+  },
 ): Promise<{ messageId: string; toJid: string }> {
   let text = body;
   const correlationId = randomUUID();
   const startedAt = Date.now();
-  const { listener: active, accountId: resolvedAccountId } =
-    requireActiveWebListener(options.accountId);
+  const { listener: active, accountId: resolvedAccountId } = requireActiveWebListener(
+    options.accountId,
+  );
   const cfg = loadConfig();
   const tableMode = resolveMarkdownTableMode({
     cfg,
-    channel: 'whatsapp',
+    channel: "whatsapp",
     accountId: resolvedAccountId ?? options.accountId,
   });
-  text = convertMarkdownTables(text ?? '', tableMode);
+  text = convertMarkdownTables(text ?? "", tableMode);
   const logger = getChildLogger({
-    module: 'web-outbound',
+    module: "web-outbound",
     correlationId,
     to,
   });
@@ -60,28 +56,25 @@ export async function sendMessageWhatsApp(
       const caption = text || undefined;
       mediaBuffer = media.buffer;
       mediaType = media.contentType;
-      if (media.kind === 'audio') {
+      if (media.kind === "audio") {
         // WhatsApp expects explicit opus codec for PTT voice notes.
         mediaType =
-          media.contentType === 'audio/ogg'
-            ? 'audio/ogg; codecs=opus'
-            : (media.contentType ?? 'application/octet-stream');
-      } else if (media.kind === 'video') {
-        text = caption ?? '';
-      } else if (media.kind === 'image') {
-        text = caption ?? '';
+          media.contentType === "audio/ogg"
+            ? "audio/ogg; codecs=opus"
+            : (media.contentType ?? "application/octet-stream");
+      } else if (media.kind === "video") {
+        text = caption ?? "";
+      } else if (media.kind === "image") {
+        text = caption ?? "";
       } else {
-        text = caption ?? '';
+        text = caption ?? "";
       }
     }
     const hasLocation = Boolean(options.location);
     outboundLog.info(
-      `Sending message -> ${jid}${options.mediaUrl ? ' (media)' : ''}${hasLocation ? ' (location)' : ''}`
+      `Sending message -> ${jid}${options.mediaUrl ? " (media)" : ""}${hasLocation ? " (location)" : ""}`,
     );
-    logger.info(
-      { jid, hasMedia: Boolean(options.mediaUrl), hasLocation },
-      'sending message'
-    );
+    logger.info({ jid, hasMedia: Boolean(options.mediaUrl), hasLocation }, "sending message");
     await active.sendComposingTo(to);
     const hasExplicitAccountId = Boolean(options.accountId?.trim());
     const accountId = hasExplicitAccountId ? resolvedAccountId : undefined;
@@ -93,34 +86,19 @@ export async function sendMessageWhatsApp(
           }
         : undefined;
     const result = sendOptions
-      ? await active.sendMessage(
-          to,
-          text,
-          mediaBuffer,
-          mediaType,
-          sendOptions,
-          options.location
-        )
-      : await active.sendMessage(
-          to,
-          text,
-          mediaBuffer,
-          mediaType,
-          undefined,
-          options.location
-        );
-    const messageId =
-      (result as { messageId?: string })?.messageId ?? 'unknown';
+      ? await active.sendMessage(to, text, mediaBuffer, mediaType, sendOptions, options.location)
+      : await active.sendMessage(to, text, mediaBuffer, mediaType, undefined, options.location);
+    const messageId = (result as { messageId?: string })?.messageId ?? "unknown";
     const durationMs = Date.now() - startedAt;
     outboundLog.info(
-      `Sent message ${messageId} -> ${jid}${options.mediaUrl ? ' (media)' : ''}${hasLocation ? ' (location)' : ''} (${durationMs}ms)`
+      `Sent message ${messageId} -> ${jid}${options.mediaUrl ? " (media)" : ""}${hasLocation ? " (location)" : ""} (${durationMs}ms)`,
     );
-    logger.info({ jid, messageId, hasLocation }, 'sent message');
+    logger.info({ jid, messageId, hasLocation }, "sent message");
     return { messageId, toJid: jid };
   } catch (err) {
     logger.error(
       { err: String(err), to, hasMedia: Boolean(options.mediaUrl) },
-      'failed to send via web session'
+      "failed to send via web session",
     );
     throw err;
   }
@@ -135,12 +113,12 @@ export async function sendReactionWhatsApp(
     fromMe?: boolean;
     participant?: string;
     accountId?: string;
-  }
+  },
 ): Promise<void> {
   const correlationId = randomUUID();
   const { listener: active } = requireActiveWebListener(options.accountId);
   const logger = getChildLogger({
-    module: 'web-outbound',
+    module: "web-outbound",
     correlationId,
     chatJid,
     messageId,
@@ -148,20 +126,20 @@ export async function sendReactionWhatsApp(
   try {
     const jid = toWhatsappJid(chatJid);
     outboundLog.info(`Sending reaction "${emoji}" -> message ${messageId}`);
-    logger.info({ chatJid: jid, messageId, emoji }, 'sending reaction');
+    logger.info({ chatJid: jid, messageId, emoji }, "sending reaction");
     await active.sendReaction(
       chatJid,
       messageId,
       emoji,
       options.fromMe ?? false,
-      options.participant
+      options.participant,
     );
     outboundLog.info(`Sent reaction "${emoji}" -> message ${messageId}`);
-    logger.info({ chatJid: jid, messageId, emoji }, 'sent reaction');
+    logger.info({ chatJid: jid, messageId, emoji }, "sent reaction");
   } catch (err) {
     logger.error(
       { err: String(err), chatJid, messageId, emoji },
-      'failed to send reaction via web session'
+      "failed to send reaction via web session",
     );
     throw err;
   }
@@ -170,13 +148,13 @@ export async function sendReactionWhatsApp(
 export async function sendPollWhatsApp(
   to: string,
   poll: PollInput,
-  options: { verbose: boolean; accountId?: string }
+  options: { verbose: boolean; accountId?: string },
 ): Promise<{ messageId: string; toJid: string }> {
   const correlationId = randomUUID();
   const startedAt = Date.now();
   const { listener: active } = requireActiveWebListener(options.accountId);
   const logger = getChildLogger({
-    module: 'web-outbound',
+    module: "web-outbound",
     correlationId,
     to,
   });
@@ -191,19 +169,18 @@ export async function sendPollWhatsApp(
         optionCount: normalized.options.length,
         maxSelections: normalized.maxSelections,
       },
-      'sending poll'
+      "sending poll",
     );
     const result = await active.sendPoll(to, normalized);
-    const messageId =
-      (result as { messageId?: string })?.messageId ?? 'unknown';
+    const messageId = (result as { messageId?: string })?.messageId ?? "unknown";
     const durationMs = Date.now() - startedAt;
     outboundLog.info(`Sent poll ${messageId} -> ${jid} (${durationMs}ms)`);
-    logger.info({ jid, messageId }, 'sent poll');
+    logger.info({ jid, messageId }, "sent poll");
     return { messageId, toJid: jid };
   } catch (err) {
     logger.error(
       { err: String(err), to, question: poll.question },
-      'failed to send poll via web session'
+      "failed to send poll via web session",
     );
     throw err;
   }

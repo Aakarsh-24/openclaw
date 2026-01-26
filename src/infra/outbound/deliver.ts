@@ -3,33 +3,30 @@ import {
   chunkMarkdownTextWithMode,
   resolveChunkMode,
   resolveTextChunkLimit,
-} from '../../auto-reply/chunk.js';
-import type { ReplyPayload } from '../../auto-reply/types.js';
-import { resolveChannelMediaMaxBytes } from '../../channels/plugins/media-limits.js';
-import { loadChannelOutboundAdapter } from '../../channels/plugins/outbound/load.js';
-import type { ChannelOutboundAdapter } from '../../channels/plugins/types.js';
-import type { ClawdbotConfig } from '../../config/config.js';
-import { resolveMarkdownTableMode } from '../../config/markdown-tables.js';
+} from "../../auto-reply/chunk.js";
+import type { ReplyPayload } from "../../auto-reply/types.js";
+import { resolveChannelMediaMaxBytes } from "../../channels/plugins/media-limits.js";
+import { loadChannelOutboundAdapter } from "../../channels/plugins/outbound/load.js";
+import type { ChannelOutboundAdapter } from "../../channels/plugins/types.js";
+import type { ClawdbotConfig } from "../../config/config.js";
+import { resolveMarkdownTableMode } from "../../config/markdown-tables.js";
 import {
   appendAssistantMessageToSessionTranscript,
   resolveMirroredTranscriptText,
-} from '../../config/sessions.js';
-import type { sendMessageDiscord } from '../../discord/send.js';
-import type { sendMessageIMessage } from '../../imessage/send.js';
-import {
-  markdownToSignalTextChunks,
-  type SignalTextStyleRange,
-} from '../../signal/format.js';
-import { sendMessageSignal } from '../../signal/send.js';
-import type { sendMessageSlack } from '../../slack/send.js';
-import type { sendMessageTelegram } from '../../telegram/send.js';
-import type { sendMessageWhatsApp } from '../../web/outbound.js';
-import type { NormalizedOutboundPayload } from './payloads.js';
-import { normalizeReplyPayloadsForDelivery } from './payloads.js';
-import type { OutboundChannel } from './targets.js';
+} from "../../config/sessions.js";
+import type { sendMessageDiscord } from "../../discord/send.js";
+import type { sendMessageIMessage } from "../../imessage/send.js";
+import { markdownToSignalTextChunks, type SignalTextStyleRange } from "../../signal/format.js";
+import { sendMessageSignal } from "../../signal/send.js";
+import type { sendMessageSlack } from "../../slack/send.js";
+import type { sendMessageTelegram } from "../../telegram/send.js";
+import type { sendMessageWhatsApp } from "../../web/outbound.js";
+import type { NormalizedOutboundPayload } from "./payloads.js";
+import { normalizeReplyPayloadsForDelivery } from "./payloads.js";
+import type { OutboundChannel } from "./targets.js";
 
-export { normalizeOutboundPayloads } from './payloads.js';
-export type { NormalizedOutboundPayload } from './payloads.js';
+export { normalizeOutboundPayloads } from "./payloads.js";
+export type { NormalizedOutboundPayload } from "./payloads.js";
 
 type SendMatrixMessage = (
   to: string,
@@ -39,7 +36,7 @@ type SendMatrixMessage = (
     replyToId?: string;
     threadId?: string;
     timeoutMs?: number;
-  }
+  },
 ) => Promise<{ messageId: string; roomId: string }>;
 
 export type OutboundSendDeps = {
@@ -53,12 +50,12 @@ export type OutboundSendDeps = {
   sendMSTeams?: (
     to: string,
     text: string,
-    opts?: { mediaUrl?: string }
+    opts?: { mediaUrl?: string },
   ) => Promise<{ messageId: string; conversationId: string }>;
 };
 
 export type OutboundDeliveryResult = {
-  channel: Exclude<OutboundChannel, 'none'>;
+  channel: Exclude<OutboundChannel, "none">;
   messageId: string;
   chatId?: string;
   channelId?: string;
@@ -75,26 +72,23 @@ type Chunker = (text: string, limit: number) => string[];
 
 type ChannelHandler = {
   chunker: Chunker | null;
-  chunkerMode?: 'text' | 'markdown';
+  chunkerMode?: "text" | "markdown";
   textChunkLimit?: number;
   sendPayload?: (payload: ReplyPayload) => Promise<OutboundDeliveryResult>;
   sendText: (text: string) => Promise<OutboundDeliveryResult>;
-  sendMedia: (
-    caption: string,
-    mediaUrl: string
-  ) => Promise<OutboundDeliveryResult>;
+  sendMedia: (caption: string, mediaUrl: string) => Promise<OutboundDeliveryResult>;
 };
 
 function throwIfAborted(abortSignal?: AbortSignal): void {
   if (abortSignal?.aborted) {
-    throw new Error('Outbound delivery aborted');
+    throw new Error("Outbound delivery aborted");
   }
 }
 
 // Channel docking: outbound delivery delegates to plugin.outbound adapters.
 async function createChannelHandler(params: {
   cfg: ClawdbotConfig;
-  channel: Exclude<OutboundChannel, 'none'>;
+  channel: Exclude<OutboundChannel, "none">;
   to: string;
   accountId?: string;
   replyToId?: string | null;
@@ -126,7 +120,7 @@ async function createChannelHandler(params: {
 function createPluginHandler(params: {
   outbound?: ChannelOutboundAdapter;
   cfg: ClawdbotConfig;
-  channel: Exclude<OutboundChannel, 'none'>;
+  channel: Exclude<OutboundChannel, "none">;
   to: string;
   accountId?: string;
   replyToId?: string | null;
@@ -149,7 +143,7 @@ function createPluginHandler(params: {
           outbound.sendPayload!({
             cfg: params.cfg,
             to: params.to,
-            text: payload.text ?? '',
+            text: payload.text ?? "",
             mediaUrl: payload.mediaUrl,
             accountId: params.accountId,
             replyToId: params.replyToId,
@@ -187,7 +181,7 @@ function createPluginHandler(params: {
 
 export async function deliverOutboundPayloads(params: {
   cfg: ClawdbotConfig;
-  channel: Exclude<OutboundChannel, 'none'>;
+  channel: Exclude<OutboundChannel, "none">;
   to: string;
   accountId?: string;
   payloads: ReplyPayload[];
@@ -234,13 +228,11 @@ export async function deliverOutboundPayloads(params: {
         fallbackLimit: handler.textChunkLimit,
       })
     : undefined;
-  const chunkMode = handler.chunker
-    ? resolveChunkMode(cfg, channel, accountId)
-    : 'length';
-  const isSignalChannel = channel === 'signal';
+  const chunkMode = handler.chunker ? resolveChunkMode(cfg, channel, accountId) : "length";
+  const isSignalChannel = channel === "signal";
   const signalTableMode = isSignalChannel
-    ? resolveMarkdownTableMode({ cfg, channel: 'signal', accountId })
-    : 'code';
+    ? resolveMarkdownTableMode({ cfg, channel: "signal", accountId })
+    : "code";
   const signalMaxBytes = isSignalChannel
     ? resolveChannelMediaMaxBytes({
         cfg,
@@ -257,11 +249,11 @@ export async function deliverOutboundPayloads(params: {
       results.push(await handler.sendText(text));
       return;
     }
-    if (chunkMode === 'newline') {
-      const mode = handler.chunkerMode ?? 'text';
+    if (chunkMode === "newline") {
+      const mode = handler.chunkerMode ?? "text";
       const blockChunks =
-        mode === 'markdown'
-          ? chunkMarkdownTextWithMode(text, textLimit, 'newline')
+        mode === "markdown"
+          ? chunkMarkdownTextWithMode(text, textLimit, "newline")
           : chunkByParagraph(text, textLimit);
 
       if (!blockChunks.length && text) blockChunks.push(text);
@@ -282,17 +274,14 @@ export async function deliverOutboundPayloads(params: {
     }
   };
 
-  const sendSignalText = async (
-    text: string,
-    styles: SignalTextStyleRange[]
-  ) => {
+  const sendSignalText = async (text: string, styles: SignalTextStyleRange[]) => {
     throwIfAborted(abortSignal);
     return {
-      channel: 'signal' as const,
+      channel: "signal" as const,
       ...(await sendSignal(to, text, {
         maxBytes: signalMaxBytes,
         accountId: accountId ?? undefined,
-        textMode: 'plain',
+        textMode: "plain",
         textStyles: styles,
       })),
     };
@@ -319,23 +308,19 @@ export async function deliverOutboundPayloads(params: {
 
   const sendSignalMedia = async (caption: string, mediaUrl: string) => {
     throwIfAborted(abortSignal);
-    const formatted = markdownToSignalTextChunks(
-      caption,
-      Number.POSITIVE_INFINITY,
-      {
-        tableMode: signalTableMode,
-      }
-    )[0] ?? {
+    const formatted = markdownToSignalTextChunks(caption, Number.POSITIVE_INFINITY, {
+      tableMode: signalTableMode,
+    })[0] ?? {
       text: caption,
       styles: [],
     };
     return {
-      channel: 'signal' as const,
+      channel: "signal" as const,
       ...(await sendSignal(to, formatted.text, {
         mediaUrl,
         maxBytes: signalMaxBytes,
         accountId: accountId ?? undefined,
-        textMode: 'plain',
+        textMode: "plain",
         textStyles: formatted.styles,
       })),
     };
@@ -343,13 +328,12 @@ export async function deliverOutboundPayloads(params: {
   const normalizedPayloads = normalizeReplyPayloadsForDelivery(payloads);
 
   // Special handling for WhatsApp location messages
-  if (channel === 'whatsapp' && params.location && deps?.sendWhatsApp) {
+  if (channel === "whatsapp" && params.location && deps?.sendWhatsApp) {
     const firstPayload = normalizedPayloads[0];
-    const hasMedia =
-      (firstPayload?.mediaUrls?.length ?? 0) > 0 || firstPayload?.mediaUrl;
+    const hasMedia = (firstPayload?.mediaUrls?.length ?? 0) > 0 || firstPayload?.mediaUrl;
     // Only send location if there's no media (location messages are standalone)
     if (!hasMedia) {
-      const text = firstPayload?.text ?? '';
+      const text = firstPayload?.text ?? "";
       try {
         throwIfAborted(abortSignal);
         const result = await deps.sendWhatsApp(to, text, {
@@ -358,7 +342,7 @@ export async function deliverOutboundPayloads(params: {
           location: params.location,
         });
         results.push({
-          channel: 'whatsapp',
+          channel: "whatsapp",
           ...result,
         });
         // If there are more payloads, continue processing them
@@ -366,10 +350,8 @@ export async function deliverOutboundPayloads(params: {
           const remainingPayloads = normalizedPayloads.slice(1);
           for (const payload of remainingPayloads) {
             const payloadSummary: NormalizedOutboundPayload = {
-              text: payload.text ?? '',
-              mediaUrls:
-                payload.mediaUrls ??
-                (payload.mediaUrl ? [payload.mediaUrl] : []),
+              text: payload.text ?? "",
+              mediaUrls: payload.mediaUrls ?? (payload.mediaUrl ? [payload.mediaUrl] : []),
               channelData: payload.channelData,
             };
             try {
@@ -390,7 +372,7 @@ export async function deliverOutboundPayloads(params: {
               let first = true;
               for (const url of payloadSummary.mediaUrls) {
                 throwIfAborted(abortSignal);
-                const caption = first ? payloadSummary.text : '';
+                const caption = first ? payloadSummary.text : "";
                 first = false;
                 if (isSignalChannel) {
                   results.push(await sendSignalMedia(caption, url));
@@ -421,7 +403,7 @@ export async function deliverOutboundPayloads(params: {
       } catch (err) {
         if (!params.bestEffort) throw err;
         params.onError?.(err, {
-          text: '',
+          text: "",
           mediaUrls: [],
           channelData: undefined,
         });
@@ -432,9 +414,8 @@ export async function deliverOutboundPayloads(params: {
 
   for (const payload of normalizedPayloads) {
     const payloadSummary: NormalizedOutboundPayload = {
-      text: payload.text ?? '',
-      mediaUrls:
-        payload.mediaUrls ?? (payload.mediaUrl ? [payload.mediaUrl] : []),
+      text: payload.text ?? "",
+      mediaUrls: payload.mediaUrls ?? (payload.mediaUrl ? [payload.mediaUrl] : []),
       channelData: payload.channelData,
     };
     try {
@@ -456,7 +437,7 @@ export async function deliverOutboundPayloads(params: {
       let first = true;
       for (const url of payloadSummary.mediaUrls) {
         throwIfAborted(abortSignal);
-        const caption = first ? payloadSummary.text : '';
+        const caption = first ? payloadSummary.text : "";
         first = false;
         if (isSignalChannel) {
           results.push(await sendSignalMedia(caption, url));

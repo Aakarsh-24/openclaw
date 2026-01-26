@@ -1,73 +1,57 @@
-import { Type } from '@sinclair/typebox';
-import { BLUEBUBBLES_GROUP_ACTIONS } from '../../channels/plugins/bluebubbles-actions.js';
+import { Type } from "@sinclair/typebox";
+import { BLUEBUBBLES_GROUP_ACTIONS } from "../../channels/plugins/bluebubbles-actions.js";
 import {
   listChannelMessageActions,
   supportsChannelMessageButtons,
   supportsChannelMessageCards,
-} from '../../channels/plugins/message-actions.js';
+} from "../../channels/plugins/message-actions.js";
 import {
   CHANNEL_MESSAGE_ACTION_NAMES,
   type ChannelMessageActionName,
-} from '../../channels/plugins/types.js';
-import type { ClawdbotConfig } from '../../config/config.js';
-import { loadConfig } from '../../config/config.js';
-import {
-  GATEWAY_CLIENT_IDS,
-  GATEWAY_CLIENT_MODES,
-} from '../../gateway/protocol/client-info.js';
-import {
-  getToolResult,
-  runMessageAction,
-} from '../../infra/outbound/message-action-runner.js';
-import { normalizeTargetForProvider } from '../../infra/outbound/target-normalization.js';
-import { normalizeAccountId } from '../../routing/session-key.js';
-import { normalizeMessageChannel } from '../../utils/message-channel.js';
-import { resolveSessionAgentId } from '../agent-scope.js';
-import { listChannelSupportedActions } from '../channel-tools.js';
-import {
-  channelTargetSchema,
-  channelTargetsSchema,
-  stringEnum,
-} from '../schema/typebox.js';
-import type { AnyAgentTool } from './common.js';
-import { jsonResult, readNumberParam, readStringParam } from './common.js';
+} from "../../channels/plugins/types.js";
+import type { ClawdbotConfig } from "../../config/config.js";
+import { loadConfig } from "../../config/config.js";
+import { GATEWAY_CLIENT_IDS, GATEWAY_CLIENT_MODES } from "../../gateway/protocol/client-info.js";
+import { getToolResult, runMessageAction } from "../../infra/outbound/message-action-runner.js";
+import { normalizeTargetForProvider } from "../../infra/outbound/target-normalization.js";
+import { normalizeAccountId } from "../../routing/session-key.js";
+import { normalizeMessageChannel } from "../../utils/message-channel.js";
+import { resolveSessionAgentId } from "../agent-scope.js";
+import { listChannelSupportedActions } from "../channel-tools.js";
+import { channelTargetSchema, channelTargetsSchema, stringEnum } from "../schema/typebox.js";
+import type { AnyAgentTool } from "./common.js";
+import { jsonResult, readNumberParam, readStringParam } from "./common.js";
 
 const AllMessageActions = CHANNEL_MESSAGE_ACTION_NAMES;
 function buildRoutingSchema() {
   return {
     channel: Type.Optional(Type.String()),
-    target: Type.Optional(
-      channelTargetSchema({ description: 'Target channel/user id or name.' })
-    ),
+    target: Type.Optional(channelTargetSchema({ description: "Target channel/user id or name." })),
     targets: Type.Optional(channelTargetsSchema()),
     accountId: Type.Optional(Type.String()),
     dryRun: Type.Optional(Type.Boolean()),
   };
 }
 
-function buildSendSchema(options: {
-  includeButtons: boolean;
-  includeCards: boolean;
-}) {
+function buildSendSchema(options: { includeButtons: boolean; includeCards: boolean }) {
   const props: Record<string, unknown> = {
     message: Type.Optional(Type.String()),
     effectId: Type.Optional(
       Type.String({
-        description:
-          'Message effect name/id for sendWithEffect (e.g., invisible ink).',
-      })
+        description: "Message effect name/id for sendWithEffect (e.g., invisible ink).",
+      }),
     ),
     effect: Type.Optional(
       Type.String({
-        description: 'Alias for effectId (e.g., invisible-ink, balloons).',
-      })
+        description: "Alias for effectId (e.g., invisible-ink, balloons).",
+      }),
     ),
     media: Type.Optional(Type.String()),
     filename: Type.Optional(Type.String()),
     buffer: Type.Optional(
       Type.String({
-        description: 'Base64 payload for attachments (optionally a data: URL).',
-      })
+        description: "Base64 payload for attachments (optionally a data: URL).",
+      }),
     ),
     contentType: Type.Optional(Type.String()),
     mimeType: Type.Optional(Type.String()),
@@ -82,30 +66,29 @@ function buildSendSchema(options: {
     latitude: Type.Optional(
       Type.Number({
         description:
-          'Latitude for location message (required with longitude for native WhatsApp location pin).',
-      })
+          "Latitude for location message (required with longitude for native WhatsApp location pin).",
+      }),
     ),
     longitude: Type.Optional(
       Type.Number({
         description:
-          'Longitude for location message (required with latitude for native WhatsApp location pin).',
-      })
+          "Longitude for location message (required with latitude for native WhatsApp location pin).",
+      }),
     ),
     locationName: Type.Optional(
       Type.String({
-        description:
-          "Optional name for location message (e.g., 'Home', 'Office').",
-      })
+        description: "Optional name for location message (e.g., 'Home', 'Office').",
+      }),
     ),
     locationAddress: Type.Optional(
       Type.String({
-        description: 'Optional address text for location message.',
-      })
+        description: "Optional address text for location message.",
+      }),
     ),
     locationAccuracy: Type.Optional(
       Type.Number({
-        description: 'Optional accuracy in meters for location message.',
-      })
+        description: "Optional accuracy in meters for location message.",
+      }),
     ),
     buttons: Type.Optional(
       Type.Array(
@@ -113,23 +96,21 @@ function buildSendSchema(options: {
           Type.Object({
             text: Type.String(),
             callback_data: Type.String(),
-          })
+          }),
         ),
         {
-          description:
-            'Telegram inline keyboard buttons (array of button rows)',
-        }
-      )
+          description: "Telegram inline keyboard buttons (array of button rows)",
+        },
+      ),
     ),
     card: Type.Optional(
       Type.Object(
         {},
         {
           additionalProperties: true,
-          description:
-            'Adaptive Card JSON object (when supported by the channel)',
-        }
-      )
+          description: "Adaptive Card JSON object (when supported by the channel)",
+        },
+      ),
     ),
   };
   if (!options.includeButtons) delete props.buttons;
@@ -172,13 +153,11 @@ function buildChannelTargetSchema() {
   return {
     channelId: Type.Optional(
       Type.String({
-        description: 'Channel id filter (search/thread list/event create).',
-      })
+        description: "Channel id filter (search/thread list/event create).",
+      }),
     ),
     channelIds: Type.Optional(
-      Type.Array(
-        Type.String({ description: 'Channel id filter (repeatable).' })
-      )
+      Type.Array(Type.String({ description: "Channel id filter (repeatable)." })),
     ),
     guildId: Type.Optional(Type.String()),
     userId: Type.Optional(Type.String()),
@@ -248,17 +227,13 @@ function buildChannelManagementSchema() {
     categoryId: Type.Optional(Type.String()),
     clearParent: Type.Optional(
       Type.Boolean({
-        description:
-          'Clear the parent/category when supported by the provider.',
-      })
+        description: "Clear the parent/category when supported by the provider.",
+      }),
     ),
   };
 }
 
-function buildMessageToolSchemaProps(options: {
-  includeButtons: boolean;
-  includeCards: boolean;
-}) {
+function buildMessageToolSchemaProps(options: { includeButtons: boolean; includeCards: boolean }) {
   return {
     ...buildRoutingSchema(),
     ...buildSendSchema(options),
@@ -277,7 +252,7 @@ function buildMessageToolSchemaProps(options: {
 
 function buildMessageToolSchemaFromActions(
   actions: readonly string[],
-  options: { includeButtons: boolean; includeCards: boolean }
+  options: { includeButtons: boolean; includeCards: boolean },
 ) {
   const props = buildMessageToolSchemaProps(options);
   return Type.Object({
@@ -298,7 +273,7 @@ type MessageToolOptions = {
   currentChannelId?: string;
   currentChannelProvider?: string;
   currentThreadTs?: string;
-  replyToMode?: 'off' | 'first' | 'all';
+  replyToMode?: "off" | "first" | "all";
   hasRepliedRef?: { value: boolean };
 };
 
@@ -306,13 +281,10 @@ function buildMessageToolSchema(cfg: ClawdbotConfig) {
   const actions = listChannelMessageActions(cfg);
   const includeButtons = supportsChannelMessageButtons(cfg);
   const includeCards = supportsChannelMessageCards(cfg);
-  return buildMessageToolSchemaFromActions(
-    actions.length > 0 ? actions : ['send'],
-    {
-      includeButtons,
-      includeCards,
-    }
-  );
+  return buildMessageToolSchemaFromActions(actions.length > 0 ? actions : ["send"], {
+    includeButtons,
+    includeCards,
+  });
 }
 
 function resolveAgentAccountId(value?: string): string | undefined {
@@ -327,21 +299,19 @@ function filterActionsForContext(params: {
   currentChannelId?: string;
 }): ChannelMessageActionName[] {
   const channel = normalizeMessageChannel(params.channel);
-  if (!channel || channel !== 'bluebubbles') return params.actions;
+  if (!channel || channel !== "bluebubbles") return params.actions;
   const currentChannelId = params.currentChannelId?.trim();
   if (!currentChannelId) return params.actions;
   const normalizedTarget =
     normalizeTargetForProvider(channel, currentChannelId) ?? currentChannelId;
   const lowered = normalizedTarget.trim().toLowerCase();
   const isGroupTarget =
-    lowered.startsWith('chat_guid:') ||
-    lowered.startsWith('chat_id:') ||
-    lowered.startsWith('chat_identifier:') ||
-    lowered.startsWith('group:');
+    lowered.startsWith("chat_guid:") ||
+    lowered.startsWith("chat_id:") ||
+    lowered.startsWith("chat_identifier:") ||
+    lowered.startsWith("group:");
   if (isGroupTarget) return params.actions;
-  return params.actions.filter(
-    (action) => !BLUEBUBBLES_GROUP_ACTIONS.has(action)
-  );
+  return params.actions.filter((action) => !BLUEBUBBLES_GROUP_ACTIONS.has(action));
 }
 
 function buildMessageToolDescription(options?: {
@@ -349,8 +319,7 @@ function buildMessageToolDescription(options?: {
   currentChannel?: string;
   currentChannelId?: string;
 }): string {
-  const baseDescription =
-    'Send, delete, and manage messages via channel plugins.';
+  const baseDescription = "Send, delete, and manage messages via channel plugins.";
 
   // If we have a current channel, show only its supported actions
   if (options?.currentChannel) {
@@ -364,8 +333,8 @@ function buildMessageToolDescription(options?: {
     });
     if (channelActions.length > 0) {
       // Always include "send" as a base action
-      const allActions = new Set(['send', ...channelActions]);
-      const actionList = Array.from(allActions).sort().join(', ');
+      const allActions = new Set(["send", ...channelActions]);
+      const actionList = Array.from(allActions).sort().join(", ");
       return `${baseDescription} Current channel (${options.currentChannel}) supports: ${actionList}.`;
     }
   }
@@ -374,7 +343,7 @@ function buildMessageToolDescription(options?: {
   if (options?.config) {
     const actions = listChannelMessageActions(options.config);
     if (actions.length > 0) {
-      return `${baseDescription} Supports actions: ${actions.join(', ')}.`;
+      return `${baseDescription} Supports actions: ${actions.join(", ")}.`;
     }
   }
 
@@ -383,9 +352,7 @@ function buildMessageToolDescription(options?: {
 
 export function createMessageTool(options?: MessageToolOptions): AnyAgentTool {
   const agentAccountId = resolveAgentAccountId(options?.agentAccountId);
-  const schema = options?.config
-    ? buildMessageToolSchema(options.config)
-    : MessageToolSchema;
+  const schema = options?.config ? buildMessageToolSchema(options.config) : MessageToolSchema;
   const description = buildMessageToolDescription({
     config: options?.config,
     currentChannel: options?.currentChannelProvider,
@@ -393,34 +360,34 @@ export function createMessageTool(options?: MessageToolOptions): AnyAgentTool {
   });
 
   return {
-    label: 'Message',
-    name: 'message',
+    label: "Message",
+    name: "message",
     description,
     parameters: schema,
     execute: async (_toolCallId, args, signal) => {
       // Check if already aborted before doing any work
       if (signal?.aborted) {
-        const err = new Error('Message send aborted');
-        err.name = 'AbortError';
+        const err = new Error("Message send aborted");
+        err.name = "AbortError";
         throw err;
       }
       const params = args as Record<string, unknown>;
       const cfg = options?.config ?? loadConfig();
-      const action = readStringParam(params, 'action', {
+      const action = readStringParam(params, "action", {
         required: true,
       }) as ChannelMessageActionName;
 
-      const accountId = readStringParam(params, 'accountId') ?? agentAccountId;
+      const accountId = readStringParam(params, "accountId") ?? agentAccountId;
       if (accountId) {
         params.accountId = accountId;
       }
 
       const gateway = {
-        url: readStringParam(params, 'gatewayUrl', { trim: false }),
-        token: readStringParam(params, 'gatewayToken', { trim: false }),
-        timeoutMs: readNumberParam(params, 'timeoutMs'),
+        url: readStringParam(params, "gatewayUrl", { trim: false }),
+        token: readStringParam(params, "gatewayToken", { trim: false }),
+        timeoutMs: readNumberParam(params, "timeoutMs"),
         clientName: GATEWAY_CLIENT_IDS.GATEWAY_CLIENT,
-        clientDisplayName: 'agent',
+        clientDisplayName: "agent",
         mode: GATEWAY_CLIENT_MODES.BACKEND,
       };
 

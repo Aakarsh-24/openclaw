@@ -1,15 +1,12 @@
-import type { AnyMessageContent, WAPresence } from '@whiskeysockets/baileys';
-import { recordChannelActivity } from '../../infra/channel-activity.js';
-import { toWhatsappJid } from '../../utils.js';
-import type { ActiveWebSendOptions } from '../active-listener.js';
+import type { AnyMessageContent, WAPresence } from "@whiskeysockets/baileys";
+import { recordChannelActivity } from "../../infra/channel-activity.js";
+import { toWhatsappJid } from "../../utils.js";
+import type { ActiveWebSendOptions } from "../active-listener.js";
 
 export function createWebSendApi(params: {
   sock: {
     sendMessage: (jid: string, content: AnyMessageContent) => Promise<unknown>;
-    sendPresenceUpdate: (
-      presence: WAPresence,
-      jid?: string
-    ) => Promise<unknown>;
+    sendPresenceUpdate: (presence: WAPresence, jid?: string) => Promise<unknown>;
   };
   defaultAccountId: string;
 }) {
@@ -26,7 +23,7 @@ export function createWebSendApi(params: {
         name?: string;
         address?: string;
         accuracy?: number;
-      }
+      },
     ): Promise<{ messageId: string }> => {
       const jid = toWhatsappJid(to);
       let payload: AnyMessageContent;
@@ -43,15 +40,15 @@ export function createWebSendApi(params: {
           },
         };
       } else if (mediaBuffer && mediaType) {
-        if (mediaType.startsWith('image/')) {
+        if (mediaType.startsWith("image/")) {
           payload = {
             image: mediaBuffer,
             caption: text || undefined,
             mimetype: mediaType,
           };
-        } else if (mediaType.startsWith('audio/')) {
+        } else if (mediaType.startsWith("audio/")) {
           payload = { audio: mediaBuffer, ptt: true, mimetype: mediaType };
-        } else if (mediaType.startsWith('video/')) {
+        } else if (mediaType.startsWith("video/")) {
           const gifPlayback = sendOptions?.gifPlayback;
           payload = {
             video: mediaBuffer,
@@ -62,7 +59,7 @@ export function createWebSendApi(params: {
         } else {
           payload = {
             document: mediaBuffer,
-            fileName: 'file',
+            fileName: "file",
             caption: text || undefined,
             mimetype: mediaType,
           };
@@ -73,19 +70,19 @@ export function createWebSendApi(params: {
       const result = await params.sock.sendMessage(jid, payload);
       const accountId = sendOptions?.accountId ?? params.defaultAccountId;
       recordChannelActivity({
-        channel: 'whatsapp',
+        channel: "whatsapp",
         accountId,
-        direction: 'outbound',
+        direction: "outbound",
       });
       const messageId =
-        typeof result === 'object' && result && 'key' in result
-          ? String((result as { key?: { id?: string } }).key?.id ?? 'unknown')
-          : 'unknown';
+        typeof result === "object" && result && "key" in result
+          ? String((result as { key?: { id?: string } }).key?.id ?? "unknown")
+          : "unknown";
       return { messageId };
     },
     sendPoll: async (
       to: string,
-      poll: { question: string; options: string[]; maxSelections?: number }
+      poll: { question: string; options: string[]; maxSelections?: number },
     ): Promise<{ messageId: string }> => {
       const jid = toWhatsappJid(to);
       const result = await params.sock.sendMessage(jid, {
@@ -96,14 +93,14 @@ export function createWebSendApi(params: {
         },
       } as AnyMessageContent);
       recordChannelActivity({
-        channel: 'whatsapp',
+        channel: "whatsapp",
         accountId: params.defaultAccountId,
-        direction: 'outbound',
+        direction: "outbound",
       });
       const messageId =
-        typeof result === 'object' && result && 'key' in result
-          ? String((result as { key?: { id?: string } }).key?.id ?? 'unknown')
-          : 'unknown';
+        typeof result === "object" && result && "key" in result
+          ? String((result as { key?: { id?: string } }).key?.id ?? "unknown")
+          : "unknown";
       return { messageId };
     },
     sendReaction: async (
@@ -111,7 +108,7 @@ export function createWebSendApi(params: {
       messageId: string,
       emoji: string,
       fromMe: boolean,
-      participant?: string
+      participant?: string,
     ): Promise<void> => {
       const jid = toWhatsappJid(chatJid);
       await params.sock.sendMessage(jid, {
@@ -128,7 +125,7 @@ export function createWebSendApi(params: {
     },
     sendComposingTo: async (to: string): Promise<void> => {
       const jid = toWhatsappJid(to);
-      await params.sock.sendPresenceUpdate('composing', jid);
+      await params.sock.sendPresenceUpdate("composing", jid);
     },
   } as const;
 }
