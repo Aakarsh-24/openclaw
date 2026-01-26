@@ -35,6 +35,20 @@ export function buildModelAliasLines(cfg?: ClawdbotConfig) {
     .map((entry) => `- ${entry.alias}: ${entry.model}`);
 }
 
+/** Find explicit model config matching provider/modelId */
+function findInlineModelConfig(
+  cfg: ClawdbotConfig | undefined,
+  provider: string,
+  modelId: string,
+): InlineModelEntry | undefined {
+  const providers = cfg?.models?.providers ?? {};
+  const inlineModels = buildInlineProviderModels(providers);
+  const normalizedProvider = normalizeProviderId(provider);
+  return inlineModels.find(
+    (entry) => normalizeProviderId(entry.provider) === normalizedProvider && entry.id === modelId,
+  );
+}
+
 export function resolveModel(
   provider: string,
   modelId: string,
@@ -49,22 +63,19 @@ export function resolveModel(
   const resolvedAgentDir = agentDir ?? resolveClawdbotAgentDir();
   const authStorage = discoverAuthStorage(resolvedAgentDir);
   const modelRegistry = discoverModels(authStorage, resolvedAgentDir);
-  const model = modelRegistry.find(provider, modelId) as Model<Api> | null;
-  if (!model) {
-    const providers = cfg?.models?.providers ?? {};
-    const inlineModels = buildInlineProviderModels(providers);
-    const normalizedProvider = normalizeProviderId(provider);
-    const inlineMatch = inlineModels.find(
-      (entry) => normalizeProviderId(entry.provider) === normalizedProvider && entry.id === modelId,
-    );
-    if (inlineMatch) {
-      const normalized = normalizeModelCompat(inlineMatch as Model<Api>);
+  const registryModel = modelRegistry.find(provider, modelId) as Model<Api> | null;
+  const inlineConfig = findInlineModelConfig(cfg, provider, modelId);
+
+  // Case 1: Model not in registry - use inline config or fallback
+  if (!registryModel) {
+    if (inlineConfig) {
       return {
-        model: normalized,
+        model: normalizeModelCompat(inlineConfig as Model<Api>),
         authStorage,
         modelRegistry,
       };
     }
+    const providers = cfg?.models?.providers ?? {};
     const providerCfg = providers[provider];
     if (providerCfg || modelId.startsWith("mock-")) {
       const fallbackModel: Model<Api> = normalizeModelCompat({
@@ -80,11 +91,24 @@ export function resolveModel(
       } as Model<Api>);
       return { model: fallbackModel, authStorage, modelRegistry };
     }
-    return {
-      error: `Unknown model: ${provider}/${modelId}`,
-      authStorage,
-      modelRegistry,
-    };
+    return { error: `Unknown model: ${provider}/${modelId}`, authStorage, modelRegistry };
   }
-  return { model: normalizeModelCompat(model), authStorage, modelRegistry };
+
+  // Case 2: Model in registry - override contextWindow/maxTokens from config if valid
+  if (inlineConfig) {
+    const ctx = inlineConfig.contextWindow;
+    const max = inlineConfig.maxTokens;
+    const useCtx = typeof ctx === "number" && ctx > 0;
+    const useMax = typeof max === "number" && max > 0;
+    if (useCtx || useMax) {
+      const model: Model<Api> = {
+        ...registryModel,
+        ...(useCtx && { contextWindow: ctx }),
+        ...(useMax && { maxTokens: max }),
+      };
+      return { model: normalizeModelCompat(model), authStorage, modelRegistry };
+    }
+  }
+
+  return { model: normalizeModelCompat(registryModel), authStorage, modelRegistry };
 }
