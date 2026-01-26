@@ -54,12 +54,14 @@ function pickAsset(assets: ReleaseAsset[], platform: NodeJS.Platform) {
     return (
       byName(/macos|osx|darwin/) ||
       // Fall back to JVM version, excluding platform-specific native builds
-      withName.find(
-        (asset) =>
-          looksLikeArchive(asset.name.toLowerCase()) &&
-          !asset.name.toLowerCase().includes("linux-native") &&
-          !asset.name.toLowerCase().includes("windows"),
-      )
+      withName.find((asset) => {
+        const name = asset.name.toLowerCase();
+        return (
+          looksLikeArchive(name) &&
+          !name.includes("linux-native") &&
+          !/windows|win/.test(name)
+        );
+      })
     );
   }
 
