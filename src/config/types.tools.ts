@@ -332,8 +332,8 @@ export type ToolsConfig = {
     search?: {
       /** Enable web search tool (default: true when API key is present). */
       enabled?: boolean;
-      /** Search provider ("brave" or "perplexity"). */
-      provider?: "brave" | "perplexity";
+      /** Search provider ("brave", "perplexity", or "parallel"). */
+      provider?: "brave" | "perplexity" | "parallel";
       /** Brave Search API key (optional; defaults to BRAVE_API_KEY env var). */
       apiKey?: string;
       /** Default search results count (1-10). */
@@ -350,6 +350,13 @@ export type ToolsConfig = {
         baseUrl?: string;
         /** Model to use (defaults to "perplexity/sonar-pro"). */
         model?: string;
+      };
+      /** Parallel-specific configuration (used when provider="parallel"). */
+      parallel?: {
+        /** API key for Parallel (defaults to PARALLEL_API_KEY env var). */
+        apiKey?: string;
+        /** Base URL for API requests (defaults to https://api.parallel.ai). */
+        baseUrl?: string;
       };
     };
     fetch?: {
@@ -379,6 +386,17 @@ export type ToolsConfig = {
         /** Max age (ms) for cached Firecrawl content. */
         maxAgeMs?: number;
         /** Timeout in seconds for Firecrawl requests. */
+        timeoutSeconds?: number;
+      };
+      /** Parallel extract configuration (alternative to Readability/Firecrawl). */
+      parallel?: {
+        /** Enable Parallel extract (default: false). */
+        enabled?: boolean;
+        /** Parallel API key (defaults to PARALLEL_API_KEY env var). */
+        apiKey?: string;
+        /** Parallel API base URL (defaults to https://api.parallel.ai). */
+        baseUrl?: string;
+        /** Timeout in seconds for Parallel extract requests. */
         timeoutSeconds?: number;
       };
     };

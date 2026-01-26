@@ -88,18 +88,43 @@ async function promptChannelMode(runtime: RuntimeEnv): Promise<ChannelsWizardMod
   ) as ChannelsWizardMode;
 }
 
+const SEARCH_PROVIDER_OPTIONS = [
+  { value: "brave", label: "Brave Search", hint: "Fast, structured results, free tier" },
+  { value: "perplexity", label: "Perplexity Sonar", hint: "AI-synthesized answers with citations" },
+  { value: "parallel", label: "Parallel", hint: "Relevant excerpts, agentic mode" },
+] as const;
+
+type SearchProvider = (typeof SEARCH_PROVIDER_OPTIONS)[number]["value"];
+
+const PROVIDER_ENV_VARS: Record<SearchProvider, string> = {
+  brave: "BRAVE_API_KEY",
+  perplexity: "PERPLEXITY_API_KEY or OPENROUTER_API_KEY",
+  parallel: "PARALLEL_API_KEY",
+};
+
+const PROVIDER_PLACEHOLDERS: Record<SearchProvider, string> = {
+  brave: "BSA...",
+  perplexity: "pplx-... or sk-or-...",
+  parallel: "your-parallel-key",
+};
+
 async function promptWebToolsConfig(
   nextConfig: ClawdbotConfig,
   runtime: RuntimeEnv,
 ): Promise<ClawdbotConfig> {
   const existingSearch = nextConfig.tools?.web?.search;
   const existingFetch = nextConfig.tools?.web?.fetch;
-  const hasSearchKey = Boolean(existingSearch?.apiKey);
+  const existingProvider = existingSearch?.provider ?? "brave";
+  const hasSearchKey = Boolean(
+    existingSearch?.apiKey ||
+    existingSearch?.perplexity?.apiKey ||
+    existingSearch?.parallel?.apiKey,
+  );
 
   note(
     [
       "Web search lets your agent look things up online using the `web_search` tool.",
-      "It requires a Brave Search API key (you can store it in the config or set BRAVE_API_KEY in the Gateway environment).",
+      "Choose a provider and configure its API key.",
       "Docs: https://docs.clawd.bot/tools/web",
     ].join("\n"),
     "Web search",
@@ -107,35 +132,73 @@ async function promptWebToolsConfig(
 
   const enableSearch = guardCancel(
     await confirm({
-      message: "Enable web_search (Brave Search)?",
+      message: "Enable web_search?",
       initialValue: existingSearch?.enabled ?? hasSearchKey,
     }),
     runtime,
   );
 
-  let nextSearch = {
+  let nextSearch: NonNullable<NonNullable<ClawdbotConfig["tools"]>["web"]>["search"] = {
     ...existingSearch,
     enabled: enableSearch,
   };
 
   if (enableSearch) {
+    const provider = guardCancel(
+      await select({
+        message: "Search provider",
+        options: SEARCH_PROVIDER_OPTIONS.map((opt) => ({
+          value: opt.value,
+          label: opt.label,
+          hint: opt.hint,
+        })),
+        initialValue: existingProvider,
+      }),
+      runtime,
+    ) as SearchProvider;
+
+    nextSearch = { ...nextSearch, provider };
+
+    const envVar = PROVIDER_ENV_VARS[provider];
+    const placeholder = PROVIDER_PLACEHOLDERS[provider];
+    const currentKey =
+      provider === "brave"
+        ? existingSearch?.apiKey
+        : provider === "perplexity"
+          ? existingSearch?.perplexity?.apiKey
+          : existingSearch?.parallel?.apiKey;
+    const hasCurrentKey = Boolean(currentKey);
+
     const keyInput = guardCancel(
       await text({
-        message: hasSearchKey
-          ? "Brave Search API key (leave blank to keep current or use BRAVE_API_KEY)"
-          : "Brave Search API key (paste it here; leave blank to use BRAVE_API_KEY)",
-        placeholder: hasSearchKey ? "Leave blank to keep current" : "BSA...",
+        message: hasCurrentKey
+          ? `API key (leave blank to keep current or use ${envVar})`
+          : `API key (paste it here; leave blank to use ${envVar})`,
+        placeholder: hasCurrentKey ? "Leave blank to keep current" : placeholder,
       }),
       runtime,
     );
     const key = String(keyInput ?? "").trim();
-    if (key) {
-      nextSearch = { ...nextSearch, apiKey: key };
-    } else if (!hasSearchKey) {
+
+    if (key || hasCurrentKey) {
+      if (provider === "brave") {
+        nextSearch = { ...nextSearch, apiKey: key || currentKey };
+      } else if (provider === "perplexity") {
+        nextSearch = {
+          ...nextSearch,
+          perplexity: { ...existingSearch?.perplexity, apiKey: key || currentKey },
+        };
+      } else if (provider === "parallel") {
+        nextSearch = {
+          ...nextSearch,
+          parallel: { ...existingSearch?.parallel, apiKey: key || currentKey },
+        };
+      }
+    } else {
       note(
         [
           "No key stored yet, so web_search will stay unavailable.",
-          "Store a key here or set BRAVE_API_KEY in the Gateway environment.",
+          `Store a key here or set ${envVar} in the Gateway environment.`,
           "Docs: https://docs.clawd.bot/tools/web",
         ].join("\n"),
         "Web search",

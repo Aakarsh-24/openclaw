@@ -1,9 +1,14 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 
 import { __testing } from "./web-search.js";
 
-const { inferPerplexityBaseUrlFromApiKey, resolvePerplexityBaseUrl, normalizeFreshness } =
-  __testing;
+const {
+  inferPerplexityBaseUrlFromApiKey,
+  resolvePerplexityBaseUrl,
+  normalizeFreshness,
+  resolveParallelApiKey,
+  resolveParallelBaseUrl,
+} = __testing;
 
 describe("web_search perplexity baseUrl defaults", () => {
   it("detects a Perplexity key prefix", () => {
@@ -67,5 +72,46 @@ describe("web_search freshness normalization", () => {
     expect(normalizeFreshness("2024-13-01to2024-01-31")).toBeUndefined();
     expect(normalizeFreshness("2024-02-30to2024-03-01")).toBeUndefined();
     expect(normalizeFreshness("2024-03-10to2024-03-01")).toBeUndefined();
+  });
+});
+
+describe("web_search parallel config resolution", () => {
+  const originalEnv = process.env;
+
+  beforeEach(() => {
+    vi.resetModules();
+    process.env = { ...originalEnv };
+    delete process.env.PARALLEL_API_KEY;
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
+  });
+
+  it("returns config apiKey when provided", () => {
+    expect(resolveParallelApiKey({ apiKey: "test-key" })).toBe("test-key");
+  });
+
+  it("returns env apiKey when config is empty", () => {
+    process.env.PARALLEL_API_KEY = "env-key";
+    expect(resolveParallelApiKey({})).toBe("env-key");
+  });
+
+  it("returns undefined when no key is available", () => {
+    expect(resolveParallelApiKey({})).toBeUndefined();
+  });
+
+  it("returns config baseUrl when provided", () => {
+    expect(resolveParallelBaseUrl({ baseUrl: "https://custom.api.com" })).toBe(
+      "https://custom.api.com",
+    );
+  });
+
+  it("returns default baseUrl when config is empty", () => {
+    expect(resolveParallelBaseUrl({})).toBe("https://api.parallel.ai");
+  });
+
+  it("returns default baseUrl for undefined config", () => {
+    expect(resolveParallelBaseUrl(undefined)).toBe("https://api.parallel.ai");
   });
 });

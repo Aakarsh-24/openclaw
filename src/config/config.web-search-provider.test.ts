@@ -22,4 +22,43 @@ describe("web search provider config", () => {
 
     expect(res.ok).toBe(true);
   });
+
+  it("accepts parallel provider and config", () => {
+    const res = validateConfigObject({
+      tools: {
+        web: {
+          search: {
+            enabled: true,
+            provider: "parallel",
+            parallel: {
+              apiKey: "test-parallel-key",
+              baseUrl: "https://api.parallel.ai",
+            },
+          },
+        },
+      },
+    });
+
+    expect(res.ok).toBe(true);
+  });
+
+  it("accepts parallel extract config for fetch", () => {
+    const res = validateConfigObject({
+      tools: {
+        web: {
+          fetch: {
+            enabled: true,
+            parallel: {
+              enabled: true,
+              apiKey: "test-parallel-key",
+              baseUrl: "https://api.parallel.ai",
+              timeoutSeconds: 30,
+            },
+          },
+        },
+      },
+    });
+
+    expect(res.ok).toBe(true);
+  });
 });

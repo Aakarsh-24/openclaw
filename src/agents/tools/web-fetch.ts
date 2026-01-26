@@ -40,6 +40,7 @@ const DEFAULT_FETCH_MAX_REDIRECTS = 3;
 const DEFAULT_ERROR_MAX_CHARS = 4_000;
 const DEFAULT_FIRECRAWL_BASE_URL = "https://api.firecrawl.dev";
 const DEFAULT_FIRECRAWL_MAX_AGE_MS = 172_800_000;
+const DEFAULT_PARALLEL_BASE_URL = "https://api.parallel.ai";
 const DEFAULT_FETCH_USER_AGENT =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_7_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
 
@@ -77,6 +78,32 @@ type FirecrawlFetchConfig =
       timeoutSeconds?: number;
     }
   | undefined;
+
+type ParallelExtractConfig =
+  | {
+      enabled?: boolean;
+      apiKey?: string;
+      baseUrl?: string;
+      timeoutSeconds?: number;
+    }
+  | undefined;
+
+type ParallelExtractResponse = {
+  extract_id: string;
+  results: Array<{
+    url: string;
+    title?: string | null;
+    full_content?: string | null;
+    excerpts?: string[] | null;
+    publish_date?: string | null;
+  }>;
+  errors: Array<{
+    url: string;
+    error_type: string;
+    http_status_code?: number | null;
+    content?: string | null;
+  }>;
+};
 
 function resolveFetchConfig(cfg?: ClawdbotConfig): WebFetchConfig {
   const fetch = cfg?.tools?.web?.fetch;
@@ -145,6 +172,38 @@ function resolveFirecrawlMaxAgeMsOrDefault(firecrawl?: FirecrawlFetchConfig): nu
   const resolved = resolveFirecrawlMaxAgeMs(firecrawl);
   if (typeof resolved === "number") return resolved;
   return DEFAULT_FIRECRAWL_MAX_AGE_MS;
+}
+
+function resolveParallelExtractConfig(fetch?: WebFetchConfig): ParallelExtractConfig {
+  if (!fetch || typeof fetch !== "object") return undefined;
+  const parallel = "parallel" in fetch ? fetch.parallel : undefined;
+  if (!parallel || typeof parallel !== "object") return undefined;
+  return parallel as ParallelExtractConfig;
+}
+
+function resolveParallelExtractApiKey(parallel?: ParallelExtractConfig): string | undefined {
+  const fromConfig =
+    parallel && "apiKey" in parallel && typeof parallel.apiKey === "string"
+      ? parallel.apiKey.trim()
+      : "";
+  const fromEnv = (process.env.PARALLEL_API_KEY ?? "").trim();
+  return fromConfig || fromEnv || undefined;
+}
+
+function resolveParallelExtractEnabled(params: {
+  parallel?: ParallelExtractConfig;
+  apiKey?: string;
+}): boolean {
+  if (typeof params.parallel?.enabled === "boolean") return params.parallel.enabled;
+  return false;
+}
+
+function resolveParallelExtractBaseUrl(parallel?: ParallelExtractConfig): string {
+  const raw =
+    parallel && "baseUrl" in parallel && typeof parallel.baseUrl === "string"
+      ? parallel.baseUrl.trim()
+      : "";
+  return raw || DEFAULT_PARALLEL_BASE_URL;
 }
 
 function resolveMaxChars(value: unknown, fallback: number): number {
@@ -329,6 +388,67 @@ export async function fetchFirecrawlContent(params: {
   };
 }
 
+export async function fetchParallelContent(params: {
+  url: string;
+  extractMode: ExtractMode;
+  apiKey: string;
+  baseUrl: string;
+  timeoutSeconds: number;
+}): Promise<{
+  text: string;
+  title?: string;
+  finalUrl?: string;
+  status?: number;
+}> {
+  const endpoint = `${params.baseUrl.replace(/\/$/, "")}/v1beta/extract`;
+
+  const res = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${params.apiKey}`,
+      "parallel-beta": "search-extract-2025-10-10",
+    },
+    body: JSON.stringify({
+      urls: [params.url],
+      full_content: true,
+    }),
+    signal: withTimeout(undefined, params.timeoutSeconds * 1000),
+  });
+
+  const payload = (await res.json()) as ParallelExtractResponse;
+
+  if (!res.ok) {
+    const errorDetail = payload?.errors?.[0];
+    const detail = errorDetail
+      ? `${errorDetail.error_type}: ${errorDetail.content || ""}`
+      : res.statusText;
+    throw new Error(`Parallel extract failed (${res.status}): ${detail}`.trim());
+  }
+
+  if (payload.errors?.length && !payload.results?.length) {
+    const errorDetail = payload.errors[0];
+    throw new Error(
+      `Parallel extract failed: ${errorDetail?.error_type || "unknown error"}`.trim(),
+    );
+  }
+
+  const result = payload.results?.[0];
+  if (!result) {
+    throw new Error("Parallel extract returned no results");
+  }
+
+  const rawText = result.full_content ?? result.excerpts?.join("\n\n") ?? "";
+  const text = params.extractMode === "text" ? markdownToText(rawText) : rawText;
+
+  return {
+    text,
+    title: result.title ?? undefined,
+    finalUrl: result.url,
+    status: 200,
+  };
+}
+
 async function runWebFetch(params: {
   url: string;
   extractMode: ExtractMode;
@@ -346,6 +466,10 @@ async function runWebFetch(params: {
   firecrawlProxy: "auto" | "basic" | "stealth";
   firecrawlStoreInCache: boolean;
   firecrawlTimeoutSeconds: number;
+  parallelExtractEnabled: boolean;
+  parallelExtractApiKey?: string;
+  parallelExtractBaseUrl: string;
+  parallelExtractTimeoutSeconds: number;
 }): Promise<Record<string, unknown>> {
   const cacheKey = normalizeCacheKey(
     `fetch:${params.url}:${params.extractMode}:${params.maxChars}`,
@@ -464,7 +588,28 @@ async function runWebFetch(params: {
     let extractor = "raw";
     let text = body;
     if (contentType.includes("text/html")) {
-      if (params.readabilityEnabled) {
+      // Try Parallel extract first if enabled
+      if (params.parallelExtractEnabled && params.parallelExtractApiKey) {
+        try {
+          const parallel = await fetchParallelContent({
+            url: finalUrl,
+            extractMode: params.extractMode,
+            apiKey: params.parallelExtractApiKey,
+            baseUrl: params.parallelExtractBaseUrl,
+            timeoutSeconds: params.parallelExtractTimeoutSeconds,
+          });
+          if (parallel.text) {
+            text = parallel.text;
+            title = parallel.title;
+            extractor = "parallel";
+          }
+        } catch {
+          // Fall back to Readability/Firecrawl if Parallel fails
+        }
+      }
+
+      // If Parallel didn't succeed, try Readability
+      if (extractor === "raw" && params.readabilityEnabled) {
         const readable = await extractReadableContent({
           html: body,
           url: finalUrl,
@@ -480,13 +625,13 @@ async function runWebFetch(params: {
             text = firecrawl.text;
             title = firecrawl.title;
             extractor = "firecrawl";
-          } else {
+          } else if (!params.parallelExtractEnabled) {
             throw new Error(
               "Web fetch extraction failed: Readability and Firecrawl returned no content.",
             );
           }
         }
-      } else {
+      } else if (extractor === "raw" && !params.parallelExtractEnabled) {
         throw new Error(
           "Web fetch extraction failed: Readability disabled and Firecrawl unavailable.",
         );
@@ -586,6 +731,17 @@ export function createWebFetchTool(options?: {
     firecrawl?.timeoutSeconds ?? fetch?.timeoutSeconds,
     DEFAULT_TIMEOUT_SECONDS,
   );
+  const parallelExtract = resolveParallelExtractConfig(fetch);
+  const parallelExtractApiKey = resolveParallelExtractApiKey(parallelExtract);
+  const parallelExtractEnabled = resolveParallelExtractEnabled({
+    parallel: parallelExtract,
+    apiKey: parallelExtractApiKey,
+  });
+  const parallelExtractBaseUrl = resolveParallelExtractBaseUrl(parallelExtract);
+  const parallelExtractTimeoutSeconds = resolveTimeoutSeconds(
+    parallelExtract?.timeoutSeconds ?? fetch?.timeoutSeconds,
+    DEFAULT_TIMEOUT_SECONDS,
+  );
   const userAgent =
     (fetch && "userAgent" in fetch && typeof fetch.userAgent === "string" && fetch.userAgent) ||
     DEFAULT_FETCH_USER_AGENT;
@@ -617,6 +773,10 @@ export function createWebFetchTool(options?: {
         firecrawlProxy: "auto",
         firecrawlStoreInCache: true,
         firecrawlTimeoutSeconds,
+        parallelExtractEnabled,
+        parallelExtractApiKey,
+        parallelExtractBaseUrl,
+        parallelExtractTimeoutSeconds,
       });
       return jsonResult(result);
     },

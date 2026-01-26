@@ -1,17 +1,18 @@
 ---
-summary: "Web search + fetch tools (Brave Search API, Perplexity direct/OpenRouter)"
+summary: "Web search + fetch tools (Brave Search API, Perplexity direct/OpenRouter, Parallel)"
 read_when:
   - You want to enable web_search or web_fetch
   - You need Brave Search API key setup
   - You want to use Perplexity Sonar for web search
+  - You want to use Parallel for web search or content extraction
 ---
 
 # Web tools
 
 Clawdbot ships two lightweight web tools:
 
-- `web_search` — Search the web via Brave Search API (default) or Perplexity Sonar (direct or via OpenRouter).
-- `web_fetch` — HTTP fetch + readable extraction (HTML → markdown/text).
+- `web_search` — Search the web via Brave Search API (default), Perplexity Sonar (direct or via OpenRouter), or Parallel Search API.
+- `web_fetch` — HTTP fetch + readable extraction (HTML → markdown/text). Supports Readability, Firecrawl, and Parallel extract.
 
 These are **not** browser automation. For JS-heavy sites or logins, use the
 [Browser tool](/tools/browser).
@@ -32,6 +33,7 @@ These are **not** browser automation. For JS-heavy sites or logins, use the
 |----------|------|------|---------|
 | **Brave** (default) | Fast, structured results, free tier | Traditional search results | `BRAVE_API_KEY` |
 | **Perplexity** | AI-synthesized answers, citations, real-time | Requires Perplexity or OpenRouter access | `OPENROUTER_API_KEY` or `PERPLEXITY_API_KEY` |
+| **Parallel** | Relevant excerpts, real-time, agentic mode | Requires Parallel API access | `PARALLEL_API_KEY` |
 
 See [Brave Search setup](/brave-search) and [Perplexity Sonar](/perplexity) for provider-specific details.
 
@@ -42,7 +44,7 @@ Set the provider in config:
   tools: {
     web: {
       search: {
-        provider: "brave"  // or "perplexity"
+        provider: "brave"  // or "perplexity" or "parallel"
       }
     }
   }
@@ -138,6 +140,64 @@ If no base URL is set, Clawdbot chooses a default based on the API key source:
 | `perplexity/sonar-pro` (default) | Multi-step reasoning with web search | Complex questions |
 | `perplexity/sonar-reasoning-pro` | Chain-of-thought analysis | Deep research |
 
+## Using Parallel
+
+Parallel provides web search and content extraction APIs optimized for agentic workflows.
+Results include relevant excerpts from each page.
+
+### Getting a Parallel API key
+
+1) Sign up at https://parallel.ai/
+2) Generate an API key in your account settings
+
+### Setting up Parallel search
+
+```json5
+{
+  tools: {
+    web: {
+      search: {
+        enabled: true,
+        provider: "parallel",
+        parallel: {
+          // API key (optional if PARALLEL_API_KEY is set)
+          apiKey: "your-parallel-api-key",
+          // Base URL (optional, defaults to https://api.parallel.ai)
+          baseUrl: "https://api.parallel.ai"
+        }
+      }
+    }
+  }
+}
+```
+
+**Environment alternative:** set `PARALLEL_API_KEY` in the Gateway environment.
+For a gateway install, put it in `~/.clawdbot/.env`.
+
+### Using Parallel extract for web_fetch
+
+Parallel extract can be used as a content extractor for `web_fetch`, providing
+markdown content from web pages. Enable it alongside or instead of Readability/Firecrawl:
+
+```json5
+{
+  tools: {
+    web: {
+      fetch: {
+        parallel: {
+          enabled: true,
+          // API key (optional if PARALLEL_API_KEY is set)
+          apiKey: "your-parallel-api-key"
+        }
+      }
+    }
+  }
+}
+```
+
+When enabled, Parallel extract is tried first for HTML content. If it fails,
+Clawdbot falls back to Readability and then Firecrawl (if configured).
+
 ## web_search
 
 Search the web using your configured provider.
@@ -148,6 +208,7 @@ Search the web using your configured provider.
 - API key for your chosen provider:
   - **Brave**: `BRAVE_API_KEY` or `tools.web.search.apiKey`
   - **Perplexity**: `OPENROUTER_API_KEY`, `PERPLEXITY_API_KEY`, or `tools.web.search.perplexity.apiKey`
+  - **Parallel**: `PARALLEL_API_KEY` or `tools.web.search.parallel.apiKey`
 
 ### Config
 

@@ -17,7 +17,7 @@ import {
   writeCache,
 } from "./web-shared.js";
 
-const SEARCH_PROVIDERS = ["brave", "perplexity"] as const;
+const SEARCH_PROVIDERS = ["brave", "perplexity", "parallel"] as const;
 const DEFAULT_SEARCH_COUNT = 5;
 const MAX_SEARCH_COUNT = 10;
 
@@ -27,6 +27,7 @@ const PERPLEXITY_DIRECT_BASE_URL = "https://api.perplexity.ai";
 const DEFAULT_PERPLEXITY_MODEL = "perplexity/sonar-pro";
 const PERPLEXITY_KEY_PREFIXES = ["pplx-"];
 const OPENROUTER_KEY_PREFIXES = ["sk-or-"];
+const DEFAULT_PARALLEL_BASE_URL = "https://api.parallel.ai";
 
 const SEARCH_CACHE = new Map<string, CacheEntry<Record<string, unknown>>>();
 const BRAVE_FRESHNESS_SHORTCUTS = new Set(["pd", "pw", "pm", "py"]);
@@ -103,6 +104,22 @@ type PerplexitySearchResponse = {
 
 type PerplexityBaseUrlHint = "direct" | "openrouter";
 
+type ParallelConfig = {
+  apiKey?: string;
+  baseUrl?: string;
+};
+
+type ParallelSearchResponse = {
+  search_id: string;
+  results: Array<{
+    url: string;
+    title?: string | null;
+    excerpts?: string[] | null;
+    publish_date?: string | null;
+  }>;
+  warnings?: Array<{ message?: string }> | null;
+};
+
 function resolveSearchConfig(cfg?: ClawdbotConfig): WebSearchConfig {
   const search = cfg?.tools?.web?.search;
   if (!search || typeof search !== "object") return undefined;
@@ -131,6 +148,14 @@ function missingSearchKeyPayload(provider: (typeof SEARCH_PROVIDERS)[number]) {
       docs: "https://docs.clawd.bot/tools/web",
     };
   }
+  if (provider === "parallel") {
+    return {
+      error: "missing_parallel_api_key",
+      message:
+        "web_search (parallel) needs an API key. Set PARALLEL_API_KEY in the Gateway environment, or configure tools.web.search.parallel.apiKey.",
+      docs: "https://docs.clawd.bot/tools/web",
+    };
+  }
   return {
     error: "missing_brave_api_key",
     message: `web_search needs a Brave Search API key. Run \`${formatCliCommand("clawdbot configure --section web")}\` to store it, or set BRAVE_API_KEY in the Gateway environment.`,
@@ -144,6 +169,7 @@ function resolveSearchProvider(search?: WebSearchConfig): (typeof SEARCH_PROVIDE
       ? search.provider.trim().toLowerCase()
       : "";
   if (raw === "perplexity") return "perplexity";
+  if (raw === "parallel") return "parallel";
   if (raw === "brave") return "brave";
   return "brave";
 }
@@ -219,6 +245,28 @@ function resolvePerplexityModel(perplexity?: PerplexityConfig): string {
       ? perplexity.model.trim()
       : "";
   return fromConfig || DEFAULT_PERPLEXITY_MODEL;
+}
+
+function resolveParallelConfig(search?: WebSearchConfig): ParallelConfig {
+  if (!search || typeof search !== "object") return {};
+  const parallel = "parallel" in search ? search.parallel : undefined;
+  if (!parallel || typeof parallel !== "object") return {};
+  return parallel as ParallelConfig;
+}
+
+function resolveParallelApiKey(parallel?: ParallelConfig): string | undefined {
+  const fromConfig = normalizeApiKey(parallel?.apiKey);
+  if (fromConfig) return fromConfig;
+  const fromEnv = normalizeApiKey(process.env.PARALLEL_API_KEY);
+  return fromEnv || undefined;
+}
+
+function resolveParallelBaseUrl(parallel?: ParallelConfig): string {
+  const fromConfig =
+    parallel && "baseUrl" in parallel && typeof parallel.baseUrl === "string"
+      ? parallel.baseUrl.trim()
+      : "";
+  return fromConfig || DEFAULT_PARALLEL_BASE_URL;
 }
 
 function resolveSearchCount(value: unknown, fallback: number): number {
@@ -306,6 +354,60 @@ async function runPerplexitySearch(params: {
   return { content, citations };
 }
 
+async function runParallelSearch(params: {
+  query: string;
+  count: number;
+  apiKey: string;
+  baseUrl: string;
+  timeoutSeconds: number;
+}): Promise<{
+  results: Array<{
+    title: string;
+    url: string;
+    description: string;
+    published?: string;
+    siteName?: string;
+  }>;
+  searchId: string;
+}> {
+  const endpoint = `${params.baseUrl.replace(/\/$/, "")}/v1beta/search`;
+
+  const res = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${params.apiKey}`,
+      "parallel-beta": "search-extract-2025-10-10",
+    },
+    body: JSON.stringify({
+      objective: params.query,
+      search_queries: [params.query],
+      max_results: params.count,
+      excerpts: {
+        max_chars_per_result: 500,
+      },
+      mode: "agentic",
+    }),
+    signal: withTimeout(undefined, params.timeoutSeconds * 1000),
+  });
+
+  if (!res.ok) {
+    const detail = await readResponseText(res);
+    throw new Error(`Parallel Search API error (${res.status}): ${detail || res.statusText}`);
+  }
+
+  const data = (await res.json()) as ParallelSearchResponse;
+  const results = (data.results ?? []).map((entry) => ({
+    title: entry.title ?? "",
+    url: entry.url ?? "",
+    description: entry.excerpts?.join("\n\n") ?? "",
+    published: entry.publish_date ?? undefined,
+    siteName: resolveSiteName(entry.url ?? ""),
+  }));
+
+  return { results, searchId: data.search_id };
+}
+
 async function runWebSearch(params: {
   query: string;
   count: number;
@@ -319,6 +421,7 @@ async function runWebSearch(params: {
   freshness?: string;
   perplexityBaseUrl?: string;
   perplexityModel?: string;
+  parallelBaseUrl?: string;
 }): Promise<Record<string, unknown>> {
   const cacheKey = normalizeCacheKey(
     params.provider === "brave"
@@ -346,6 +449,27 @@ async function runWebSearch(params: {
       tookMs: Date.now() - start,
       content,
       citations,
+    };
+    writeCache(SEARCH_CACHE, cacheKey, payload, params.cacheTtlMs);
+    return payload;
+  }
+
+  if (params.provider === "parallel") {
+    const { results, searchId } = await runParallelSearch({
+      query: params.query,
+      count: params.count,
+      apiKey: params.apiKey,
+      baseUrl: params.parallelBaseUrl ?? DEFAULT_PARALLEL_BASE_URL,
+      timeoutSeconds: params.timeoutSeconds,
+    });
+
+    const payload = {
+      query: params.query,
+      provider: params.provider,
+      searchId,
+      count: results.length,
+      tookMs: Date.now() - start,
+      results,
     };
     writeCache(SEARCH_CACHE, cacheKey, payload, params.cacheTtlMs);
     return payload;
@@ -415,11 +539,14 @@ export function createWebSearchTool(options?: {
 
   const provider = resolveSearchProvider(search);
   const perplexityConfig = resolvePerplexityConfig(search);
+  const parallelConfig = resolveParallelConfig(search);
 
   const description =
     provider === "perplexity"
       ? "Search the web using Perplexity Sonar (direct or via OpenRouter). Returns AI-synthesized answers with citations from real-time web search."
-      : "Search the web using Brave Search API. Supports region-specific and localized search via country and language parameters. Returns titles, URLs, and snippets for fast research.";
+      : provider === "parallel"
+        ? "Search the web using Parallel Search API. Returns relevant excerpts and titles from web search results."
+        : "Search the web using Brave Search API. Supports region-specific and localized search via country and language parameters. Returns titles, URLs, and snippets for fast research.";
 
   return {
     label: "Web Search",
@@ -429,8 +556,14 @@ export function createWebSearchTool(options?: {
     execute: async (_toolCallId, args) => {
       const perplexityAuth =
         provider === "perplexity" ? resolvePerplexityApiKey(perplexityConfig) : undefined;
+      const parallelApiKey =
+        provider === "parallel" ? resolveParallelApiKey(parallelConfig) : undefined;
       const apiKey =
-        provider === "perplexity" ? perplexityAuth?.apiKey : resolveSearchApiKey(search);
+        provider === "perplexity"
+          ? perplexityAuth?.apiKey
+          : provider === "parallel"
+            ? parallelApiKey
+            : resolveSearchApiKey(search);
 
       if (!apiKey) {
         return jsonResult(missingSearchKeyPayload(provider));
@@ -476,6 +609,7 @@ export function createWebSearchTool(options?: {
           perplexityAuth?.apiKey,
         ),
         perplexityModel: resolvePerplexityModel(perplexityConfig),
+        parallelBaseUrl: resolveParallelBaseUrl(parallelConfig),
       });
       return jsonResult(result);
     },
@@ -486,4 +620,6 @@ export const __testing = {
   inferPerplexityBaseUrlFromApiKey,
   resolvePerplexityBaseUrl,
   normalizeFreshness,
+  resolveParallelApiKey,
+  resolveParallelBaseUrl,
 } as const;

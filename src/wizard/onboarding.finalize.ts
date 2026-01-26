@@ -432,8 +432,20 @@ export async function finalizeOnboardingWizard(options: FinalizeOnboardingOption
     );
   }
 
-  const webSearchKey = (nextConfig.tools?.web?.search?.apiKey ?? "").trim();
-  const webSearchEnv = (process.env.BRAVE_API_KEY ?? "").trim();
+  const searchConfig = nextConfig.tools?.web?.search;
+  const webSearchKey = (
+    searchConfig?.apiKey ||
+    searchConfig?.perplexity?.apiKey ||
+    searchConfig?.parallel?.apiKey ||
+    ""
+  ).trim();
+  const webSearchEnv = (
+    process.env.BRAVE_API_KEY ||
+    process.env.PERPLEXITY_API_KEY ||
+    process.env.OPENROUTER_API_KEY ||
+    process.env.PARALLEL_API_KEY ||
+    ""
+  ).trim();
   const hasWebSearchKey = Boolean(webSearchKey || webSearchEnv);
   await prompter.note(
     hasWebSearchKey
@@ -441,20 +453,20 @@ export async function finalizeOnboardingWizard(options: FinalizeOnboardingOption
           "Web search is enabled, so your agent can look things up online when needed.",
           "",
           webSearchKey
-            ? "API key: stored in config (tools.web.search.apiKey)."
-            : "API key: provided via BRAVE_API_KEY env var (Gateway environment).",
+            ? "API key: stored in config."
+            : "API key: provided via environment variable.",
           "Docs: https://docs.clawd.bot/tools/web",
         ].join("\n")
       : [
-          "If you want your agent to be able to search the web, you’ll need an API key.",
+          "If you want your agent to be able to search the web, you'll need an API key.",
           "",
-          "Clawdbot uses Brave Search for the `web_search` tool. Without a Brave Search API key, web search won’t work.",
+          "Clawdbot supports Brave Search, Perplexity, and Parallel for the `web_search` tool.",
           "",
           "Set it up interactively:",
           `- Run: ${formatCliCommand("clawdbot configure --section web")}`,
-          "- Enable web_search and paste your Brave Search API key",
+          "- Choose a provider and paste your API key",
           "",
-          "Alternative: set BRAVE_API_KEY in the Gateway environment (no config changes).",
+          "Alternative: set BRAVE_API_KEY, PERPLEXITY_API_KEY, or PARALLEL_API_KEY in the Gateway environment.",
           "Docs: https://docs.clawd.bot/tools/web",
         ].join("\n"),
     "Web search (optional)",
