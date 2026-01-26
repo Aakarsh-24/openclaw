@@ -61,6 +61,7 @@ WORKDIR /app
 COPY --from=clawdbot-builder /app/dist ./dist
 COPY --from=clawdbot-builder /app/node_modules ./node_modules
 COPY --from=clawdbot-builder /app/package.json ./package.json
+COPY --from=clawdbot-builder /app/docs/reference/templates ./docs/reference/templates
 # UI not built - gateway-only deploy
 
 # Copy the pre-built extensions to staging (PVC will mount over /root/.clawdbot)
