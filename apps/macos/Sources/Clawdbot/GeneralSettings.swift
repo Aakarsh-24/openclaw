@@ -588,6 +588,11 @@ extension GeneralSettings {
     }
 
     private static func sshCheckCommand(target: String, identity: String) -> [String] {
+        guard let parsed = CommandResolver.parseSSHTarget(target) else {
+            // Fallback: pass target as-is (will likely fail, but matches old behavior)
+            return ["/usr/bin/ssh", target, "echo ok"]
+        }
+
         var args: [String] = [
             "/usr/bin/ssh",
             "-o", "BatchMode=yes",
@@ -595,10 +600,14 @@ extension GeneralSettings {
             "-o", "StrictHostKeyChecking=accept-new",
             "-o", "UpdateHostKeys=yes",
         ]
+        if parsed.port > 0 && parsed.port != 22 {
+            args.append(contentsOf: ["-p", String(parsed.port)])
+        }
         if !identity.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             args.append(contentsOf: ["-i", identity])
         }
-        args.append(target)
+        let userHost = parsed.user.map { "\($0)@\(parsed.host)" } ?? parsed.host
+        args.append(userHost)
         args.append("echo ok")
         return args
     }

@@ -27,7 +27,8 @@ Remote mode supports two transports:
 1) Open *Settings → General*.
 2) Under **Clawdbot runs**, pick **Remote over SSH** and set:
    - **Transport**: **SSH tunnel** or **Direct (ws/wss)**.
-   - **SSH target**: `user@host` (optional `:port`).
+   - **SSH target**: `user@host` or `user@host:port` (port defaults to 22).
+     - Example with non-standard SSH port: `admin@gateway.example.com:2222`
      - If the gateway is on the same LAN and advertises Bonjour, pick it from the discovered list to auto-fill this field.
    - **Gateway URL** (Direct only): `wss://gateway.example.ts.net` (or `ws://...` for local/LAN).
    - **Identity file** (advanced): path to your key.

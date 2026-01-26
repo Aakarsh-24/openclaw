@@ -2890,6 +2890,8 @@ Auth and Tailscale:
 Remote client defaults (CLI):
 - `gateway.remote.url` sets the default Gateway WebSocket URL for CLI calls when `gateway.mode = "remote"`.
 - `gateway.remote.transport` selects the macOS remote transport (`ssh` default, `direct` for ws/wss). When `direct`, `gateway.remote.url` must be `ws://` or `wss://`. `ws://host` defaults to port `18789`.
+- `gateway.remote.sshTarget` sets the SSH target for CLI probes and macOS app tunneling (`user@host` or `user@host:port`; port defaults to 22).
+- `gateway.remote.sshIdentity` sets the SSH identity file path for remote connections.
 - `gateway.remote.token` supplies the token for remote calls (leave unset for no auth).
 - `gateway.remote.password` supplies the password for remote calls (leave unset for no auth).
 
@@ -2906,6 +2908,23 @@ macOS app behavior:
       url: "ws://gateway.tailnet:18789",
       token: "your-token",
       password: "your-password"
+    }
+  }
+}
+```
+
+SSH tunnel example with non-standard SSH port (macOS app):
+
+```json5
+{
+  gateway: {
+    mode: "remote",
+    remote: {
+      transport: "ssh",
+      sshTarget: "admin@gateway.example.com:2222",
+      sshIdentity: "~/.ssh/id_ed25519",
+      url: "ws://127.0.0.1:18789",
+      token: "your-token"
     }
   }
 }

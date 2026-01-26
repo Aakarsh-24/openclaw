@@ -403,30 +403,10 @@ final class AppState {
             self.remoteUrl = remoteUrlText
         }
 
-        let targetMode = desiredMode ?? self.connectionMode
-        if targetMode == .remote,
-           remoteTransport != .direct,
-           let host = AppState.remoteHost(from: remoteUrl)
-        {
-            self.updateRemoteTarget(host: host)
-        }
-    }
-
-    private func updateRemoteTarget(host: String) {
-        let trimmed = self.remoteTarget.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let parsed = CommandResolver.parseSSHTarget(trimmed) else { return }
-        let trimmedUser = parsed.user?.trimmingCharacters(in: .whitespacesAndNewlines)
-        let user = (trimmedUser?.isEmpty ?? true) ? nil : trimmedUser
-        let port = parsed.port
-        let assembled: String
-        if let user {
-            assembled = port == 22 ? "\(user)@\(host)" : "\(user)@\(host):\(port)"
-        } else {
-            assembled = port == 22 ? host : "\(host):\(port)"
-        }
-        if assembled != self.remoteTarget {
-            self.remoteTarget = assembled
-        }
+        // Note: We intentionally do NOT auto-populate remoteTarget here.
+        // The SSH target is user-controlled via the UI; auto-populating it from
+        // gateway.remote.url would override user edits (including clearing the field).
+        // Initial population happens in init() for first-time setup only.
     }
 
     private func syncGatewayConfigIfNeeded() {
