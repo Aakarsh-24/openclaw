@@ -32,9 +32,15 @@ RUN pnpm ui:build
 
 ENV NODE_ENV=production
 
-# Security hardening: Run as non-root user
-# The node:22-bookworm image includes a 'node' user (uid 1000)
-# This reduces the attack surface by preventing container escape via root privileges
-USER node
+# Install gosu for dropping privileges safely
+RUN apt-get update && apt-get install -y --no-install-recommends gosu && rm -rf /var/lib/apt/lists/*
 
+# Entrypoint script: fix /data permissions then drop to node user
+RUN printf '#!/bin/sh\n\
+if [ -d /data ]; then\n\
+  chown -R node:node /data 2>/dev/null || true\n\
+fi\n\
+exec gosu node "$@"\n' > /entrypoint.sh && chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["node", "dist/index.js"]
