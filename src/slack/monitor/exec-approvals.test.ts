@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   parseApprovalValue,
-  getExecApprovalActionId,
+  getExecApprovalActionIdPrefix,
   SlackExecApprovalHandler,
   type ExecApprovalRequest,
 } from "./exec-approvals.js";
@@ -15,9 +15,9 @@ function encodeApprovalValue(
   return ["execapproval", encodeURIComponent(approvalId), action].join("|");
 }
 
-describe("getExecApprovalActionId", () => {
-  it("returns the action ID", () => {
-    expect(getExecApprovalActionId()).toBe("clawdbot_execapproval");
+describe("getExecApprovalActionIdPrefix", () => {
+  it("returns the action ID prefix", () => {
+    expect(getExecApprovalActionIdPrefix()).toBe("clawdbot_execapproval");
   });
 });
 
