@@ -87,7 +87,7 @@ body {
     radial-gradient(900px 600px at 95% 10%, color-mix(in oklab, var(--accent2) 14%, transparent), transparent 60%),
     radial-gradient(900px 600px at 50% 120%, color-mix(in oklab, var(--link) 10%, transparent), transparent 55%),
     linear-gradient(180deg, var(--bg0), var(--bg1));
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 body::before,
