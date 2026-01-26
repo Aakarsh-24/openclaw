@@ -31,7 +31,7 @@ services:
   - type: web
     name: clawdbot
     runtime: docker
-    plan: starter
+    plan: standard
     healthCheckPath: /health
     envVars:
       - key: PORT
@@ -68,7 +68,7 @@ Key Blueprint features used:
 | Starter | Never | 1GB+ | Personal use, small teams |
 | Standard+ | Never | 1GB+ | Production, multiple channels |
 
-The Blueprint defaults to `starter`. To use free tier, change `plan: free` in your fork's
+This repo's Blueprint uses `standard`. To use free tier, change `plan: free` in your fork's
 `render.yaml` (but note: no persistent disk means config resets on each deploy).
 
 ## After deployment
@@ -143,7 +143,7 @@ Check the deploy logs in the Render Dashboard. Common issues:
 
 ### Slow cold starts (free tier)
 
-Free tier services spin down after 15 minutes of inactivity. The first request after spin-down takes a few seconds while the container starts. Upgrade to Starter plan for always-on.
+Free tier services spin down after 15 minutes of inactivity. The first request after spin-down takes a few seconds while the container starts. Upgrade to Standard plan (or higher) for always-on.
 
 ### Data loss after redeploy
 
