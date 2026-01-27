@@ -2,15 +2,6 @@ import type { ModelDefinitionConfig } from "../config/types.models.js";
 
 export const TOGETHER_BASE_URL = "https://api.together.xyz/v1";
 
-// Together AI uses token-based pricing
-// Default costs when specific pricing is not available
-export const TOGETHER_DEFAULT_COST = {
-  input: 0.5,
-  output: 0.5,
-  cacheRead: 0.5,
-  cacheWrite: 0.5,
-};
-
 export const TOGETHER_MODEL_CATALOG: ModelDefinitionConfig[] = [
   {
     id: "zai-org/GLM-4.7",
