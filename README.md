@@ -98,6 +98,8 @@ pnpm clawdbot onboard --install-daemon
 pnpm gateway:watch
 ```
 
+**Important**: When developing from the repo, always use `pnpm clawdbot` (not just `clawdbot`) to run your local dev version. Running `clawdbot` alone uses the globally installed npm package, which won't include your changes.
+
 Note: `pnpm clawdbot ...` runs TypeScript directly (via `tsx`). `pnpm build` produces `dist/` for running via Node / the packaged `clawdbot` binary.
 
 ## Security defaults (DM access)

@@ -67,6 +67,15 @@ apps/ios/*.mobileprovision
 .vscode/
 IDENTITY.md
 USER.md
+SOUL.md
+TOOLS.md
+MEMORY.md
+HEARTBEAT.md
+SUB_AGENT_RULES.md
+memory/
+xmtp-plugin/
+xmtp-research.md
+xmtp-reaction-bug-analysis.md
 .tgz
 
 # local tooling
