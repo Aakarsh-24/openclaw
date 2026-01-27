@@ -14,19 +14,27 @@ import { resolveAgentIdFromSessionKey } from "../../../routing/session-key.js";
 import type { HookHandler } from "../../hooks.js";
 
 /**
+ * Default number of conversation messages to capture
+ */
+const DEFAULT_MESSAGE_COUNT = 15;
+
+/**
  * Read recent messages from session file for slug generation
  */
-async function getRecentSessionContent(sessionFilePath: string): Promise<string | null> {
+async function getRecentSessionContent(
+  sessionFilePath: string,
+  messageCount: number,
+): Promise<string | null> {
   try {
     const content = await fs.readFile(sessionFilePath, "utf-8");
-    const lines = content.trim().split("\n");
+    if (!content.trim()) return null;
 
-    // Get last 15 lines (recent conversation)
-    const recentLines = lines.slice(-15);
+    const lines = content.split("\n");
 
-    // Parse JSONL and extract messages
-    const messages: string[] = [];
-    for (const line of recentLines) {
+    // Parse JSONL and extract ONLY user and assistant messages FIRST
+    const conversationMessages: string[] = [];
+
+    for (const line of lines) {
       try {
         const entry = JSON.parse(line);
         // Session files have entries with type="message" containing a nested message object
@@ -39,7 +47,7 @@ async function getRecentSessionContent(sessionFilePath: string): Promise<string 
               ? msg.content.find((c: any) => c.type === "text")?.text
               : msg.content;
             if (text && !text.startsWith("/")) {
-              messages.push(`${role}: ${text}`);
+              conversationMessages.push(`${role}: ${text}`);
             }
           }
         }
@@ -48,7 +56,10 @@ async function getRecentSessionContent(sessionFilePath: string): Promise<string 
       }
     }
 
-    return messages.join("\n");
+    // THEN take the last N conversation messages
+    const selectedMessages = conversationMessages.slice(-messageCount);
+
+    return selectedMessages.join("\n");
   } catch {
     return null;
   }
@@ -97,8 +108,21 @@ const saveSessionToMemory: HookHandler = async (event) => {
     let sessionContent: string | null = null;
 
     if (sessionFile) {
-      // Get recent conversation content
-      sessionContent = await getRecentSessionContent(sessionFile);
+      // Read hook config for message count
+      const hookConfig = (context.hooks as any)?.internal?.entries?.["session-memory"] as
+        | { messages?: number }
+        | undefined;
+
+      let messageCount = hookConfig?.messages ?? DEFAULT_MESSAGE_COUNT;
+      if (!Number.isInteger(messageCount) || messageCount < 1 || messageCount > 1000) {
+        console.warn(
+          `[session-memory] Invalid messages config (${messageCount}), using default ${DEFAULT_MESSAGE_COUNT}`,
+        );
+        messageCount = DEFAULT_MESSAGE_COUNT;
+      }
+
+      // Get recent conversation content (correct filtering order)
+      sessionContent = await getRecentSessionContent(sessionFile, messageCount);
       console.log("[session-memory] sessionContent length:", sessionContent?.length || 0);
 
       if (sessionContent && cfg) {

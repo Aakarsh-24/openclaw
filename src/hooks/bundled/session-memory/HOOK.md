@@ -74,13 +74,18 @@ clawdbot hooks disable session-memory
 Or remove it from your config:
 
 ```json
+
 {
   "hooks": {
     "internal": {
       "entries": {
-        "session-memory": { "enabled": false }
+        "session-memory": {
+          "enabled": true,
+          "messages": 100
+        }
       }
     }
   }
 }
+
 ```
