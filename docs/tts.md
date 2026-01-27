@@ -146,7 +146,12 @@ Smallest AI notes:
 - `lightning-v3.1` is the latest model, optimized for low latency (ideal for real-time)
 - `waves` model offers higher quality speech
 - Native `mulaw` @ 8kHz support for telephony (no resampling needed)
-- 30+ voices available: `lauren`, `emily`, `jasmine`, `arman`, `james`, `george`, `karen`, etc.
+- 20+ voices available:
+  - **US Female:** `sophia`, `sandra`, `rachel`, `lauren`, `hannah`, `vanessa`, `brooke`, `megan`
+  - **US Male:** `robert`, `johnny`, `ethan`, `lucas`, `daniel`
+  - **British Male:** `edward`
+  - **Indian Female:** `advika`, `aisha`, `yuvika`, `ishani`, `anuja`
+  - **Indian Male:** `vaibhav`, `hitesh`, `gaurav`, `vivaan`, `arjun`, `kunal`, `siddharth`
 - Get full voice list: `curl -H "Authorization: Bearer $SMALLEST_API_KEY" https://waves-api.smallest.ai/api/v1/lightning/get_voices`
 
 ### Edge TTS primary (no API key)
