@@ -1,38 +1,49 @@
 # Liam Usage Metrics
 
-*Updated weekly by Liam. You can update this freely.*
+*Updated daily during debug period. Weekly otherwise.*
 
 ## Current Week
 
-**Week of:** (update each Monday)
+**Week of:** January 27, 2026
 
 ### Activity
-- Emails processed: 0
-- Slack messages: 0
-- Calendar events checked: 0
-- Showcase ideas proposed: 0
+- Emails processed: ~20
+- Telegram messages: 25+
+- Calendar events checked: 2
+- Instagram posts generated: 1
+- Status reports sent: 2
+- Projects in-progress: 4
 
 ### Errors
-- (List any errors encountered)
+- Gmail-Poll cron failing (ticket 030)
+- Isolated session tool limitations
 
 ### Evolution Queue
-- Items proposed: 0
-- Items approved: 0
+- Items proposed: 2 (030, 031)
+- Items approved: 0 (pending Simon review)
 - Items implemented: 0
 
 ## Historical
 
-(Previous weeks archived here)
+### Week 1 (Jan 24-26)
+**Status:** COMPLETE
+**Major wins:**
+- Channel separation implemented
+- GOG authentication fixed
+- 11 cron jobs active
+- Data analytics skill built
+- Instagram post generator working
+- APEX v5.1 internalized
 
 ---
 
 ## Self-Evaluation History
 
-*Weekly APEX compliance and performance evaluations. Run every Sunday 3 AM.*
+*Daily APEX compliance and performance evaluations. Run daily during debug period.*
 
-| Date | APEX Score | Grade | Passed | Total | Notes |
-|------|------------|-------|--------|-------|-------|
-| (pending first run) | - | - | - | - | Skill installed 2026-01-26 |
+| Date | APEX Score | Grade | Passed | Notes |
+|------|------------|-------|--------|-------|
+| 2026-01-27 | TBD | - | - | First daily review |
 
 ### Evaluation Reports
 
@@ -48,5 +59,5 @@ Reports stored in `~/clawd/memory/self-eval-YYYY-MM-DD.md`
 | Context at Clear | <60% | Prevent rot |
 
 ---
-*Liam updates this every Monday at 10 AM via cron job.*
-*Self-evaluation runs every Sunday at 3 AM.*
+*Liam updates this daily during debug period, then weekly on Mondays.*
+*Self-evaluation runs every Sunday 3 AM.*

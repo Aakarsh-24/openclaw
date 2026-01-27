@@ -18,6 +18,24 @@ Add items under "## Pending" using this format:
 
 ## Pending
 
+### [2026-01-27-031] Weekly-Employee-Review - Run Daily During Debugging Period
+- **Proposed by:** Simon (via Telegram)
+- **Date:** 2026-01-27
+- **Category:** config
+- **Target file:** `~/.clawdbot/cron/jobs.json`
+- **Description:**
+  - **Current state:** Weekly-Employee-Review runs weekly on Mondays at 9 AM (cron expr: "0 9 * * 1")
+  - **Problem:** During early development/debugging period (first 2 weeks), weekly reviews are too infrequent
+  - **Need:** Daily self-assessment during debugging period to catch issues faster
+  - **Requested change:** Run Daily-Employee-Review every day at 9 AM during debugging
+
+- **Proposed Solution:**
+  - Change schedule from weekly ("0 9 * * 1") to daily ("0 9 * * *")
+  - Add note to restore weekly schedule after debugging period ends (2026-02-10)
+  - Job should remain in `sessionTarget: "main"` for full tool access
+
+- **Status:** pending
+
 ### [2026-01-27-030] Gmail-Poll Cron Job Failing in Isolated Session
 - **Proposed by:** Liam (auto-escalated)
 - **Date:** 2026-01-27
