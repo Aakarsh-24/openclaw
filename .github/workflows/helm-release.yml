@@ -88,6 +88,7 @@ jobs:
           echo "Updating image repository to: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
           yq e '.image.registry = "${{ env.REGISTRY }}"' -i charts/clawdbot/values.yaml
           yq e '.image.repository = "${{ env.IMAGE_NAME }}"' -i charts/clawdbot/values.yaml
+          yq e '.image.tag = "${{ steps.version.outputs.version }}"' -i charts/clawdbot/values.yaml
           cat charts/clawdbot/values.yaml | head -20
 
       - name: Package Helm chart
