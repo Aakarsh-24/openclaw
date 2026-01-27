@@ -145,6 +145,14 @@ export async function promptDefaultModel(
   );
 
   const hasPreferredProvider = preferredProvider ? providers.includes(preferredProvider) : false;
+
+  // If preferredProvider is specified but not in catalog, skip the picker.
+  // This handles auto-discovering providers (e.g., Ollama) where models aren't
+  // in the static catalog but were already configured by the auth handler.
+  if (preferredProvider && !hasPreferredProvider) {
+    return {};
+  }
+
   const shouldPromptProvider =
     !hasPreferredProvider && providers.length > 1 && models.length > PROVIDER_FILTER_THRESHOLD;
   if (shouldPromptProvider) {
