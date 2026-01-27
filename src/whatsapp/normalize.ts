@@ -9,7 +9,10 @@ const WHATSAPP_GROUP_SUFFIX = "@g.us";
  */
 function stripWhatsAppTargetPrefixes(value: string): string {
   // More efficient than a loop: matches "whatsapp:" followed by optional spaces, one or more times.
-  return value.trim().replace(/^(whatsapp:\s*)+/i, "").trim();
+  return value
+    .trim()
+    .replace(/^(whatsapp:\s*)+/i, "")
+    .trim();
 }
 
 export function isWhatsAppGroupJid(value: string): boolean {
