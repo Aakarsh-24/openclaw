@@ -25,7 +25,7 @@ export const FIREWORKS_MODEL_CATALOG = [
   // DeepSeek models
   {
     id: "accounts/fireworks/models/deepseek-r1-0528",
-    name: "DeepSeek R1 05/28",
+    name: "Deepseek R1 05/28",
     reasoning: true,
     input: ["text"] as const,
     contextWindow: 163840,
@@ -33,7 +33,7 @@ export const FIREWORKS_MODEL_CATALOG = [
   },
   {
     id: "accounts/fireworks/models/deepseek-v3-0324",
-    name: "DeepSeek V3 03-24",
+    name: "Deepseek V3 03-24",
     reasoning: false,
     input: ["text"] as const,
     contextWindow: 163840,
@@ -57,7 +57,7 @@ export const FIREWORKS_MODEL_CATALOG = [
   },
   {
     id: "accounts/fireworks/models/deepseek-v3p2",
-    name: "DeepSeek V3.2",
+    name: "Deepseek v3.2",
     reasoning: false,
     input: ["text"] as const,
     contextWindow: 163840,
@@ -110,6 +110,14 @@ export const FIREWORKS_MODEL_CATALOG = [
     maxTokens: 8192,
   },
   {
+    id: "accounts/fireworks/models/kimi-k2p5",
+    name: "Kimi K2.5",
+    reasoning: true,
+    input: ["text", "image"] as const,
+    contextWindow: 262144,
+    maxTokens: 8192,
+  },
+  {
     id: "accounts/fireworks/models/kimi-k2-thinking",
     name: "Kimi K2 Thinking",
     reasoning: true,
@@ -129,11 +137,11 @@ export const FIREWORKS_MODEL_CATALOG = [
     maxTokens: 8192,
   },
 
-  // MiniMax models - "long-thinking" and "complex reasoning tasks"
+  // MiniMax models - compact MoE for coding and agentic tasks
   {
     id: "accounts/fireworks/models/minimax-m2",
     name: "MiniMax-M2",
-    reasoning: true,
+    reasoning: false,
     input: ["text"] as const,
     contextWindow: 196608,
     maxTokens: 8192,
@@ -141,7 +149,7 @@ export const FIREWORKS_MODEL_CATALOG = [
   {
     id: "accounts/fireworks/models/minimax-m2p1",
     name: "MiniMax-M2.1",
-    reasoning: true,
+    reasoning: false,
     input: ["text"] as const,
     contextWindow: 204800,
     maxTokens: 8192,
@@ -210,6 +218,14 @@ export const FIREWORKS_MODEL_CATALOG = [
     id: "accounts/fireworks/models/qwen3-vl-235b-a22b-thinking",
     name: "Qwen3 VL 235B A22B Thinking",
     reasoning: true,
+    input: ["text", "image"] as const,
+    contextWindow: 262144,
+    maxTokens: 8192,
+  },
+  {
+    id: "accounts/fireworks/models/qwen3-vl-30b-a3b-instruct",
+    name: "Qwen3 VL 30B A3B Instruct",
+    reasoning: false,
     input: ["text", "image"] as const,
     contextWindow: 262144,
     maxTokens: 8192,

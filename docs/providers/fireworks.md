@@ -22,7 +22,7 @@ Fireworks AI provides fast, cost-effective serverless inference for popular open
 - **Streaming**: Supported on all models
 - **Function calling**: Supported on most models
 - **Vision**: Supported on vision-capable models (Qwen VL series)
-- **Reasoning models**: DeepSeek R1, Qwen3 Thinking, Kimi K2 Thinking
+- **Reasoning models**: DeepSeek R1, Qwen3 Thinking, Kimi K2 Thinking, Kimi K2.5
 
 ## Setup
 
@@ -100,26 +100,27 @@ clawdbot models list | grep fireworks
 | **Fast + cheap** | `qwen3-8b` | Lightweight, low latency |
 | **Long context** | `kimi-k2-instruct-0905` | 262k context window |
 
-## Available Models (24 Total)
+## Available Models (26 Total)
 
 ### Text Models
 
 | Model ID | Name | Context | Features |
 |----------|------|---------|----------|
-| `deepseek-r1-0528` | DeepSeek R1 05/28 | 163k | Reasoning |
-| `deepseek-v3-0324` | DeepSeek V3 03-24 | 163k | General |
+| `deepseek-r1-0528` | Deepseek R1 05/28 | 163k | Reasoning |
+| `deepseek-v3-0324` | Deepseek V3 03-24 | 163k | General |
 | `deepseek-v3p1` | DeepSeek V3.1 | 163k | General |
 | `deepseek-v3p1-terminus` | DeepSeek V3.1 Terminus | 163k | General |
-| `deepseek-v3p2` | DeepSeek V3.2 | 163k | General |
+| `deepseek-v3p2` | Deepseek v3.2 | 163k | General |
 | `glm-4p6` | GLM-4.6 | 202k | Reasoning |
 | `glm-4p7` | GLM-4.7 | 202k | Reasoning |
 | `gpt-oss-120b` | OpenAI gpt-oss-120b | 131k | Reasoning |
 | `gpt-oss-20b` | OpenAI gpt-oss-20b | 131k | Reasoning |
 | `kimi-k2-instruct-0905` | Kimi K2 Instruct 0905 | 262k | Long context |
+| `kimi-k2p5` | Kimi K2.5 | 262k | Vision, reasoning |
 | `kimi-k2-thinking` | Kimi K2 Thinking | 256k | Reasoning |
 | `llama-v3p3-70b-instruct` | Llama 3.3 70B Instruct | 131k | General |
-| `minimax-m2` | MiniMax-M2 | 196k | Reasoning |
-| `minimax-m2p1` | MiniMax-M2.1 | 204k | Reasoning |
+| `minimax-m2` | MiniMax-M2 | 196k | Agentic, coding |
+| `minimax-m2p1` | MiniMax-M2.1 | 204k | Agentic, coding |
 | `qwen3-235b-a22b` | Qwen3 235B A22B | 131k | General |
 | `qwen3-235b-a22b-instruct-2507` | Qwen3 235B A22B Instruct 2507 | 262k | General |
 | `qwen3-235b-a22b-thinking-2507` | Qwen3 235B A22B Thinking 2507 | 262k | Reasoning |
@@ -133,6 +134,7 @@ clawdbot models list | grep fireworks
 | `qwen2p5-vl-32b-instruct` | Qwen2.5-VL 32B Instruct | 128k | Vision |
 | `qwen3-vl-235b-a22b-instruct` | Qwen3 VL 235B A22B Instruct | 262k | Vision |
 | `qwen3-vl-235b-a22b-thinking` | Qwen3 VL 235B A22B Thinking | 262k | Vision, reasoning |
+| `qwen3-vl-30b-a3b-instruct` | Qwen3 VL 30B A3B Instruct | 262k | Vision |
 | `qwen3-vl-30b-a3b-thinking` | Qwen3 VL 30B A3B Thinking | 262k | Vision, reasoning |
 
 ## Model Catalog
