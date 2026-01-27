@@ -37,16 +37,17 @@ Status: unreleased.
 - Slack: clear ack reaction after streamed replies. (#2044) Thanks @fancyboi999.
 - macOS: keep custom SSH usernames in remote target. (#2046) Thanks @algal.
 
-### Fixes
-- Telegram: wrap reasoning italics per line to avoid raw underscores. (#2181) Thanks @YuriNachos.
-- Voice Call: enforce Twilio webhook signature verification for ngrok URLs; disable ngrok free tier bypass by default.
-- Security: harden Tailscale Serve auth by validating identity via local tailscaled before trusting headers.
-- Build: align memory-core peer dependency with lockfile.
-- Security: add mDNS discovery mode with minimal default to reduce information disclosure. (#1882) Thanks @orlyjamie.
-- Security: harden URL fetches with DNS pinning to reduce rebinding risk. Thanks Chris Zheng.
-- Web UI: improve WebChat image paste previews and allow image-only sends. (#1925) Thanks @smartprogrammer93.
-- Security: wrap external hook content by default with a per-hook opt-out. (#1827) Thanks @mertcicekci0.
-- Gateway: default auth now fail-closed (token/password required; Tailscale Serve identity remains allowed).
+ ### Fixes
+ - Gateway: prevent crashes on transient network errors (fetch failures, timeouts, DNS). Added fatal error detection to only exit on truly critical errors. Fixes #2895, #2879, #2873.
+ - Telegram: wrap reasoning italics per line to avoid raw underscores. (#2181) Thanks @YuriNachos.
+ - Voice Call: enforce Twilio webhook signature verification for ngrok URLs; disable ngrok free tier bypass by default.
+ - Security: harden Tailscale Serve auth by validating identity via local tailscaled before trusting headers.
+ - Build: align memory-core peer dependency with lockfile.
+ - Security: add mDNS discovery mode with minimal default to reduce information disclosure. (#1882) Thanks @orlyjamie.
+ - Security: harden URL fetches with DNS pinning to reduce rebinding risk. Thanks Chris Zheng.
+ - Web UI: improve WebChat image paste previews and allow image-only sends. (#1925) Thanks @smartprogrammer93.
+ - Security: wrap external hook content by default with a per-hook opt-out. (#1827) Thanks @mertcicekci0.
+ - Gateway: default auth now fail-closed (token/password required; Tailscale Serve identity remains allowed).
 
 ## 2026.1.24-3
 
