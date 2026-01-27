@@ -1,7 +1,7 @@
 import type { ModelDefinitionConfig } from "../config/types.js";
 
 export const MORPHEUS_BASE_URL = "https://api.mor.org/api/v1";
-export const MORPHEUS_DEFAULT_MODEL_ID = "llama-3.3-70b";
+export const MORPHEUS_DEFAULT_MODEL_ID = "kimi-k2-thinking";
 export const MORPHEUS_DEFAULT_MODEL_REF = `morpheus/${MORPHEUS_DEFAULT_MODEL_ID}`;
 
 // Morpheus is currently FREE during Open Beta (until 1/31/26).
@@ -12,6 +12,11 @@ export const MORPHEUS_DEFAULT_COST = {
   cacheRead: 0,
   cacheWrite: 0,
 };
+
+export const MORPHEUS_COMPAT = {
+  supportsStore: false,
+  supportsDeveloperRole: false,
+} as const;
 
 /**
  * Complete catalog of Morpheus Inference API models.
@@ -182,6 +187,7 @@ export function buildMorpheusModelDefinition(entry: MorpheusCatalogEntry): Model
     cost: MORPHEUS_DEFAULT_COST,
     contextWindow: entry.contextWindow,
     maxTokens: entry.maxTokens,
+    compat: MORPHEUS_COMPAT,
   };
 }
 
@@ -236,24 +242,16 @@ function inferModelProperties(model: MorpheusModel): {
 
 /**
  * Discover models from Morpheus API with fallback to static catalog.
- * The /models endpoint requires authentication.
+ * The /models endpoint is public and doesn't require authentication.
  */
-export async function discoverMorpheusModels(apiKey?: string): Promise<ModelDefinitionConfig[]> {
+export async function discoverMorpheusModels(): Promise<ModelDefinitionConfig[]> {
   // Skip API discovery in test environment
   if (process.env.NODE_ENV === "test" || process.env.VITEST) {
     return MORPHEUS_MODEL_CATALOG.map(buildMorpheusModelDefinition);
   }
 
-  // If no API key provided, use static catalog
-  if (!apiKey?.trim()) {
-    return MORPHEUS_MODEL_CATALOG.map(buildMorpheusModelDefinition);
-  }
-
   try {
     const response = await fetch(`${MORPHEUS_BASE_URL}/models`, {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-      },
       signal: AbortSignal.timeout(5000),
     });
 
@@ -298,6 +296,7 @@ export async function discoverMorpheusModels(apiKey?: string): Promise<ModelDefi
           cost: MORPHEUS_DEFAULT_COST,
           contextWindow: inferred.contextWindow,
           maxTokens: 8192,
+          compat: MORPHEUS_COMPAT,
         });
       }
     }

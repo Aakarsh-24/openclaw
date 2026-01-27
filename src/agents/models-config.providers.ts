@@ -351,8 +351,8 @@ async function buildVeniceProvider(): Promise<ProviderConfig> {
   };
 }
 
-async function buildMorpheusProvider(apiKey?: string): Promise<ProviderConfig> {
-  const models = await discoverMorpheusModels(apiKey);
+async function buildMorpheusProvider(): Promise<ProviderConfig> {
+  const models = await discoverMorpheusModels();
   return {
     baseUrl: MORPHEUS_BASE_URL,
     api: "openai-completions",
@@ -416,7 +416,7 @@ export async function resolveImplicitProviders(params: {
     resolveEnvApiKeyVarName("morpheus") ??
     resolveApiKeyFromProfiles({ provider: "morpheus", store: authStore });
   if (morpheusKey) {
-    providers.morpheus = { ...(await buildMorpheusProvider(morpheusKey)), apiKey: morpheusKey };
+    providers.morpheus = { ...(await buildMorpheusProvider()), apiKey: morpheusKey };
   }
 
   const qwenProfiles = listProfilesForProvider(authStore, "qwen-portal");
