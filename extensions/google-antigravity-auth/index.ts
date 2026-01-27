@@ -15,6 +15,16 @@ const TOKEN_URL = "https://oauth2.googleapis.com/token";
 const DEFAULT_PROJECT_ID = "rising-fact-p41fc";
 const DEFAULT_MODEL = "google-antigravity/claude-opus-4-5-thinking";
 
+const DEFAULT_MODELS = [
+  "google-antigravity/claude-opus-4-5-thinking",
+  "google-antigravity/claude-sonnet-4-5",
+  "google-antigravity/claude-sonnet-4-5-thinking",
+  "google-antigravity/gemini-3-flash",
+  "google-antigravity/gemini-3-pro",
+  "google-antigravity/gemini-2.5-flash",
+  "google-antigravity/gemini-2.5-pro",
+];
+
 const SCOPES = [
   "https://www.googleapis.com/auth/cloud-platform",
   "https://www.googleapis.com/auth/userinfo.email",
@@ -411,9 +421,9 @@ const antigravityPlugin = {
                 configPatch: {
                   agents: {
                     defaults: {
-                      models: {
-                        [DEFAULT_MODEL]: {},
-                      },
+                      models: Object.fromEntries(
+                        DEFAULT_MODELS.map((m) => [m, {}]),
+                      ),
                     },
                   },
                 },
