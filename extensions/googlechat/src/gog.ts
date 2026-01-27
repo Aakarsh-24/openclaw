@@ -3,11 +3,6 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-type GogTokenEntry = {
-  account?: string;
-  refreshToken: string;
-};
-
 const tokenCache = new Map<string, string>();
 
 function resolveWildcardJsonFile(
@@ -106,20 +101,8 @@ export function resolveGogCredentialsFile(params: {
   return resolveGogJsonFile(params, "credentials");
 }
 
-function looksLikeRefreshToken(token: string): boolean {
-  const trimmed = token.trim();
-  if (!trimmed) return false;
-  if (trimmed.startsWith("ya29.")) return false;
-  if (trimmed.startsWith("1//")) return true;
-  return trimmed.length > 30;
-}
-
-function collectTokens(value: unknown, out: GogTokenEntry[]) {
-  if (!value || typeof value !== "object") return;
-  if (Array.isArray(value)) {
-    for (const entry of value) collectTokens(entry, out);
-    return;
-  }
+function extractRefreshToken(value: unknown): string | null {
+  if (!value || typeof value !== "object") return null;
   const record = value as Record<string, unknown>;
   const refreshToken =
     typeof record.refresh_token === "string"
@@ -127,20 +110,11 @@ function collectTokens(value: unknown, out: GogTokenEntry[]) {
       : typeof record.refreshToken === "string"
         ? record.refreshToken
         : undefined;
-  if (refreshToken && looksLikeRefreshToken(refreshToken)) {
-    const account =
-      typeof record.email === "string"
-        ? record.email
-        : typeof record.account === "string"
-          ? record.account
-          : typeof record.user === "string"
-            ? record.user
-            : undefined;
-    out.push({ account, refreshToken });
-  }
-  for (const entry of Object.values(record)) {
-    collectTokens(entry, out);
-  }
+  const trimmed = refreshToken?.trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith("ya29.")) return null;
+  if (trimmed.startsWith("1//")) return trimmed;
+  return trimmed.length > 30 ? trimmed : null;
 }
 
 function parseTokenEmails(value: unknown): string[] {
@@ -234,27 +208,18 @@ export function readGogRefreshTokenSync(params: {
         env,
       },
     );
+    const parsed = readJsonFile(outPath);
+    const token = extractRefreshToken(parsed);
+    if (!token) return null;
+    tokenCache.set(cacheKey, token);
+    return token;
   } catch {
+    return null;
+  } finally {
     try {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     } catch {
       // ignore cleanup errors
     }
-    return null;
   }
-
-  const parsed = readJsonFile(outPath);
-  try {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
-  } catch {
-    // ignore cleanup errors
-  }
-
-  const tokens: GogTokenEntry[] = [];
-  if (parsed) collectTokens(parsed, tokens);
-  const token = tokens[0]?.refreshToken?.trim();
-  if (!token) return null;
-
-  tokenCache.set(cacheKey, token);
-  return token;
 }
