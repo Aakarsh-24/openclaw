@@ -153,25 +153,42 @@ export function resolveTelegramReplyId(raw?: string): number | undefined {
 export function describeReplyTarget(msg: TelegramMessage) {
   const reply = msg.reply_to_message;
   if (!reply) return null;
-  const replyBody = (reply.text ?? reply.caption ?? "").trim();
-  let body = replyBody;
-  if (!body) {
-    if (reply.photo) body = "<media:image>";
-    else if (reply.video) body = "<media:video>";
-    else if (reply.audio || reply.voice) body = "<media:audio>";
-    else if (reply.document) body = "<media:document>";
-    else {
-      const locationData = extractTelegramLocation(reply);
-      if (locationData) body = formatLocationText(locationData);
+  
+  // Check for quote (partial message reply)
+  const quote = (msg as any).quote;
+  let body = "";
+  let isQuote = false;
+
+  if (quote && quote.text) {
+    // Use quoted text
+    body = quote.text.trim();
+    isQuote = true;
+  } else {
+    // Regular reply - use full message
+    const replyBody = (reply.text ?? reply.caption ?? "").trim();
+    body = replyBody;
+    
+    if (!body) {
+      if (reply.photo) body = "<media:image>";
+      else if (reply.video) body = "<media:video>";
+      else if (reply.audio || reply.voice) body = "<media:audio>";
+      else if (reply.document) body = "<media:document>";
+      else {
+        const locationData = extractTelegramLocation(reply);
+        if (locationData) body = formatLocationText(locationData);
+      }
     }
   }
+
   if (!body) return null;
   const sender = buildSenderName(reply);
   const senderLabel = sender ? `${sender}` : "unknown sender";
+  
   return {
     id: reply.message_id ? String(reply.message_id) : undefined,
     sender: senderLabel,
     body,
+    isQuote  // Add flag to distinguish quote from regular reply
   };
 }
 

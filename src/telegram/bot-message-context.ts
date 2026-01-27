@@ -480,9 +480,13 @@ export const buildTelegramMessageContext = async ({
   const replyTarget = describeReplyTarget(msg);
   const forwardOrigin = normalizeForwardedContext(msg);
   const replySuffix = replyTarget
-    ? `\n\n[Replying to ${replyTarget.sender}${
-        replyTarget.id ? ` id:${replyTarget.id}` : ""
-      }]\n${replyTarget.body}\n[/Replying]`
+    ? (replyTarget as any).isQuote 
+        ? `\n\n[Quoting ${replyTarget.sender}${
+            replyTarget.id ? ` id:${replyTarget.id}` : ""
+          }]\n"${replyTarget.body}"\n[/Quoting]`
+        : `\n\n[Replying to ${replyTarget.sender}${
+            replyTarget.id ? ` id:${replyTarget.id}` : ""
+          }]\n${replyTarget.body}\n[/Replying]`
     : "";
   const forwardPrefix = forwardOrigin
     ? `[Forwarded from ${forwardOrigin.from}${
