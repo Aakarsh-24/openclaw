@@ -30,11 +30,10 @@ collect_files() {
 }
 
 compute_hash() {
+  # Use Node.js for cross-platform hash computation (works on Windows, macOS, Linux)
   collect_files \
     | LC_ALL=C sort -z \
-    | xargs -0 shasum -a 256 \
-    | shasum -a 256 \
-    | awk '{print $1}'
+    | xargs -0 node "$ROOT_DIR/scripts/compute-file-hash.mjs"
 }
 
 current_hash="$(compute_hash)"
