@@ -10,6 +10,22 @@ export type AuthProfileConfig = {
   email?: string;
 };
 
+export type MultiAccountConfig = {
+  /** Enable multi-account load balancing. Default: false */
+  enabled?: boolean;
+  /**
+   * Selection strategy:
+   * - hybrid: health + quota + LRU weighted scoring (default)
+   * - sticky: prefer same account per model (cache-friendly)
+   * - round-robin: even distribution across accounts
+   */
+  strategy?: "hybrid" | "sticky" | "round-robin";
+  /** Providers to enable multi-account for. Default: ["google-antigravity"] */
+  providers?: string[];
+  /** Default cooldown when rate-limited (ms). Default: 10000 */
+  defaultCooldownMs?: number;
+};
+
 export type AuthConfig = {
   profiles?: Record<string, AuthProfileConfig>;
   order?: Record<string, string[]>;
@@ -26,4 +42,6 @@ export type AuthConfig = {
      */
     failureWindowHours?: number;
   };
+  /** Multi-account load balancing configuration */
+  multiAccount?: MultiAccountConfig;
 };

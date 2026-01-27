@@ -204,6 +204,19 @@ export const ClawdbotSchema = z
           })
           .strict()
           .optional(),
+        multiAccount: z
+          .object({
+            enabled: z.boolean().optional(),
+            strategy: z.union([
+              z.literal("hybrid"),
+              z.literal("sticky"),
+              z.literal("round-robin"),
+            ]).optional(),
+            providers: z.array(z.string()).optional(),
+            defaultCooldownMs: z.number().positive().optional(),
+          })
+          .strict()
+          .optional(),
       })
       .strict()
       .optional(),

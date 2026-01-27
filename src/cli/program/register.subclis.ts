@@ -191,6 +191,14 @@ const entries: SubCliEntry[] = [
     },
   },
   {
+    name: "accounts",
+    description: "Multi-account management",
+    register: async (program) => {
+      const mod = await import("../accounts-cli.js");
+      mod.registerAccountsCli(program);
+    },
+  },
+  {
     name: "directory",
     description: "Directory commands",
     register: async (program) => {
