@@ -23,45 +23,44 @@ import {
 import { listContacts, getContact } from "./src/tools/contacts.js";
 import nylasPlugin from "./index.js";
 
-// Mock the Nylas SDK
+// Mock the Nylas SDK with a class to work with both node and bun
 vi.mock("nylas", () => {
-  return {
-    default: vi.fn().mockImplementation(() => ({
-      grants: {
-        list: vi.fn(),
-        find: vi.fn(),
-      },
-      messages: {
-        list: vi.fn(),
-        find: vi.fn(),
-        send: vi.fn(),
-      },
-      threads: {
-        list: vi.fn(),
-      },
-      folders: {
-        list: vi.fn(),
-      },
-      drafts: {
-        create: vi.fn(),
-      },
-      calendars: {
-        list: vi.fn(),
-        getAvailability: vi.fn(),
-      },
-      events: {
-        list: vi.fn(),
-        find: vi.fn(),
-        create: vi.fn(),
-        update: vi.fn(),
-        destroy: vi.fn(),
-      },
-      contacts: {
-        list: vi.fn(),
-        find: vi.fn(),
-      },
-    })),
+  const MockNylas = class {
+    grants = {
+      list: vi.fn(),
+      find: vi.fn(),
+    };
+    messages = {
+      list: vi.fn(),
+      find: vi.fn(),
+      send: vi.fn(),
+    };
+    threads = {
+      list: vi.fn(),
+    };
+    folders = {
+      list: vi.fn(),
+    };
+    drafts = {
+      create: vi.fn(),
+    };
+    calendars = {
+      list: vi.fn(),
+      getAvailability: vi.fn(),
+    };
+    events = {
+      list: vi.fn(),
+      find: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      destroy: vi.fn(),
+    };
+    contacts = {
+      list: vi.fn(),
+      find: vi.fn(),
+    };
   };
+  return { default: MockNylas };
 });
 
 describe("Nylas Plugin", () => {
