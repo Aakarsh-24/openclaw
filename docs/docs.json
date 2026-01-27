@@ -1112,6 +1112,27 @@
         ]
       },
       {
+        "group": "Enterprise & Compliance",
+        "pages": [
+          "enterprise/security-hardening",
+          "enterprise/observability",
+          "compliance/index",
+          "compliance/incident-response",
+          "compliance/access-control-policy",
+          "compliance/change-management",
+          "compliance/vulnerability-disclosure",
+          "compliance/security-metrics",
+          "compliance/readiness-checklist"
+        ]
+      },
+      {
+        "group": "Security",
+        "pages": [
+          "security/threat-model",
+          "security/data-handling"
+        ]
+      },
+      {
         "group": "Reference & Templates",
         "pages": [
           "testing",
