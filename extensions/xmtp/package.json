@@ -1,0 +1,45 @@
+{
+  "name": "@clawdbot/xmtp",
+  "version": "2026.1.26",
+  "type": "module",
+  "description": "Clawdbot XMTP channel plugin",
+  "clawdbot": {
+    "extensions": [
+      "./index.ts"
+    ],
+    "channel": {
+      "id": "xmtp",
+      "label": "XMTP",
+      "selectionLabel": "XMTP (Decentralized Messaging)",
+      "docsPath": "/channels/xmtp",
+      "docsLabel": "xmtp",
+      "blurb": "Decentralized messaging protocol; wallet-to-wallet encrypted messaging.",
+      "order": 85,
+      "quickstartAllowFrom": true
+    },
+    "install": {
+      "npmSpec": "@clawdbot/xmtp",
+      "localPath": "extensions/xmtp",
+      "defaultChoice": "npm"
+    }
+  },
+  "scripts": {
+    "generate-wallet": "tsx scripts/generate-wallet.ts",
+    "test": "tsx test.ts",
+    "test:unit": "tsx src/tests/unit.test.ts",
+    "test:multi-account": "tsx src/tests/multi-account.test.ts",
+    "test:multi-account-integration": "tsx src/tests/multi-account-integration.test.ts",
+    "test:all": "npm run test:unit && npm run test:multi-account && npm run test:multi-account-integration"
+  },
+  "dependencies": {
+    "@xmtp/agent-sdk": "^1.2.4",
+    "@xmtp/content-type-reaction": "^2.0.2",
+    "@xmtp/content-type-reply": "^2.0.2",
+    "@xmtp/content-type-text": "^2.0.0",
+    "ox": "^0.8.1",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "clawdbot": "workspace:*"
+  }
+}

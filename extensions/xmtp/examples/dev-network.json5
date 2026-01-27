@@ -1,0 +1,55 @@
+// XMTP Dev Network Configuration
+// Use for: testing, development, experimentation
+// Cost: FREE (no gas fees)
+// Network: XMTP dev network (ephemeral, not production-grade)
+
+{
+  channels: {
+    xmtp: {
+      // Enable the XMTP channel
+      enabled: true,
+
+      // Your bot's wallet private key (NEVER commit this to git!)
+      // Generate with: clawdbot onboard xmtp
+      // OR: npx tsx scripts/generate-wallet.ts
+      walletKey: "0x0000000000000000000000000000000000000000000000000000000000000000", // ⚠️ REPLACE THIS
+
+      // Network: "dev" for testing (free, ephemeral)
+      env: "dev",
+
+      // DM policy: who can message your bot
+      // - "pairing": Requires approval via `clawdbot pairing approve xmtp <code>`
+      // - "open": Anyone can message (commands restricted to authorized users)
+      // - "allowlist": Only addresses in `allowFrom` can message
+      dmPolicy: "pairing",
+
+      // Database path (where XMTP stores conversation state)
+      // - Relative paths are relative to working directory
+      // - Use different paths for different networks!
+      dbPath: ".xmtp/dev/db",
+
+      // Optional: Allowlist for "allowlist" or "pairing" policies
+      // Only these addresses can message your bot (or bypass pairing)
+      // allowFrom: [
+      //   "0x1234567890123456789012345678901234567890",
+      //   "vitalik.eth",  // ENS names supported
+      //   "0xabcd...5678"
+      // ],
+
+      // Optional: Text message chunk limit (default: 4000)
+      // XMTP protocol limit is 1MB, but chunk for readability
+      // textChunkLimit: 4000
+    }
+  },
+
+  // Optional: Agent settings
+  agent: {
+    // Default agent ID for XMTP conversations
+    // id: "main"
+  }
+
+  // Optional: Model settings
+  // model: {
+  //   default: "anthropic/claude-sonnet-4-5"
+  // }
+}

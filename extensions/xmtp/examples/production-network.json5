@@ -1,0 +1,77 @@
+// XMTP Production Network Configuration
+// Use for: real users, production deployments, permanent storage
+// Cost: ~$5 USDC per 100k messages (one-time identity registration)
+// Network: XMTP mainnet (permanent, production-grade)
+
+{
+  channels: {
+    xmtp: {
+      // Enable the XMTP channel
+      enabled: true,
+
+      // Your bot's wallet private key
+      // ⚠️ PRODUCTION SECURITY:
+      // - NEVER commit this to git
+      // - Use environment variables: XMTP_WALLET_KEY=0x...
+      // - OR use a secrets manager (AWS Secrets, HashiCorp Vault, etc.)
+      // - Keep dev and production wallets separate
+      walletKey: process.env.XMTP_WALLET_KEY || "0x0000000000000000000000000000000000000000000000000000000000000000",
+
+      // Network: "production" for mainnet (permanent, costs gas)
+      env: "production",
+
+      // DM policy: SECURITY-CRITICAL for production!
+      // Recommended: "pairing" (requires approval for each new contact)
+      dmPolicy: "pairing",
+
+      // Database path: Use absolute path for production reliability
+      // - Different path per network (dev vs production)
+      // - Ensure directory exists and is writable
+      // - DON'T use /tmp (cleared on reboot)
+      // - Backup this directory regularly (contains conversation state)
+      dbPath: "/var/lib/clawdbot/xmtp/production/db",
+      // Alternative: dbPath: `${process.env.HOME}/.xmtp/production/db`
+
+      // Production: Restrict access with allowlist
+      // Only approved addresses can message your bot
+      allowFrom: [
+        "0x1234567890123456789012345678901234567890", // Your wallet
+        // "team.eth",  // Team member ENS
+        // "0xabcd...5678"  // Partner wallet
+      ],
+
+      // Optional: Text message chunk limit (default: 4000)
+      textChunkLimit: 4000
+    }
+  },
+
+  // Production agent settings
+  agent: {
+    id: "main",
+    // Optional: Enable thinking for complex queries
+    // thinking: "enabled"
+  },
+
+  // Production model settings (example)
+  model: {
+    default: "anthropic/claude-sonnet-4-5",
+    // Optional: Use Opus for critical tasks
+    // thinking: "anthropic/claude-opus-4-5"
+  },
+
+  // Production logging
+  logging: {
+    level: "info", // "debug" for troubleshooting, "info" for production
+    // Optional: Send logs to external service
+    // targets: [
+    //   { type: "console" },
+    //   { type: "file", path: "/var/log/clawdbot/xmtp.log" }
+    // ]
+  },
+
+  // Production security
+  security: {
+    // Pairing approval timeout (how long pairing codes are valid)
+    // pairingTtlMinutes: 10
+  }
+}

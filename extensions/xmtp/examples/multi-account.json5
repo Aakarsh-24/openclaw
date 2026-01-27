@@ -1,0 +1,103 @@
+// XMTP Multi-Account Configuration (FUTURE / NOT YET IMPLEMENTED)
+// Status: ⚠️ XMTP plugin currently supports single wallet only
+// This is a PLANNED feature - config structure subject to change
+
+// Use case: Multiple bot wallets in one Clawdbot instance
+// Example scenarios:
+// - Different wallets for different user groups
+// - Team/department-specific bots
+// - Staging vs production in same deployment
+
+{
+  channels: {
+    xmtp: {
+      enabled: true,
+
+      // Multi-account structure (PLANNED - not implemented yet)
+      accounts: {
+        // Account 1: Main bot (dev network)
+        "main-bot": {
+          walletKey: process.env.XMTP_MAIN_BOT_KEY,
+          env: "dev",
+          dmPolicy: "pairing",
+          dbPath: ".xmtp/accounts/main-bot/db",
+          allowFrom: [
+            "0x1111111111111111111111111111111111111111"
+          ]
+        },
+
+        // Account 2: Support bot (production network)
+        "support-bot": {
+          walletKey: process.env.XMTP_SUPPORT_BOT_KEY,
+          env: "production",
+          dmPolicy: "open", // Anyone can message support
+          dbPath: "/var/lib/clawdbot/xmtp/support-bot/db",
+          // No allowFrom = anyone can initiate (commands still restricted)
+        },
+
+        // Account 3: VIP bot (production, allowlist-only)
+        "vip-bot": {
+          walletKey: process.env.XMTP_VIP_BOT_KEY,
+          env: "production",
+          dmPolicy: "allowlist",
+          dbPath: "/var/lib/clawdbot/xmtp/vip-bot/db",
+          allowFrom: [
+            "vip1.eth",
+            "vip2.eth",
+            "0x2222222222222222222222222222222222222222"
+          ]
+        }
+      },
+
+      // Default account (used when account not specified)
+      defaultAccount: "main-bot"
+    }
+  },
+
+  // Per-account agent configuration (PLANNED)
+  agents: {
+    "main-bot": {
+      id: "main",
+      model: "anthropic/claude-sonnet-4-5"
+    },
+    "support-bot": {
+      id: "support",
+      model: "anthropic/claude-sonnet-4-5",
+      // Different personality/instructions for support
+      systemPrompt: "You are a helpful support bot..."
+    },
+    "vip-bot": {
+      id: "vip",
+      model: "anthropic/claude-opus-4-5", // Premium model for VIPs
+      thinking: "enabled"
+    }
+  }
+}
+
+// IMPLEMENTATION NOTES (for future development):
+// 
+// 1. Account Manager Pattern:
+//    - Similar to Telegram multi-account support
+//    - Each account = separate XmtpAgent instance
+//    - Shared runtime/plugin, isolated state
+//
+// 2. Routing:
+//    - Inbound: Detect conversation → map to wallet address → find account
+//    - Outbound: Specify account in target (e.g., "account:main-bot:0x...")
+//
+// 3. Database Isolation:
+//    - Each account MUST have separate dbPath
+//    - Sharing dbPath between accounts = corruption risk
+//
+// 4. Authorization:
+//    - Per-account dmPolicy and allowFrom
+//    - Pairing codes scoped to account
+//
+// 5. Status/Monitoring:
+//    - `clawdbot channels status` shows all accounts
+//    - Per-account connection state, message counts
+//
+// 6. Configuration Validation:
+//    - Enforce unique dbPath per account
+//    - Validate wallet key format for each account
+//    - Warn if mixing dev/production in same instance

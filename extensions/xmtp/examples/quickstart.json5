@@ -1,0 +1,33 @@
+// XMTP Quickstart - Minimal Configuration
+// The absolute minimum to get started with XMTP in 2 minutes
+
+{
+  channels: {
+    xmtp: {
+      enabled: true,
+      
+      // 1. Generate your wallet key:
+      //    clawdbot onboard xmtp
+      //    (or: npx tsx scripts/generate-wallet.ts)
+      //
+      // 2. Paste the key here (replace the zeros):
+      walletKey: "0x0000000000000000000000000000000000000000000000000000000000000000",
+      
+      // 3. Done! Start with: clawdbot gateway start
+      
+      // That's it! Defaults:
+      // - env: "dev" (free testing network)
+      // - dmPolicy: "pairing" (secure, requires approval)
+      // - dbPath: ".xmtp/db" (local database)
+    }
+  }
+}
+
+// Next steps:
+// 1. Someone messages your bot's address
+// 2. You approve: clawdbot pairing approve xmtp <code>
+// 3. Chat!
+//
+// To find your bot's address:
+// - It's shown in the wallet generation output
+// - OR: clawdbot channels status
