@@ -361,14 +361,10 @@ async function buildOllamaProvider(): Promise<ProviderConfig> {
 }
 
 function buildTogetherProvider(): ProviderConfig {
-  // Always use static catalog instead of dynamic discovery
-  // This prevents timeout issues with the Together AI API
-  const models = TOGETHER_MODEL_CATALOG;
-
   return {
     baseUrl: TOGETHER_BASE_URL,
     api: "openai-completions",
-    models,
+    models: TOGETHER_MODEL_CATALOG,
   };
 }
 
