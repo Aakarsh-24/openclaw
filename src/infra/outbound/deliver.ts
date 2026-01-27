@@ -321,7 +321,12 @@ export async function deliverOutboundPayloads(params: {
     try {
       throwIfAborted(abortSignal);
       params.onPayload?.(payloadSummary);
+      // Debug: check sendPayload path
+      console.log(
+        `[outbound] channel=${channel} hasSendPayload=${!!handler.sendPayload} hasChannelData=${!!payload.channelData} channelData=${JSON.stringify(payload.channelData)}`,
+      );
       if (handler.sendPayload && payload.channelData) {
+        console.log(`[outbound] using sendPayload for ${channel}`);
         results.push(await handler.sendPayload(payload));
         continue;
       }
