@@ -8,6 +8,9 @@
       "./index.ts"
     ]
   },
+  "devDependencies": {
+    "clawdbot": "workspace:*"
+  },
   "peerDependencies": {
     "moltbot": ">=2026.1.26"
   }
