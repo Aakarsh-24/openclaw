@@ -138,10 +138,18 @@ actor GatewayConnection {
             let mode = await MainActor.run { AppStateStore.shared.connectionMode }
             switch mode {
             case .local:
+                // Trigger gateway start. This suspends (non-blocking) until the MainActor schedules it.
                 await MainActor.run { GatewayProcessManager.shared.setActive(true) }
 
                 var lastError: Error = error
-                for delayMs in [150, 400, 900] {
+                // Short retry delays (150ms total) for Canvas responsiveness. Gateway startup happens
+                // asynchronously in the background, so these fast retries typically succeed on the
+                // 2nd or 3rd attempt once the gateway accepts connections.
+                //
+                // Tradeoff: Cold-start scenarios (first launch, after sleep) may take 2-3 seconds,
+                // but Canvas operations prioritize fast failure feedback over waiting. If retries
+                // fail, the user sees an error immediately rather than a frozen UI.
+                for delayMs in [50, 100] {
                     try await Task.sleep(nanoseconds: UInt64(delayMs) * 1_000_000)
                     do {
                         return try await client.request(method: method, params: params, timeoutMs: timeoutMs)
@@ -155,7 +163,9 @@ actor GatewayConnection {
                    let fallback = await GatewayEndpointStore.shared.maybeFallbackToTailnet(from: cfg.url)
                 {
                     await self.configure(url: fallback.url, token: fallback.token, password: fallback.password)
-                    for delayMs in [150, 400, 900] {
+                    // Fast retries for Tailnet fallback (150ms total). Tailnet connections should be
+                    // quick since the gateway is already running; short delays provide fast feedback.
+                    for delayMs in [50, 100] {
                         try await Task.sleep(nanoseconds: UInt64(delayMs) * 1_000_000)
                         do {
                             guard let client = self.client else {
@@ -184,7 +194,9 @@ actor GatewayConnection {
                     lastError = error
                 }
 
-                for delayMs in [150, 400, 900] {
+                // Fast retries for remote tunnel recovery (150ms total). SSH tunnel setup is relatively
+                // quick; short delays allow fast recovery or fast failure feedback.
+                for delayMs in [50, 100] {
                     try await Task.sleep(nanoseconds: UInt64(delayMs) * 1_000_000)
                     do {
                         let cfg = try await self.configProvider()

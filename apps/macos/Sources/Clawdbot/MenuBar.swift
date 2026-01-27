@@ -73,7 +73,7 @@ struct ClawdbotApp: App {
             self.applyStatusItemAppearance(paused: self.state.isPaused, sleeping: self.isGatewaySleeping)
         }
         .onChange(of: self.state.connectionMode) { _, mode in
-            Task { await ConnectionModeCoordinator.shared.apply(mode: mode, paused: self.state.isPaused) }
+            ConnectionModeCoordinator.shared.apply(mode: mode, paused: self.state.isPaused)
             CLIInstallPrompter.shared.checkAndPromptIfNeeded(reason: "connection-mode")
         }
 
@@ -272,7 +272,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.state = AppStateStore.shared
         AppActivationPolicy.apply(showDockIcon: self.state?.showDockIcon ?? false)
         if let state {
-            Task { await ConnectionModeCoordinator.shared.apply(mode: state.connectionMode, paused: state.isPaused) }
+            ConnectionModeCoordinator.shared.apply(mode: state.connectionMode, paused: state.isPaused)
         }
         TerminationSignalWatcher.shared.start()
         NodePairingApprovalPrompter.shared.start()

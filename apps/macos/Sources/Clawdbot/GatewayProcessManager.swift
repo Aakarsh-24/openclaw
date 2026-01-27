@@ -6,17 +6,43 @@ import Observation
 final class GatewayProcessManager {
     static let shared = GatewayProcessManager()
 
+    /// Represents the lifecycle state of the local gateway process.
+    ///
+    /// Valid state transitions:
+    /// - `.stopped` → `.starting(phase)` → (`.running` | `.attachedExisting` | `.failed`)
+    /// - `.failed` → `.starting(phase)` (user retry)
+    /// - any state → `.stopped` (manual stop)
     enum Status: Equatable {
+        /// Gateway is not running and not attempting to start.
         case stopped
-        case starting
+
+        /// Gateway startup is in progress.
+        /// - Parameter phase: Optional startup phase for user feedback:
+        ///   - `"checking"`: Initial state, determining what to do
+        ///   - `"attaching"`: Attempting to connect to existing gateway process
+        ///   - `"launching"`: Launching new gateway via launchd
+        ///   - `"waiting for ready"`: Polling for gateway to accept connections
+        case starting(phase: String?)
+
+        /// Gateway was freshly launched by this app and is now accepting connections.
+        /// - Parameter details: Optional process details (e.g., "pid 12345")
         case running(details: String?)
+
+        /// Gateway was already running (launched externally or by previous app instance)
+        /// and this app successfully attached to it.
+        /// - Parameter details: Optional process and health details
         case attachedExisting(details: String?)
+
+        /// Gateway failed to start or attach.
+        /// - Parameter message: Human-readable failure reason shown to user
         case failed(String)
 
         var label: String {
             switch self {
             case .stopped: return "Stopped"
-            case .starting: return "Starting…"
+            case let .starting(phase):
+                if let phase, !phase.isEmpty { return "Starting (\(phase))…" }
+                return "Starting…"
             case let .running(details):
                 if let details, !details.isEmpty { return "Running (\(details))" }
                 return "Running"
@@ -110,15 +136,17 @@ final class GatewayProcessManager {
         case .stopped, .failed:
             break
         }
-        self.status = .starting
+        self.status = .starting(phase: "checking")
         self.logger.debug("gateway start requested")
 
         // First try to latch onto an already-running gateway to avoid spawning a duplicate.
         Task { [weak self] in
             guard let self else { return }
+            await MainActor.run { self.status = .starting(phase: "attaching") }
             if await self.attachExistingGatewayIfAvailable() {
                 return
             }
+            await MainActor.run { self.status = .starting(phase: "launching") }
             await self.enableLaunchdGateway()
         }
     }
@@ -205,10 +233,12 @@ final class GatewayProcessManager {
                 let data = try await attemptAttach()
                 let snap = decodeHealthSnapshot(from: data)
                 let details = self.describe(details: instanceText, port: port, snap: snap)
-                self.existingGatewayDetails = details
-                self.clearLastFailure()
-                self.status = .attachedExisting(details: details)
-                self.appendLog("[gateway] using existing instance: \(details)\n")
+                await MainActor.run {
+                    self.existingGatewayDetails = details
+                    self.clearLastFailure()
+                    self.status = .attachedExisting(details: details)
+                    self.appendLog("[gateway] using existing instance: \(details)\n")
+                }
                 self.logger.info("gateway using existing instance details=\(details)")
                 self.refreshControlChannelIfNeeded(reason: "attach existing")
                 self.refreshLog()
@@ -221,21 +251,23 @@ final class GatewayProcessManager {
 
                 if hasListener {
                     let reason = self.describeAttachFailure(error, port: port, instance: instance)
-                    self.existingGatewayDetails = instanceText
-                    self.status = .failed(reason)
-                    self.lastFailureReason = reason
-                    self.appendLog("[gateway] existing listener on port \(port) but attach failed: \(reason)\n")
+                    await MainActor.run {
+                        self.existingGatewayDetails = instanceText
+                        self.status = .failed(reason)
+                        self.lastFailureReason = reason
+                        self.appendLog("[gateway] existing listener on port \(port) but attach failed: \(reason)\n")
+                    }
                     self.logger.warning("gateway attach failed reason=\(reason)")
                     return true
                 }
 
                 // No reachable gateway (and no listener) — fall through to spawn.
-                self.existingGatewayDetails = nil
+                await MainActor.run { self.existingGatewayDetails = nil }
                 return false
             }
         }
 
-        self.existingGatewayDetails = nil
+        await MainActor.run { self.existingGatewayDetails = nil }
         return false
     }
 
@@ -298,7 +330,7 @@ final class GatewayProcessManager {
     }
 
     private func enableLaunchdGateway() async {
-        self.existingGatewayDetails = nil
+        await MainActor.run { self.existingGatewayDetails = nil }
         let resolution = await Task.detached(priority: .utility) {
             GatewayEnvironment.resolveGatewayCommand()
         }.value
@@ -313,26 +345,31 @@ final class GatewayProcessManager {
 
         if GatewayLaunchAgentManager.isLaunchAgentWriteDisabled() {
             let message = "Launchd disabled; start the Gateway manually or disable attach-only."
-            self.status = .failed(message)
-            self.lastFailureReason = "launchd disabled"
-            self.appendLog("[gateway] launchd disabled; skipping auto-start\n")
+            await MainActor.run {
+                self.status = .failed(message)
+                self.lastFailureReason = "launchd disabled"
+                self.appendLog("[gateway] launchd disabled; skipping auto-start\n")
+            }
             self.logger.info("gateway launchd enable skipped (disable marker set)")
             return
         }
 
         let bundlePath = Bundle.main.bundleURL.path
         let port = GatewayEnvironment.gatewayPort()
-        self.appendLog("[gateway] enabling launchd job (\(gatewayLaunchdLabel)) on port \(port)\n")
+        await MainActor.run { self.appendLog("[gateway] enabling launchd job (\(gatewayLaunchdLabel)) on port \(port)\n") }
         self.logger.info("gateway enabling launchd port=\(port)")
         let err = await GatewayLaunchAgentManager.set(enabled: true, bundlePath: bundlePath, port: port)
         if let err {
-            self.status = .failed(err)
-            self.lastFailureReason = err
+            await MainActor.run {
+                self.status = .failed(err)
+                self.lastFailureReason = err
+            }
             self.logger.error("gateway launchd enable failed: \(err)")
             return
         }
 
         // Best-effort: wait for the gateway to accept connections.
+        await MainActor.run { self.status = .starting(phase: "waiting for ready") }
         let deadline = Date().addingTimeInterval(6)
         while Date() < deadline {
             if !self.desiredActive { return }
@@ -340,8 +377,10 @@ final class GatewayProcessManager {
                 _ = try await self.connection.requestRaw(method: .health, timeoutMs: 1500)
                 let instance = await PortGuardian.shared.describe(port: port)
                 let details = instance.map { "pid \($0.pid)" }
-                self.clearLastFailure()
-                self.status = .running(details: details)
+                await MainActor.run {
+                    self.clearLastFailure()
+                    self.status = .running(details: details)
+                }
                 self.logger.info("gateway started details=\(details ?? "ok")")
                 self.refreshControlChannelIfNeeded(reason: "gateway started")
                 self.refreshLog()
@@ -351,8 +390,10 @@ final class GatewayProcessManager {
             }
         }
 
-        self.status = .failed("Gateway did not start in time")
-        self.lastFailureReason = "launchd start timeout"
+        await MainActor.run {
+            self.status = .failed("Gateway did not start in time")
+            self.lastFailureReason = "launchd start timeout"
+        }
         self.logger.warning("gateway start timed out")
     }
 
