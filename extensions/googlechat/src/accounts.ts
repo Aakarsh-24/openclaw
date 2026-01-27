@@ -1,4 +1,4 @@
-import type { ClawdbotConfig } from "clawdbot/plugin-sdk";
+import type { MoltbotConfig } from "clawdbot/plugin-sdk";
 import { DEFAULT_ACCOUNT_ID, normalizeAccountId } from "clawdbot/plugin-sdk";
 
 import type { GoogleChatAccountConfig, GoogleChatConfig } from "./types.config.js";
@@ -30,19 +30,19 @@ const ENV_OAUTH_CLIENT_FILE = "GOOGLE_CHAT_OAUTH_CLIENT_FILE";
 const ENV_OAUTH_REFRESH_TOKEN = "GOOGLE_CHAT_OAUTH_REFRESH_TOKEN";
 const ENV_OAUTH_REFRESH_TOKEN_FILE = "GOOGLE_CHAT_OAUTH_REFRESH_TOKEN_FILE";
 
-function listConfiguredAccountIds(cfg: ClawdbotConfig): string[] {
+function listConfiguredAccountIds(cfg: MoltbotConfig): string[] {
   const accounts = (cfg.channels?.["googlechat"] as GoogleChatConfig | undefined)?.accounts;
   if (!accounts || typeof accounts !== "object") return [];
   return Object.keys(accounts).filter(Boolean);
 }
 
-export function listGoogleChatAccountIds(cfg: ClawdbotConfig): string[] {
+export function listGoogleChatAccountIds(cfg: MoltbotConfig): string[] {
   const ids = listConfiguredAccountIds(cfg);
   if (ids.length === 0) return [DEFAULT_ACCOUNT_ID];
   return ids.sort((a, b) => a.localeCompare(b));
 }
 
-export function resolveDefaultGoogleChatAccountId(cfg: ClawdbotConfig): string {
+export function resolveDefaultGoogleChatAccountId(cfg: MoltbotConfig): string {
   const channel = cfg.channels?.["googlechat"] as GoogleChatConfig | undefined;
   if (channel?.defaultAccount?.trim()) return channel.defaultAccount.trim();
   const ids = listGoogleChatAccountIds(cfg);
@@ -51,7 +51,7 @@ export function resolveDefaultGoogleChatAccountId(cfg: ClawdbotConfig): string {
 }
 
 function resolveAccountConfig(
-  cfg: ClawdbotConfig,
+  cfg: MoltbotConfig,
   accountId: string,
 ): GoogleChatAccountConfig | undefined {
   const accounts = (cfg.channels?.["googlechat"] as GoogleChatConfig | undefined)?.accounts;
@@ -60,7 +60,7 @@ function resolveAccountConfig(
 }
 
 function mergeGoogleChatAccountConfig(
-  cfg: ClawdbotConfig,
+  cfg: MoltbotConfig,
   accountId: string,
 ): GoogleChatAccountConfig {
   const raw = (cfg.channels?.["googlechat"] ?? {}) as GoogleChatConfig;
@@ -167,7 +167,7 @@ function resolveUserAuthSource(params: {
 }
 
 export function resolveGoogleChatAccount(params: {
-  cfg: ClawdbotConfig;
+  cfg: MoltbotConfig;
   accountId?: string | null;
 }): ResolvedGoogleChatAccount {
   const accountId = normalizeAccountId(params.accountId);
@@ -198,7 +198,7 @@ export function resolveGoogleChatAccount(params: {
   };
 }
 
-export function listEnabledGoogleChatAccounts(cfg: ClawdbotConfig): ResolvedGoogleChatAccount[] {
+export function listEnabledGoogleChatAccounts(cfg: MoltbotConfig): ResolvedGoogleChatAccount[] {
   return listGoogleChatAccountIds(cfg)
     .map((accountId) => resolveGoogleChatAccount({ cfg, accountId }))
     .filter((account) => account.enabled);
