@@ -2,10 +2,12 @@ package com.clawdbot.android.gateway
 
 import android.content.Context
 import android.util.Base64
+import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.io.File
 import java.security.KeyFactory
 import java.security.KeyPairGenerator
 import java.security.MessageDigest
+import java.security.Security
 import java.security.Signature
 import java.security.spec.PKCS8EncodedKeySpec
 import kotlinx.serialization.Serializable
@@ -22,6 +24,21 @@ data class DeviceIdentity(
 class DeviceIdentityStore(context: Context) {
   private val json = Json { ignoreUnknownKeys = true }
   private val identityFile = File(context.filesDir, "clawdbot/identity/device.json")
+
+  companion object {
+    // Use our own provider instance to avoid conflicts with Android's built-in BC
+    private val bcProvider = BouncyCastleProvider()
+    private val ED25519_SPKI_PREFIX = byteArrayOf(
+      0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x03, 0x21, 0x00,
+    )
+
+    init {
+      // Remove any conflicting BC provider and add our full BouncyCastle
+      Security.removeProvider("BC")
+      Security.insertProviderAt(bcProvider, 1)
+      android.util.Log.d("DeviceIdentityStore", "Registered BouncyCastle provider: ${bcProvider.info}")
+    }
+  }
 
   @Synchronized
   fun loadOrCreate(): DeviceIdentity {
@@ -44,13 +61,14 @@ class DeviceIdentityStore(context: Context) {
     return try {
       val privateKeyBytes = Base64.decode(identity.privateKeyPkcs8Base64, Base64.DEFAULT)
       val keySpec = PKCS8EncodedKeySpec(privateKeyBytes)
-      val keyFactory = KeyFactory.getInstance("Ed25519")
+      val keyFactory = KeyFactory.getInstance("Ed25519", bcProvider)
       val privateKey = keyFactory.generatePrivate(keySpec)
-      val signature = Signature.getInstance("Ed25519")
+      val signature = Signature.getInstance("Ed25519", bcProvider)
       signature.initSign(privateKey)
       signature.update(payload.toByteArray(Charsets.UTF_8))
       base64UrlEncode(signature.sign())
-    } catch (_: Throwable) {
+    } catch (e: Throwable) {
+      android.util.Log.e("DeviceIdentityStore", "signPayload failed", e)
       null
     }
   }
@@ -93,11 +111,18 @@ class DeviceIdentityStore(context: Context) {
   }
 
   private fun generate(): DeviceIdentity {
-    val keyPair = KeyPairGenerator.getInstance("Ed25519").generateKeyPair()
+    android.util.Log.d("DeviceIdentityStore", "Generating new Ed25519 key using BouncyCastle")
+
+    val kpg = KeyPairGenerator.getInstance("Ed25519", bcProvider)
+    val keyPair = kpg.generateKeyPair()
+
     val spki = keyPair.public.encoded
     val rawPublic = stripSpkiPrefix(spki)
     val deviceId = sha256Hex(rawPublic)
     val privateKey = keyPair.private.encoded
+
+    android.util.Log.d("DeviceIdentityStore", "Generated Ed25519 key, deviceId=${deviceId.take(8)}..., pubKeyLen=${rawPublic.size}")
+
     return DeviceIdentity(
       deviceId = deviceId,
       publicKeyRawBase64 = Base64.encodeToString(rawPublic, Base64.NO_WRAP),
@@ -135,12 +160,5 @@ class DeviceIdentityStore(context: Context) {
 
   private fun base64UrlEncode(data: ByteArray): String {
     return Base64.encodeToString(data, Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)
-  }
-
-  companion object {
-    private val ED25519_SPKI_PREFIX =
-      byteArrayOf(
-        0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x03, 0x21, 0x00,
-      )
   }
 }

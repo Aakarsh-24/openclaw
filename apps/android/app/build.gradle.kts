@@ -115,6 +115,9 @@ dependencies {
   // Unicast DNS-SD (Wide-Area Bonjour) for tailnet discovery domains.
   implementation("dnsjava:dnsjava:3.6.4")
 
+  // BouncyCastle for Ed25519 (software provider, no hardware dependency)
+  implementation("org.bouncycastle:bcprov-jdk18on:1.79")
+
   testImplementation("junit:junit:4.13.2")
   testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
   testImplementation("io.kotest:kotest-runner-junit5-jvm:6.0.7")

@@ -253,11 +253,16 @@ class GatewaySession(
 
     private inner class Listener : WebSocketListener() {
       override fun onOpen(webSocket: WebSocket, response: Response) {
+        Log.d("ClawdbotGateway", "[$loggerTag] WebSocket opened, endpoint=${endpoint.host}:${endpoint.port}")
         scope.launch {
           try {
+            Log.d("ClawdbotGateway", "[$loggerTag] Awaiting connect nonce...")
             val nonce = awaitConnectNonce()
+            Log.d("ClawdbotGateway", "[$loggerTag] Got nonce=$nonce, sending connect...")
             sendConnect(nonce)
+            Log.d("ClawdbotGateway", "[$loggerTag] Connect completed successfully")
           } catch (err: Throwable) {
+            Log.e("ClawdbotGateway", "[$loggerTag] Connect failed: ${err.message}", err)
             connectDeferred.completeExceptionally(err)
             closeQuietly()
           }
@@ -373,6 +378,7 @@ class GatewaySession(
         )
       val signature = identityStore.signPayload(payload, identity)
       val publicKey = identityStore.publicKeyBase64Url(identity)
+      Log.d("ClawdbotGateway", "[$loggerTag] Device identity: id=${identity.deviceId.take(8)}..., signature=${signature?.take(20) ?: "NULL"}, publicKey=${publicKey?.take(20) ?: "NULL"}")
       val deviceJson =
         if (!signature.isNullOrBlank() && !publicKey.isNullOrBlank()) {
           buildJsonObject {
