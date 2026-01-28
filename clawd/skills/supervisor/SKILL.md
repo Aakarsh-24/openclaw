@@ -12,7 +12,9 @@ Both channels are reviewed by the same GLM-4.7 supervisor, catching hallucinated
 
 ## Three-Tier System
 
-### Tier 1: Pre-flight Checks (Always-on)
+### Tier 1: Pre-flight Checks (PLANNED - Not Yet Implemented)
+
+**Status:** Awaiting upstream moltbot feature (pre-delivery hooks)
 
 **Model:** `flash` (glm-4.7-flash)
 **Latency:** ~2-3s
@@ -24,7 +26,11 @@ Both channels are reviewed by the same GLM-4.7 supervisor, catching hallucinated
 - Tool availability (required tools accessible?)
 - Goal drift detection (does response match original request?)
 
-### Tier 2: Quality Gate (On-demand)
+> **Note:** Moltbot currently lacks `response:before-send` hook events. This tier requires upstream feature addition.
+
+### Tier 2: Quality Gate (PLANNED - Not Yet Implemented)
+
+**Status:** Awaiting upstream moltbot feature (pre-delivery hooks)
 
 **Model:** `deep` (zai/glm-4.7)
 **Latency:** ~2-3s
@@ -41,10 +47,14 @@ Both channels are reviewed by the same GLM-4.7 supervisor, catching hallucinated
 - Specification match: Output meets requirements
 - Memory poisoning: Shared state validated before write
 
-### Tier 3: Periodic Audit (Cron)
+> **Note:** Moltbot currently lacks `response:before-send` hook events. This tier requires upstream feature addition.
 
-**Model:** `audit` (minimax-m2.1:cloud)
-**Schedule:** Hourly during active hours
+### Tier 3: Periodic Audit (Cron) - ACTIVE
+
+**Status:** Implemented and running
+
+**Model:** Uses supervisor agent's configured model (zai/glm-4.7)
+**Schedule:** Every 4 hours
 **Trigger:** Cron job
 
 **Reviews:**
@@ -113,17 +123,20 @@ When supervisor finds an issue, check for related problems:
 
 ## Model Selection Rationale
 
-| Model | Role | Why |
-|-------|------|-----|
-| MiniMax M2.1 | Primary Worker (Telegram) | Best finish-rate, 200K context |
-| Kimi K2.5 | Primary Worker (Discord) | 131K output, strong reasoning |
-| GLM-4.7 | Quality Gate / Reviewer | Different architecture catches both models' blind spots |
-| GLM-4.7-flash | Pre-flight | Fast enough, more reliable than lfm2.5 |
-| GLM-4.7 | Subagents | High capability for complex tasks |
+| Model | Role | Status |
+|-------|------|--------|
+| MiniMax M2.1 | Primary Worker (Telegram) | ACTIVE |
+| Kimi K2.5 | Primary Worker (Discord) | ACTIVE |
+| GLM-4.7 | Supervisor / Periodic Audit | ACTIVE (cron) |
+| GLM-4.7-flash | Pre-flight (Tier 1) | PLANNED |
+| GLM-4.7 | Quality Gate (Tier 2) | PLANNED |
+| GLM-4.7 | Subagents | ACTIVE |
 
 ## Dual-Channel Supervision Architecture
 
-**Key Insight:** Same model reviewing itself has identical blind spots. Both channels use different primary models, but BOTH are reviewed by GLM-4.7.
+**Current Implementation:** Periodic audit (Tier 3) only. Pre-delivery supervision (Tier 1/2) awaiting upstream moltbot hooks.
+
+**Key Insight:** Same model reviewing itself has identical blind spots. Both channels use different primary models, but BOTH are reviewed by GLM-4.7 via periodic audit.
 
 ```
 TELEGRAM:
@@ -154,16 +167,23 @@ DISCORD:
 
 ## Usage
 
-The supervisor runs automatically via the Proactive Review system. Manual invocation:
+The supervisor currently runs via cron job (every 4 hours). Pre-delivery validation awaits upstream moltbot hooks.
 
 ```
-# Quality gate check
-Use supervisor agent to validate [output] before sending
+# Periodic audit (automatic via cron)
+Supervisor reviews last 10 sessions from both channels
 
-# Periodic audit
-Run supervisor audit on recent session quality
+# Manual invocation
+moltbot cron run supervisor-periodic-audit
 ```
+
+## Upstream Feature Request
+
+To enable Tier 1/2 supervision, moltbot needs:
+- Hook event: `response:before-send` or `message:before-deliver`
+- Ability to intercept and optionally block message delivery
+- Context passing from agent response to supervisor hook
 
 ---
 
-*Supervisor Skill v1.1 | Dual-Channel Architecture | APEX v6.2.0 Compliant | January 28, 2026*
+*Supervisor Skill v1.2 | Tier 3 Active, Tier 1/2 Planned | APEX v6.2.0 Compliant | January 28, 2026*
