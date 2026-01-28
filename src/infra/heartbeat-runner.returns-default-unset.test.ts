@@ -333,6 +333,7 @@ describe("runHeartbeatOnce", () => {
       const cfg: ClawdbotConfig = {
         agents: {
           defaults: {
+            workspace: tmpDir,
             heartbeat: { every: "5m", target: "whatsapp" },
           },
         },
@@ -390,12 +391,14 @@ describe("runHeartbeatOnce", () => {
       const cfg: ClawdbotConfig = {
         agents: {
           defaults: {
+            workspace: tmpDir,
             heartbeat: { every: "30m", prompt: "Default prompt" },
           },
           list: [
             { id: "main", default: true },
             {
               id: "ops",
+              workspace: tmpDir,
               heartbeat: { every: "5m", target: "whatsapp", prompt: "Ops check" },
             },
           ],
@@ -461,6 +464,7 @@ describe("runHeartbeatOnce", () => {
       const cfg: ClawdbotConfig = {
         agents: {
           defaults: {
+            workspace: tmpDir,
             heartbeat: {
               every: "5m",
               target: "last",
@@ -542,6 +546,7 @@ describe("runHeartbeatOnce", () => {
       const cfg: ClawdbotConfig = {
         agents: {
           defaults: {
+            workspace: tmpDir,
             heartbeat: { every: "5m", target: "whatsapp" },
           },
         },
@@ -597,6 +602,7 @@ describe("runHeartbeatOnce", () => {
       const cfg: ClawdbotConfig = {
         agents: {
           defaults: {
+            workspace: tmpDir,
             heartbeat: {
               every: "5m",
               target: "whatsapp",
@@ -668,6 +674,7 @@ describe("runHeartbeatOnce", () => {
       const cfg: ClawdbotConfig = {
         agents: {
           defaults: {
+            workspace: tmpDir,
             heartbeat: {
               every: "5m",
               target: "whatsapp",
@@ -737,7 +744,7 @@ describe("runHeartbeatOnce", () => {
     try {
       const cfg: ClawdbotConfig = {
         agents: {
-          defaults: { heartbeat: { every: "5m" } },
+          defaults: { workspace: tmpDir, heartbeat: { every: "5m" } },
           list: [{ id: "work", default: true }],
         },
         channels: { whatsapp: { allowFrom: ["*"] } },
