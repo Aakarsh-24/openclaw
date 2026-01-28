@@ -80,18 +80,33 @@ function getGitPaths(args, repoRoot) {
 
 function formatFiles(repoRoot, oxfmt, files) {
   const useShell = process.platform === "win32" && /\.cmd$/i.test(oxfmt.command);
-  const result = spawnSync(oxfmt.command, ["--write", ...oxfmt.args, ...files], {
-    cwd: repoRoot,
-    stdio: "inherit",
-    shell: useShell,
-  });
-  return result.status === 0;
+  const MAX_BATCH = 100;
+  for (let i = 0; i < files.length; i += MAX_BATCH) {
+    const batch = files.slice(i, i + MAX_BATCH);
+    const result = spawnSync(oxfmt.command, ["--write", ...oxfmt.args, ...batch], {
+      cwd: repoRoot,
+      stdio: "inherit",
+      shell: useShell,
+    });
+    if (result.status !== 0) {
+      return false;
+    }
+  }
+  return true;
 }
 
 function stageFiles(repoRoot, files) {
   if (files.length === 0) return true;
-  const result = runGitCommand(["add", "--", ...files], { cwd: repoRoot, stdio: "inherit" });
-  return result.status === 0;
+  const MAX_BATCH = 200;
+  for (let i = 0; i < files.length; i += MAX_BATCH) {
+    const batch = files.slice(i, i + MAX_BATCH);
+    const result = runGitCommand(["add", "--", ...batch], {
+      cwd: repoRoot,
+      stdio: "inherit",
+    });
+    if (result.status !== 0) return false;
+  }
+  return true;
 }
 
 function main() {
