@@ -1,9 +1,12 @@
 package com.clawdbot.android
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.ApplicationInfo
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.Build
+import android.util.Log
 import android.view.WindowManager
 import android.webkit.WebView
 import androidx.activity.ComponentActivity
@@ -27,6 +30,11 @@ class MainActivity : ComponentActivity() {
   private lateinit var permissionRequester: PermissionRequester
   private lateinit var screenCaptureRequester: ScreenCaptureRequester
 
+  companion object {
+    private const val TAG = "MainActivity"
+    private const val REQUEST_AUDIO_PERMISSION_FOR_ASSIST = 200
+  }
+
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     val isDebuggable = (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
@@ -35,6 +43,9 @@ class MainActivity : ComponentActivity() {
     requestDiscoveryPermissionsIfNeeded()
     requestNotificationPermissionIfNeeded()
     NodeForegroundService.start(this)
+
+    // Auto-enable voice mode when launched via digital assistant (long-press power)
+    handleAssistIntent(intent)
     permissionRequester = PermissionRequester(this)
     screenCaptureRequester = ScreenCaptureRequester(this)
     viewModel.camera.attachLifecycleOwner(this)
@@ -122,9 +133,58 @@ class MainActivity : ComponentActivity() {
       ContextCompat.checkSelfPermission(
         this,
         Manifest.permission.POST_NOTIFICATIONS,
-      ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+      ) == PackageManager.PERMISSION_GRANTED
     if (!ok) {
       requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 102)
+    }
+  }
+
+  override fun onNewIntent(intent: Intent) {
+    super.onNewIntent(intent)
+    handleAssistIntent(intent)
+  }
+
+  private fun handleAssistIntent(intent: Intent?) {
+    val action = intent?.action ?: return
+    val isAssistAction = action == Intent.ACTION_ASSIST ||
+        action == "android.intent.action.VOICE_ASSIST" ||
+        action == "android.intent.action.VOICE_COMMAND" ||
+        action == "android.intent.action.SEARCH_LONG_PRESS" ||
+        action == "com.clawdbot.android.ACTION_ASSISTANT"
+
+    if (isAssistAction) {
+      Log.d(TAG, "Launched via assistant action: $action - enabling voice mode")
+      enableVoiceModeIfPermitted()
+    }
+  }
+
+  private fun enableVoiceModeIfPermitted() {
+    val micOk = ContextCompat.checkSelfPermission(
+      this,
+      Manifest.permission.RECORD_AUDIO
+    ) == PackageManager.PERMISSION_GRANTED
+
+    if (micOk) {
+      viewModel.setTalkEnabled(true)
+    } else {
+      // Request permission - will enable talk mode when granted
+      requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), REQUEST_AUDIO_PERMISSION_FOR_ASSIST)
+    }
+  }
+
+  @Deprecated("Deprecated in Java")
+  @Suppress("DEPRECATION")
+  override fun onRequestPermissionsResult(
+    requestCode: Int,
+    permissions: Array<String>,
+    grantResults: IntArray
+  ) {
+    super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+    if (requestCode == REQUEST_AUDIO_PERMISSION_FOR_ASSIST) {
+      if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+        Log.d(TAG, "Audio permission granted - enabling voice mode")
+        viewModel.setTalkEnabled(true)
+      }
     }
   }
 }
