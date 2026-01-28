@@ -38,7 +38,7 @@
             android:exported="false"
             android:foregroundServiceType="dataSync|microphone|mediaProjection" />
         <service
-            android:name=".push.ClawdbotMessagingService"
+            android:name=".push.MoltbotMessagingService"
             android:exported="false">
             <intent-filter>
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />

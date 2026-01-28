@@ -7,12 +7,12 @@ import android.util.Log
 import androidx.core.content.ContextCompat
 import bot.molt.android.gateway.GatewaySession
 import bot.molt.android.node.CanvasController
-import bot.molt.android.protocol.ClawdbotCameraCommand
-import bot.molt.android.protocol.ClawdbotCanvasA2UICommand
-import bot.molt.android.protocol.ClawdbotCanvasCommand
-import bot.molt.android.protocol.ClawdbotLocationCommand
-import bot.molt.android.protocol.ClawdbotScreenCommand
-import bot.molt.android.protocol.ClawdbotSmsCommand
+import bot.molt.android.protocol.MoltbotCameraCommand
+import bot.molt.android.protocol.MoltbotCanvasA2UICommand
+import bot.molt.android.protocol.MoltbotCanvasCommand
+import bot.molt.android.protocol.MoltbotLocationCommand
+import bot.molt.android.protocol.MoltbotScreenCommand
+import bot.molt.android.protocol.MoltbotSmsCommand
 import kotlinx.coroutines.TimeoutCancellationException
 
 private const val TAG = "NodeCommandHandlers"
@@ -28,10 +28,10 @@ internal suspend fun NodeRuntime.routeInvoke(
     paramsJson: String?
 ): GatewaySession.InvokeResult {
     // Background restrictions
-    if (command.startsWith(ClawdbotCanvasCommand.NamespacePrefix) ||
-        command.startsWith(ClawdbotCanvasA2UICommand.NamespacePrefix) ||
-        command.startsWith(ClawdbotCameraCommand.NamespacePrefix) ||
-        command.startsWith(ClawdbotScreenCommand.NamespacePrefix)
+    if (command.startsWith(MoltbotCanvasCommand.NamespacePrefix) ||
+        command.startsWith(MoltbotCanvasA2UICommand.NamespacePrefix) ||
+        command.startsWith(MoltbotCameraCommand.NamespacePrefix) ||
+        command.startsWith(MoltbotScreenCommand.NamespacePrefix)
     ) {
         if (!isForeground.value) {
             return GatewaySession.InvokeResult.error(
@@ -42,7 +42,7 @@ internal suspend fun NodeRuntime.routeInvoke(
     }
 
     // Camera check
-    if (command.startsWith(ClawdbotCameraCommand.NamespacePrefix) && !cameraEnabled.value) {
+    if (command.startsWith(MoltbotCameraCommand.NamespacePrefix) && !cameraEnabled.value) {
         return GatewaySession.InvokeResult.error(
             code = "CAMERA_DISABLED",
             message = "CAMERA_DISABLED: enable Camera in Settings",
@@ -50,7 +50,7 @@ internal suspend fun NodeRuntime.routeInvoke(
     }
 
     // Location check
-    if (command.startsWith(ClawdbotLocationCommand.NamespacePrefix) &&
+    if (command.startsWith(MoltbotLocationCommand.NamespacePrefix) &&
         locationMode.value == LocationMode.Off
     ) {
         return GatewaySession.InvokeResult.error(
@@ -60,19 +60,19 @@ internal suspend fun NodeRuntime.routeInvoke(
     }
 
     return when (command) {
-        ClawdbotCanvasCommand.Present.rawValue -> handleCanvasPresent(paramsJson)
-        ClawdbotCanvasCommand.Hide.rawValue -> GatewaySession.InvokeResult.ok(null)
-        ClawdbotCanvasCommand.Navigate.rawValue -> handleCanvasNavigate(paramsJson)
-        ClawdbotCanvasCommand.Eval.rawValue -> handleCanvasEval(paramsJson)
-        ClawdbotCanvasCommand.Snapshot.rawValue -> handleCanvasSnapshot(paramsJson)
-        ClawdbotCanvasA2UICommand.Reset.rawValue -> handleA2UIReset()
-        ClawdbotCanvasA2UICommand.Push.rawValue,
-        ClawdbotCanvasA2UICommand.PushJSONL.rawValue -> handleA2UIPush(command, paramsJson)
-        ClawdbotCameraCommand.Snap.rawValue -> handleCameraSnap(paramsJson)
-        ClawdbotCameraCommand.Clip.rawValue -> handleCameraClip(paramsJson)
-        ClawdbotLocationCommand.Get.rawValue -> handleLocationGet(paramsJson)
-        ClawdbotScreenCommand.Record.rawValue -> handleScreenRecord(paramsJson)
-        ClawdbotSmsCommand.Send.rawValue -> handleSmsSend(paramsJson)
+        MoltbotCanvasCommand.Present.rawValue -> handleCanvasPresent(paramsJson)
+        MoltbotCanvasCommand.Hide.rawValue -> GatewaySession.InvokeResult.ok(null)
+        MoltbotCanvasCommand.Navigate.rawValue -> handleCanvasNavigate(paramsJson)
+        MoltbotCanvasCommand.Eval.rawValue -> handleCanvasEval(paramsJson)
+        MoltbotCanvasCommand.Snapshot.rawValue -> handleCanvasSnapshot(paramsJson)
+        MoltbotCanvasA2UICommand.Reset.rawValue -> handleA2UIReset()
+        MoltbotCanvasA2UICommand.Push.rawValue,
+        MoltbotCanvasA2UICommand.PushJSONL.rawValue -> handleA2UIPush(command, paramsJson)
+        MoltbotCameraCommand.Snap.rawValue -> handleCameraSnap(paramsJson)
+        MoltbotCameraCommand.Clip.rawValue -> handleCameraClip(paramsJson)
+        MoltbotLocationCommand.Get.rawValue -> handleLocationGet(paramsJson)
+        MoltbotScreenCommand.Record.rawValue -> handleScreenRecord(paramsJson)
+        MoltbotSmsCommand.Send.rawValue -> handleSmsSend(paramsJson)
         else -> GatewaySession.InvokeResult.error(
             code = "INVALID_REQUEST",
             message = "INVALID_REQUEST: unknown command",

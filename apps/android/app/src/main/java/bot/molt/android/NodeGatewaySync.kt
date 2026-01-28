@@ -1,7 +1,7 @@
 package bot.molt.android
 
 import android.util.Log
-import bot.molt.android.protocol.ClawdbotCanvasA2UICommand
+import bot.molt.android.protocol.MoltbotCanvasA2UICommand
 import kotlinx.coroutines.delay
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -141,7 +141,7 @@ internal fun NodeRuntime.decodeA2uiMessages(command: String, paramsJson: String?
     val jsonlField = (obj["jsonl"] as? JsonPrimitive)?.content?.trim().orEmpty()
     val hasMessagesArray = obj["messages"] is JsonArray
 
-    if (command == ClawdbotCanvasA2UICommand.PushJSONL.rawValue || (!hasMessagesArray && jsonlField.isNotBlank())) {
+    if (command == MoltbotCanvasA2UICommand.PushJSONL.rawValue || (!hasMessagesArray && jsonlField.isNotBlank())) {
         val jsonl = jsonlField
         if (jsonl.isBlank()) throw IllegalArgumentException("INVALID_REQUEST: jsonl required")
         val messages = jsonl

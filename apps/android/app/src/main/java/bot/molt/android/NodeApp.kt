@@ -2,7 +2,7 @@ package bot.molt.android
 
 import android.app.Application
 import android.os.StrictMode
-import com.clawdbot.android.sync.SyncWorker
+import bot.molt.android.sync.SyncWorker
 
 class NodeApp : Application() {
   val runtime: NodeRuntime by lazy { NodeRuntime(this) }

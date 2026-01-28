@@ -17,7 +17,7 @@ import com.google.firebase.messaging.RemoteMessage
  * Handles both notification messages (shown automatically when app backgrounded)
  * and data messages (always delivered to this handler).
  */
-class ClawdbotMessagingService : FirebaseMessagingService() {
+class MoltbotMessagingService : FirebaseMessagingService() {
 
     override fun onCreate() {
         super.onCreate()
@@ -127,8 +127,8 @@ class ClawdbotMessagingService : FirebaseMessagingService() {
     }
 
     companion object {
-        private const val TAG = "ClawdbotFCM"
-        private const val CHANNEL_ID = "clawdbot_chat"
+        private const val TAG = "MoltbotFCM"
+        private const val CHANNEL_ID = "moltbot_chat"
     }
 }
 
@@ -140,7 +140,7 @@ class ClawdbotMessagingService : FirebaseMessagingService() {
  * Falls back to regular SharedPreferences only if encryption fails (rare edge cases).
  */
 object PushTokenStore {
-    private const val PREFS_NAME = "clawdbot_push_secure"
+    private const val PREFS_NAME = "moltbot_push_secure"
     private const val KEY_FCM_TOKEN = "fcm_token"
     private const val TAG = "PushTokenStore"
 
