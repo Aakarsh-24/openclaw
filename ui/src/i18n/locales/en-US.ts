@@ -211,13 +211,24 @@ export const enUS = {
     // Telegram
     telegram: {
       title: "Telegram",
-      desc: "Telegram bot(s) via Grammy.",
+      desc: "Bot status and channel configuration.",
+      mode: "Mode",
+      lastStart: "Last start",
+      lastProbe: "Last probe",
+      probe: "Probe",
+      probeOk: "ok",
+      probeFailed: "failed",
     },
 
     // Discord
     discord: {
       title: "Discord",
-      desc: "Discord bot via discord.js.",
+      desc: "Bot status and channel configuration.",
+      lastStart: "Last start",
+      lastProbe: "Last probe",
+      probe: "Probe",
+      probeOk: "ok",
+      probeFailed: "failed",
     },
 
     // Slack

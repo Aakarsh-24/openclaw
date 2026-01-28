@@ -218,13 +218,24 @@ export const zhTW = {
     // Telegram
     telegram: {
       title: "Telegram",
-      desc: "透過 Grammy 連接 Telegram 機器人。",
+      desc: "機器人狀態與頻道設定。",
+      mode: "模式",
+      lastStart: "上次啟動",
+      lastProbe: "上次探測",
+      probe: "探測",
+      probeOk: "正常",
+      probeFailed: "失敗",
     },
 
     // Discord
     discord: {
       title: "Discord",
-      desc: "透過 discord.js 連接 Discord 機器人。",
+      desc: "機器人狀態與頻道設定。",
+      lastStart: "上次啟動",
+      lastProbe: "上次探測",
+      probe: "探測",
+      probeOk: "正常",
+      probeFailed: "失敗",
     },
 
     // Slack
