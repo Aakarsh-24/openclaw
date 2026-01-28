@@ -178,7 +178,8 @@ Capture what matters. Decisions, context, things to remember. Skip the secrets u
 - `~/clawd/IDENTITY.md` - Your identity details
 - `~/clawd/STATUS.md` - System status
 - `~/clawd/AGENTS.md` - This file (agent rules)
-- `~/.clawdbot/*.json` - All config files
+- `~/.clawdbot/moltbot.json` - Main config file
+- `~/.clawdbot/cron/jobs.json` - Cron job definitions
 
 **If you think a protected file needs changes:**
 1. Write a proposal to `~/clawd/EVOLUTION-QUEUE.md`

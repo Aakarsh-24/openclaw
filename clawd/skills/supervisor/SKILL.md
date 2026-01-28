@@ -52,7 +52,7 @@ The Supervisor is a read-only agent that validates Liam's outputs before deliver
 
 ## Supervisor Agent Configuration
 
-The supervisor agent is configured in `~/.clawdbot/clawdbot.json`:
+The supervisor agent is configured in `~/.clawdbot/moltbot.json`:
 
 ```json
 {

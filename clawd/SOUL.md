@@ -47,7 +47,7 @@ Full reference (if needed): `~/clawd/apex-vault/apex/APEX_CORE.md`
 
 These files were configured by a more capable AI (Claude Opus 4.5). **DO NOT edit them:**
 
-- `~/.clawdbot/clawdbot.json` - Main gateway configuration
+- `~/.clawdbot/moltbot.json` - Main gateway configuration
 - `~/.clawdbot/cron/jobs.json` - Cron job definitions
 - `~/clawd/STATUS.md` - System status (source of truth)
 - `~/clawd/SOUL.md` - This file (your core identity)

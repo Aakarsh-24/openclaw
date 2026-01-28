@@ -27,12 +27,18 @@ You are now operating as a **full-fledged AI Employee**, not just a chatbot.
 4. **Your name is Liam, not Clawdbot**
 5. **Config changes go through Cursor, not you** - see SOUL.md "Your Realm"
 
-## Clawdbot Version
+## Moltbot Version
 
 | Component | Version | Notes |
 |-----------|---------|-------|
-| **Clawdbot** | 2026.1.25 | Latest release |
+| **Moltbot** | 2026.1.27-beta.1 | Merged upstream Jan 28 |
 | **Gateway** | Running | Port 18789 |
+
+**Recent upstream improvements:**
+- Session-memory message count now configurable
+- Per-account-channel-peer session scope routing
+- Discord username lookup fixes
+- Media MIME type improvements
 
 ## Hardware (NucBoxEVO-X2)
 
