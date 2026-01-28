@@ -1,0 +1,26 @@
+{
+  "name": "@moltbot/zoom",
+  "version": "2026.1.27",
+  "type": "module",
+  "description": "Moltbot Zoom Team Chat channel plugin",
+  "moltbot": {
+    "extensions": [
+      "./index.ts"
+    ],
+    "channel": {
+      "id": "zoom",
+      "label": "Zoom",
+      "selectionLabel": "Zoom Team Chat",
+      "docsPath": "/channels/zoom",
+      "docsLabel": "zoom",
+      "blurb": "Zoom Team Chat via Team Chat Bot API.",
+      "order": 45,
+      "quickstartAllowFrom": true
+    },
+    "install": {
+      "npmSpec": "@moltbot/zoom",
+      "localPath": "extensions/zoom",
+      "defaultChoice": "local"
+    }
+  }
+}

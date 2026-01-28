@@ -307,6 +307,12 @@ export {
 } from "../channels/plugins/normalize/telegram.js";
 export { collectTelegramStatusIssues } from "../channels/plugins/status-issues/telegram.js";
 
+// Channel: Zoom
+export { resolveZoomAccount, type ResolvedZoomAccount, type ZoomConfig } from "../zoom/config.js";
+export { ZoomConfigSchema } from "../zoom/config.js";
+export { monitorZoomProvider, type MonitorZoomOpts } from "../zoom/monitor.js";
+export { zoomOnboardingAdapter } from "../channels/plugins/onboarding/zoom.js";
+
 // Channel: Signal
 export {
   listSignalAccountIds,

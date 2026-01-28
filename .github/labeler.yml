@@ -93,6 +93,12 @@
       - any-glob-to-any-file:
           - "extensions/zalouser/**"
           - "docs/channels/zalouser.md"
+"channel: zoom":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "src/zoom/**"
+          - "extensions/zoom/**"
+          - "docs/channels/zoom.md"
 
 "app: android":
   - changed-files:
