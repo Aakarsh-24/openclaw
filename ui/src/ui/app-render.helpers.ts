@@ -140,14 +140,14 @@ function resolveSessionOptions(sessionKey: string, sessions: SessionsListResult 
 
   // Add current session key first
   seen.add(sessionKey);
-  options.push({ key: sessionKey, displayName: resolvedCurrent?.displayName });
+  options.push({ key: sessionKey, displayName: resolvedCurrent?.label || resolvedCurrent?.displayName });
 
   // Add sessions from the result
   if (sessions?.sessions) {
     for (const s of sessions.sessions) {
       if (!seen.has(s.key)) {
         seen.add(s.key);
-        options.push({ key: s.key, displayName: s.displayName });
+        options.push({ key: s.key, displayName: s.label || s.displayName });
       }
     }
   }
