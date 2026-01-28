@@ -40,8 +40,13 @@ let resolvedSensitivePaths: string[] | null = null;
 let enforceMode = false;
 let installed = false;
 
-let originalReadFile: typeof fs.readFileSync | null = null;
-let originalReadFileAsync: typeof fs.promises.readFile | null = null;
+// Original function references for restoration
+let origReadFileSync: typeof fs.readFileSync | null = null;
+let origWriteFileSync: typeof fs.writeFileSync | null = null;
+let origReadFile: typeof fs.promises.readFile | null = null;
+let origWriteFile: typeof fs.promises.writeFile | null = null;
+let origStat: typeof fs.promises.stat | null = null;
+let origUnlink: typeof fs.promises.unlink | null = null;
 
 /**
  * Resolve a path that may start with ~.
@@ -54,11 +59,24 @@ function expandHome(p: string): string {
 }
 
 /**
+ * Resolve a file path, following symlinks where possible to prevent bypass via symlinks.
+ */
+function resolveRealPath(filePath: string): string {
+  const resolved = path.resolve(filePath);
+  try {
+    return fs.realpathSync.native(resolved);
+  } catch {
+    // If realpath fails (e.g. file doesn't exist yet), fall back to path.resolve
+    return resolved;
+  }
+}
+
+/**
  * Check if a path falls under any sensitive path prefix.
  */
 export function isSensitivePath(filePath: string): boolean {
   if (!resolvedSensitivePaths) return false;
-  const normalized = path.resolve(filePath);
+  const normalized = resolveRealPath(filePath);
   for (const sensitive of resolvedSensitivePaths) {
     if (normalized === sensitive || normalized.startsWith(sensitive + path.sep)) {
       return true;
@@ -76,22 +94,38 @@ export function auditFileAccess(
   operation: "read" | "write" | "stat" | "readdir" | "unlink",
 ): boolean {
   if (!resolvedSensitivePaths) return true;
-  const normalized = path.resolve(filePath);
+  const normalized = resolveRealPath(filePath);
   if (!isSensitivePath(normalized)) return true;
 
   logSecurityEvent("sensitive_file_access", {
     operation,
     path: normalized,
     allowed: !enforceMode,
+    stackTrace: new Error().stack?.split("\n").slice(2, 7).join("\n"),
   });
 
   return !enforceMode;
 }
 
 /**
- * Install lightweight fs monitoring hooks.
- * Only intercepts fs.readFileSync and fs.promises.readFile for sensitive path auditing.
- * This is intentionally minimal to avoid breaking the application.
+ * Create a guard wrapper that audits the first arg (file path) before calling the original.
+ */
+function createGuard(
+  operation: "read" | "write" | "stat" | "readdir" | "unlink",
+): (filePath: unknown) => void {
+  return (filePath: unknown) => {
+    if (typeof filePath === "string") {
+      const allowed = auditFileAccess(filePath, operation);
+      if (!allowed) {
+        throw new Error(`[fs-monitor] Blocked ${operation} access to sensitive path: ${filePath}`);
+      }
+    }
+  };
+}
+
+/**
+ * Install fs monitoring hooks for sensitive path auditing.
+ * Hooks both sync and async versions of: readFile, writeFile, stat, unlink.
  */
 export function installFsMonitor(opts?: FsMonitorOptions): void {
   if (installed) return;
@@ -103,33 +137,58 @@ export function installFsMonitor(opts?: FsMonitorOptions): void {
   resolvedSensitivePaths = rawPaths.map((p) => path.resolve(expandHome(p)));
   enforceMode = opts?.enforce ?? false;
 
-  // Wrap fs.readFileSync for synchronous reads
-  originalReadFile = fs.readFileSync;
+  const readGuard = createGuard("read");
+  const writeGuard = createGuard("write");
+  const statGuard = createGuard("stat");
+  const unlinkGuard = createGuard("unlink");
+
+  // Sync hooks
+  origReadFileSync = fs.readFileSync;
+  const origRFS = origReadFileSync;
   (fs as { readFileSync: typeof fs.readFileSync }).readFileSync = ((...args: unknown[]) => {
-    const filePath = args[0];
-    if (typeof filePath === "string") {
-      const allowed = auditFileAccess(filePath, "read");
-      if (!allowed) {
-        throw new Error(`[fs-monitor] Blocked read access to sensitive path: ${filePath}`);
-      }
-    }
-    return (originalReadFile as Function).apply(fs, args);
+    readGuard(args[0]);
+    return (origRFS as Function).apply(fs, args);
   }) as typeof fs.readFileSync;
 
-  // Wrap fs.promises.readFile for async reads
-  originalReadFileAsync = fs.promises.readFile;
+  origWriteFileSync = fs.writeFileSync;
+  const origWFS = origWriteFileSync;
+  (fs as { writeFileSync: typeof fs.writeFileSync }).writeFileSync = ((...args: unknown[]) => {
+    writeGuard(args[0]);
+    return (origWFS as Function).apply(fs, args);
+  }) as typeof fs.writeFileSync;
+
+  // Async hooks (fs.promises)
+  origReadFile = fs.promises.readFile;
+  const origRF = origReadFile;
   (fs.promises as { readFile: typeof fs.promises.readFile }).readFile = (async (
     ...args: unknown[]
   ) => {
-    const filePath = args[0];
-    if (typeof filePath === "string") {
-      const allowed = auditFileAccess(filePath, "read");
-      if (!allowed) {
-        throw new Error(`[fs-monitor] Blocked read access to sensitive path: ${filePath}`);
-      }
-    }
-    return (originalReadFileAsync as Function).apply(fs.promises, args);
+    readGuard(args[0]);
+    return (origRF as Function).apply(fs.promises, args);
   }) as typeof fs.promises.readFile;
+
+  origWriteFile = fs.promises.writeFile;
+  const origWF = origWriteFile;
+  (fs.promises as { writeFile: typeof fs.promises.writeFile }).writeFile = (async (
+    ...args: unknown[]
+  ) => {
+    writeGuard(args[0]);
+    return (origWF as Function).apply(fs.promises, args);
+  }) as typeof fs.promises.writeFile;
+
+  origStat = fs.promises.stat;
+  const origST = origStat;
+  (fs.promises as { stat: typeof fs.promises.stat }).stat = (async (...args: unknown[]) => {
+    statGuard(args[0]);
+    return (origST as Function).apply(fs.promises, args);
+  }) as typeof fs.promises.stat;
+
+  origUnlink = fs.promises.unlink;
+  const origUL = origUnlink;
+  (fs.promises as { unlink: typeof fs.promises.unlink }).unlink = (async (...args: unknown[]) => {
+    unlinkGuard(args[0]);
+    return (origUL as Function).apply(fs.promises, args);
+  }) as typeof fs.promises.unlink;
 
   installed = true;
 
@@ -137,6 +196,14 @@ export function installFsMonitor(opts?: FsMonitorOptions): void {
     module: "fs-monitor",
     sensitivePathCount: resolvedSensitivePaths.length,
     enforce: enforceMode,
+    hookedMethods: [
+      "readFileSync",
+      "writeFileSync",
+      "promises.readFile",
+      "promises.writeFile",
+      "promises.stat",
+      "promises.unlink",
+    ],
   });
 }
 
@@ -145,13 +212,29 @@ export function installFsMonitor(opts?: FsMonitorOptions): void {
  */
 export function uninstallFsMonitor(): void {
   if (!installed) return;
-  if (originalReadFile) {
-    (fs as { readFileSync: typeof fs.readFileSync }).readFileSync = originalReadFile;
-    originalReadFile = null;
+  if (origReadFileSync) {
+    (fs as { readFileSync: typeof fs.readFileSync }).readFileSync = origReadFileSync;
+    origReadFileSync = null;
   }
-  if (originalReadFileAsync) {
-    (fs.promises as { readFile: typeof fs.promises.readFile }).readFile = originalReadFileAsync;
-    originalReadFileAsync = null;
+  if (origWriteFileSync) {
+    (fs as { writeFileSync: typeof fs.writeFileSync }).writeFileSync = origWriteFileSync;
+    origWriteFileSync = null;
+  }
+  if (origReadFile) {
+    (fs.promises as { readFile: typeof fs.promises.readFile }).readFile = origReadFile;
+    origReadFile = null;
+  }
+  if (origWriteFile) {
+    (fs.promises as { writeFile: typeof fs.promises.writeFile }).writeFile = origWriteFile;
+    origWriteFile = null;
+  }
+  if (origStat) {
+    (fs.promises as { stat: typeof fs.promises.stat }).stat = origStat;
+    origStat = null;
+  }
+  if (origUnlink) {
+    (fs.promises as { unlink: typeof fs.promises.unlink }).unlink = origUnlink;
+    origUnlink = null;
   }
   resolvedSensitivePaths = null;
   installed = false;

