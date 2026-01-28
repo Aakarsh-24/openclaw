@@ -18,6 +18,7 @@ import { createSessionsSendTool } from "./tools/sessions-send-tool.js";
 import { createSessionsSpawnTool } from "./tools/sessions-spawn-tool.js";
 import { createWebFetchTool, createWebSearchTool } from "./tools/web-tools.js";
 import { createTtsTool } from "./tools/tts-tool.js";
+import { createQverisTools } from "./tools/qveris-tools.js";
 
 export function createMoltbotTools(options?: {
   sandboxBrowserBridgeUrl?: string;
@@ -69,6 +70,11 @@ export function createMoltbotTools(options?: {
   const webFetchTool = createWebFetchTool({
     config: options?.config,
     sandboxed: options?.sandboxed,
+  });
+  const qverisTools = createQverisTools({
+    config: options?.config,
+    sandboxed: options?.sandboxed,
+    agentSessionKey: options?.agentSessionKey,
   });
   const tools: AnyAgentTool[] = [
     createBrowserTool({
@@ -137,6 +143,7 @@ export function createMoltbotTools(options?: {
     ...(webSearchTool ? [webSearchTool] : []),
     ...(webFetchTool ? [webFetchTool] : []),
     ...(imageTool ? [imageTool] : []),
+    ...qverisTools,
   ];
 
   const pluginTools = resolvePluginTools({
