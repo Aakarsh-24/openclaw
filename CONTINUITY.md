@@ -25,14 +25,17 @@ Make exec events (Codex, Claude, etc.) visible in Crabwalk UI as distinct "EXEC"
 - [x] Rolled back uncommitted changes
 - [x] Created CONTINUITY.md
 - [x] **Bead 1: Audit** — Full E2E flow audit complete (see AUDIT_REPORT.md)
+- [x] **Bead 2: Add top-level runId** — Commit `e49b41503` (2026-01-27)
+  - Added `runId?: string` to ExecEventBase type
+  - Updated all 3 emitExecEvent calls to include `runId: execEventsState.context?.runId`
+  - Build passes
 
 ### Now
-- [ ] Bead 2: Write failing test for top-level runId in exec events
+- [ ] E2E validation with Crabwalk
 
 ### Next
-- [ ] Bead 3: Update Gateway exec-events.ts types (add top-level runId)
-- [ ] Bead 4: Update bash-tools.exec.ts emission call sites
-- [ ] Bead 5: E2E validation with Crabwalk
+- [ ] Push to GitHub (failed earlier due to token permissions)
+- [ ] Add test coverage for top-level runId
 
 ## Open Questions (RESOLVED)
 - ✅ CONFIRMED: Exec events ARE being emitted (Line 406-408, server.impl.ts)

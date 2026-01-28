@@ -15,6 +15,7 @@ type ExecEventBase = {
   seq: number;
   sessionId: string;
   runId?: string;
+  sessionKey?: string;
   pid?: number;
   command: string;
   commandName?: string;

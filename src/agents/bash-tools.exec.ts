@@ -577,6 +577,7 @@ async function runExecProcess(opts: {
           emitExecEvent("exec.output", {
             sessionId,
             runId: execEventsState.context?.runId,
+            sessionKey: execEventsState.context?.sessionKey,
             pid: session.pid,
             command: session.command,
             commandName: execEventsState.commandName,
@@ -596,6 +597,7 @@ async function runExecProcess(opts: {
     emitExecEvent("exec.started", {
       sessionId,
       runId: execEventsState.context?.runId,
+      sessionKey: execEventsState.context?.sessionKey,
       pid: session.pid,
       command: session.command,
       commandName: execEventsState.commandName,
@@ -620,6 +622,7 @@ async function runExecProcess(opts: {
     emitExecEvent("exec.completed", {
       sessionId,
       runId: execEventsState.context?.runId,
+      sessionKey: execEventsState.context?.sessionKey,
       pid: session.pid,
       command: session.command,
       commandName: execEventsState.commandName,
