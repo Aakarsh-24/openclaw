@@ -17,6 +17,8 @@ type AgentEntry = NonNullable<NonNullable<MoltbotConfig["agents"]>["list"]>[numb
 
 type ResolvedAgentConfig = {
   name?: string;
+  runtime?: AgentEntry["runtime"];
+  ccsdk?: AgentEntry["ccsdk"];
   workspace?: string;
   agentDir?: string;
   model?: AgentEntry["model"];
@@ -97,6 +99,8 @@ export function resolveAgentConfig(
   if (!entry) return undefined;
   return {
     name: typeof entry.name === "string" ? entry.name : undefined,
+    runtime: entry.runtime,
+    ccsdk: entry.ccsdk,
     workspace: typeof entry.workspace === "string" ? entry.workspace : undefined,
     agentDir: typeof entry.agentDir === "string" ? entry.agentDir : undefined,
     model:

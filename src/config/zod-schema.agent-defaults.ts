@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  AgentRuntimeKindSchema,
   HeartbeatSchema,
   MemorySearchSchema,
   SandboxBrowserSchema,
@@ -13,8 +14,12 @@ import {
   HumanDelaySchema,
 } from "./zod-schema.core.js";
 
+// Re-export for consumers
+export { AgentRuntimeKindSchema };
+
 export const AgentDefaultsSchema = z
   .object({
+    runtime: AgentRuntimeKindSchema.optional(),
     model: z
       .object({
         primary: z.string().optional(),

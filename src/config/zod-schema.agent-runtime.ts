@@ -413,11 +413,36 @@ export const AgentModelSchema = z.union([
     })
     .strict(),
 ]);
+/** Agent runtime backend discriminant. */
+export const AgentRuntimeKindSchema = z.union([z.literal("pi"), z.literal("ccsdk")]);
+
+/** Model tier configuration for Claude Code SDK. */
+export const CcSdkModelTiersSchema = z
+  .object({
+    haiku: z.string().optional(),
+    sonnet: z.string().optional(),
+    opus: z.string().optional(),
+  })
+  .strict()
+  .optional();
+
+/** Claude Code SDK runtime configuration schema. */
+export const AgentCcSdkConfigSchema = z
+  .object({
+    hooksEnabled: z.boolean().optional(),
+    options: z.record(z.string(), z.unknown()).optional(),
+    models: CcSdkModelTiersSchema,
+  })
+  .strict()
+  .optional();
+
 export const AgentEntrySchema = z
   .object({
     id: z.string(),
     default: z.boolean().optional(),
     name: z.string().optional(),
+    runtime: AgentRuntimeKindSchema.optional(),
+    ccsdk: AgentCcSdkConfigSchema,
     workspace: z.string().optional(),
     agentDir: z.string().optional(),
     model: AgentModelSchema.optional(),
