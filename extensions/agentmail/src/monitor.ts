@@ -1,6 +1,10 @@
 import type { AgentMail } from "agentmail";
 
-import { getAgentMailClient, getResolvedCredentials, NOT_CONFIGURED_ERROR } from "./client.js";
+import {
+  getAgentMailClient,
+  getResolvedCredentials,
+  NOT_CONFIGURED_ERROR,
+} from "./client.js";
 import { getAgentMailRuntime } from "./runtime.js";
 import { checkSenderAllowed, labelMessageAllowed } from "./filtering.js";
 import { extractMessageBody, fetchFormattedThread } from "./thread.js";
@@ -13,13 +17,28 @@ export type MonitorAgentMailOptions = {
 };
 
 // Runtime state tracking
-type RuntimeState = { running: boolean; lastStartAt: number | null; lastStopAt: number | null; lastError: string | null; lastInboundAt?: number | null; lastOutboundAt?: number | null };
+type RuntimeState = {
+  running: boolean;
+  lastStartAt: number | null;
+  lastStopAt: number | null;
+  lastError: string | null;
+  lastInboundAt?: number | null;
+  lastOutboundAt?: number | null;
+};
 const runtimeState = new Map<string, RuntimeState>();
-const defaultState: RuntimeState = { running: false, lastStartAt: null, lastStopAt: null, lastError: null };
+const defaultState: RuntimeState = {
+  running: false,
+  lastStartAt: null,
+  lastStopAt: null,
+  lastError: null,
+};
 
 function recordState(accountId: string, state: Partial<RuntimeState>) {
   const key = `agentmail:${accountId}`;
-  runtimeState.set(key, { ...(runtimeState.get(key) ?? defaultState), ...state });
+  runtimeState.set(key, {
+    ...(runtimeState.get(key) ?? defaultState),
+    ...state,
+  });
 }
 
 /** Returns runtime state for status checks. */
@@ -62,10 +81,15 @@ export async function monitorAgentMailProvider(
   const client = getAgentMailClient(apiKey);
   const allowFrom = agentmailConfig?.allowFrom ?? [];
 
-  recordState(accountId, { running: true, lastStartAt: Date.now(), lastError: null });
+  recordState(accountId, {
+    running: true,
+    lastStartAt: Date.now(),
+    lastError: null,
+  });
   logger.info(`AgentMail: connecting WebSocket for ${inboxId}`);
 
-  let socket: Awaited<ReturnType<typeof client.websockets.connect>> | null = null;
+  let socket: Awaited<ReturnType<typeof client.websockets.connect>> | null =
+    null;
   let connectionCount = 0;
 
   const subscribe = () => {
@@ -77,12 +101,16 @@ export async function monitorAgentMailProvider(
   };
 
   try {
-    socket = await client.websockets.connect();
+    socket = await client.websockets.connect({ authToken: apiKey });
 
     socket.on("open", () => {
       connectionCount++;
       const isReconnect = connectionCount > 1;
-      logger.info(`AgentMail: WebSocket ${isReconnect ? "reconnected" : "connected"}, subscribing to ${inboxId}`);
+      logger.info(
+        `AgentMail: WebSocket ${
+          isReconnect ? "reconnected" : "connected"
+        }, subscribing to ${inboxId}`
+      );
       subscribe();
       if (isReconnect) {
         recordState(accountId, { lastError: null }); // Clear error on successful reconnect
@@ -92,7 +120,9 @@ export async function monitorAgentMailProvider(
     socket.on("message", async (event) => {
       if (event.type === "subscribed") {
         const sub = event as AgentMail.Subscribed;
-        logger.info(`AgentMail: subscribed to ${sub.inboxIds?.join(", ") ?? "inbox"}`);
+        logger.info(
+          `AgentMail: subscribed to ${sub.inboxIds?.join(", ") ?? "inbox"}`
+        );
         return;
       }
 
@@ -123,7 +153,11 @@ export async function monitorAgentMailProvider(
       recordState(accountId, { lastInboundAt: Date.now() });
 
       // Fetch the full thread from API
-      const threadBody = await fetchFormattedThread(client, inboxId, message.threadId);
+      const threadBody = await fetchFormattedThread(
+        client,
+        inboxId,
+        message.threadId
+      );
       const messageBody = extractMessageBody(message);
       const fullBody = threadBody || buildFallbackBody(message);
 
@@ -138,9 +172,16 @@ export async function monitorAgentMailProvider(
       const timestamp = new Date(message.timestamp).getTime();
 
       // Format envelope
-      const storePath = core.channel.session.resolveStorePath(cfg.session?.store, { agentId: route.agentId });
-      const envelopeOptions = core.channel.reply.resolveEnvelopeFormatOptions(cfg);
-      const previousTimestamp = core.channel.session.readSessionUpdatedAt({ storePath, sessionKey: route.sessionKey });
+      const storePath = core.channel.session.resolveStorePath(
+        cfg.session?.store,
+        { agentId: route.agentId }
+      );
+      const envelopeOptions =
+        core.channel.reply.resolveEnvelopeFormatOptions(cfg);
+      const previousTimestamp = core.channel.session.readSessionUpdatedAt({
+        storePath,
+        sessionKey: route.sessionKey,
+      });
       const formattedBody = core.channel.reply.formatAgentEnvelope({
         channel: "Email",
         from: senderName,
@@ -186,7 +227,8 @@ export async function monitorAgentMailProvider(
           to: inboxId,
           accountId: route.accountId,
         },
-        onRecordError: (err) => logger.warn(`Failed updating session meta: ${String(err)}`),
+        onRecordError: (err) =>
+          logger.warn(`Failed updating session meta: ${String(err)}`),
       });
 
       const preview = messageBody.slice(0, 200).replace(/\n/g, "\\n");
@@ -194,28 +236,40 @@ export async function monitorAgentMailProvider(
 
       const { dispatcher, replyOptions, markDispatchIdle } =
         core.channel.reply.createReplyDispatcherWithTyping({
-          humanDelay: core.channel.reply.resolveHumanDelayConfig(cfg, route.agentId),
+          humanDelay: core.channel.reply.resolveHumanDelayConfig(
+            cfg,
+            route.agentId
+          ),
           deliver: async (payload) => {
             const { sendAgentMailReply } = await import("./outbound.js");
             const text = payload.text ?? "";
             if (!text) return;
-            await sendAgentMailReply({ client, inboxId, messageId: message.messageId, text });
+            await sendAgentMailReply({
+              client,
+              inboxId,
+              messageId: message.messageId,
+              text,
+            });
             recordState(accountId, { lastOutboundAt: Date.now() });
           },
-          onError: (err, info) => logger.error(`agentmail ${info.kind} reply failed: ${String(err)}`),
+          onError: (err, info) =>
+            logger.error(`agentmail ${info.kind} reply failed: ${String(err)}`),
         });
 
-      const { queuedFinal, counts } = await core.channel.reply.dispatchReplyFromConfig({
-        ctx: ctxPayload,
-        cfg,
-        dispatcher,
-        replyOptions,
-      });
+      const { queuedFinal, counts } =
+        await core.channel.reply.dispatchReplyFromConfig({
+          ctx: ctxPayload,
+          cfg,
+          dispatcher,
+          replyOptions,
+        });
 
       markDispatchIdle();
 
       if (queuedFinal) {
-        logVerbose(`agentmail: delivered ${counts.final} reply(ies) to ${senderEmail}`);
+        logVerbose(
+          `agentmail: delivered ${counts.final} reply(ies) to ${senderEmail}`
+        );
         core.system.enqueueSystemEvent(`Email from ${senderName}: ${preview}`, {
           sessionKey: route.sessionKey,
           contextKey: `agentmail:message:${message.messageId}`,
@@ -231,7 +285,9 @@ export async function monitorAgentMailProvider(
     socket.on("close", (event) => {
       // SDK's ReconnectingWebSocket will auto-reconnect (default 30 attempts)
       // On reconnect, "open" fires again and we resubscribe
-      logger.warn(`AgentMail: WebSocket closed (code: ${event.code}), will attempt reconnect`);
+      logger.warn(
+        `AgentMail: WebSocket closed (code: ${event.code}), will attempt reconnect`
+      );
     });
 
     // Wait for abort signal
@@ -252,6 +308,10 @@ export async function monitorAgentMailProvider(
     });
   } catch (err) {
     logger.error(`AgentMail WebSocket connection failed: ${String(err)}`);
-    recordState(accountId, { running: false, lastError: String(err), lastStopAt: Date.now() });
+    recordState(accountId, {
+      running: false,
+      lastError: String(err),
+      lastStopAt: Date.now(),
+    });
   }
 }
