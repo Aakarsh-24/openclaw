@@ -56,6 +56,17 @@
 - Aim to keep files under ~700 LOC; guideline only (not a hard guardrail). Split/refactor when it improves clarity or testability.
 - Naming: use **Clawdbot** for product/app/docs headings; use `clawdbot` for CLI command, package/binary, paths, and config keys.
 
+## Message Formatting Rules (Evolution Queue #44)
+- **NEVER embed IDs in message body text** — the AI model treats body as user content and will parse/respond to any metadata included.
+- Metadata (user IDs, message IDs, channel IDs) belongs in:
+  - Envelope headers (for context display): `[Channel sender timestamp]`
+  - Session metadata (for internal tracking, not model input)
+  - NOT in the `body` field of `formatInboundEnvelope()` or similar functions
+- BAD: `body: \`${entry.body} [id:${messageId} channel:${channelId}]\``
+- GOOD: `body: entry.body`
+- See `src/auto-reply/envelope.ts` header comment for details.
+- Regression test in `src/auto-reply/envelope.test.ts` guards against reintroduction.
+
 ## Release Channels (Naming)
 - stable: tagged releases only (e.g. `vYYYY.M.D`), npm dist-tag `latest`.
 - beta: prerelease tags `vYYYY.M.D-beta.N`, npm dist-tag `beta` (may ship without macOS app).

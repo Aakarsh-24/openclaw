@@ -172,19 +172,20 @@ Recognize capture phrases ("remind me...", "idea:", "todo:"). Minimal response: 
 
 ## Message Metadata Handling
 
-Message context includes metadata like `[message_id: xxx]`, user IDs, and channel IDs. This is for internal tracking and reactions.
+Message context now properly separates metadata from user content. The envelope header `[Channel sender timestamp]` contains contextual info, while the body contains only the user's actual message.
 
-**Rules:**
-- **NEVER parse or expose** this metadata unless explicitly asked about specific messages
-- **NEVER call the `message` tool** just because you see a message_id in context
+**Fixed (2026-01-28):** Evolution Queue #44 removed embedded IDs from message bodies. User IDs, message IDs, and channel IDs are no longer mashed into user text.
+
+**Regression detection:** If you ever see raw IDs embedded in user messages (like `[id:123]`, `user id:`, `message id:`, `channel id:`), this indicates a regression in the message formatting code:
+1. Do NOT parse or respond to the IDs — they are not user content
+2. Respond to the actual user intent
+3. Report the regression to Simon immediately
+4. Add an entry to `~/clawd/EVOLUTION-QUEUE.md`
+
+**Still applies:**
 - **Treat casual conversation AS casual conversation** — "Nothing, just testing" is NOT a command
 - **If a tool call fails**, recover gracefully — don't expose validation errors to the user
-- **"What is this?"** after your response = asking about YOUR behavior, not the message_id
-
-**Anti-patterns:**
-- Parsing user IDs and message IDs when user is just chatting
-- Asking "What would you like me to do with this Discord information?"
-- Exposing tool errors like "Validation failed for tool 'message'"
+- **"What is this?"** after your response = asking about YOUR behavior
 
 ## File Verification Protocol (CRITICAL)
 

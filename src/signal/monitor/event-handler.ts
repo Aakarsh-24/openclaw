@@ -113,9 +113,8 @@ export function createSignalEventHandler(deps: SignalEventHandlerDeps) {
             channel: "Signal",
             from: fromLabel,
             timestamp: historyEntry.timestamp,
-            body: `${historyEntry.body}${
-              historyEntry.messageId ? ` [id:${historyEntry.messageId}]` : ""
-            }`,
+            // Body contains only user content - no metadata (see Evolution Queue #44)
+            body: historyEntry.body,
             chatType: "group",
             senderLabel: historyEntry.sender,
             envelope: envelopeOptions,

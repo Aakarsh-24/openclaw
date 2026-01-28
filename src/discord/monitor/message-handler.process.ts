@@ -179,7 +179,8 @@ export async function processDiscordMessage(ctx: DiscordMessagePreflightContext)
           channel: "Discord",
           from: fromLabel,
           timestamp: entry.timestamp,
-          body: `${entry.body} [id:${entry.messageId ?? "unknown"} channel:${message.channelId}]`,
+          // Body contains only user content - no metadata (see Evolution Queue #44)
+          body: entry.body,
           chatType: "channel",
           senderLabel: entry.sender,
           envelope: envelopeOptions,

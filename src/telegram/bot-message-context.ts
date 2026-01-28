@@ -468,7 +468,8 @@ export const buildTelegramMessageContext = async ({
           channel: "Telegram",
           from: groupLabel ?? `group:${chatId}`,
           timestamp: entry.timestamp,
-          body: `${entry.body} [id:${entry.messageId ?? "unknown"} chat:${chatId}]`,
+          // Body contains only user content - no metadata (see Evolution Queue #44)
+          body: entry.body,
           chatType: "group",
           senderLabel: entry.sender,
           envelope: envelopeOptions,

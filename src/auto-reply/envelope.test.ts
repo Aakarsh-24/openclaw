@@ -172,3 +172,41 @@ describe("formatInboundEnvelope", () => {
     });
   });
 });
+
+// Regression test for Evolution Queue #44 - metadata should never be in body
+describe("metadata isolation", () => {
+  it("formatInboundEnvelope should not embed metadata patterns in output", () => {
+    // This test guards against reintroducing metadata-in-body bugs.
+    // Body should contain ONLY user content, not IDs or tracking data.
+    const result = formatInboundEnvelope({
+      channel: "Discord",
+      from: "testuser",
+      body: "Hello world",
+      chatType: "direct",
+    });
+
+    // Body portion (after the header) should not contain ID patterns
+    // The header [Channel from timestamp] is fine, but body after ] should be clean
+    const bodyPortion = result.split("] ").slice(1).join("] ");
+
+    expect(bodyPortion).not.toMatch(/\[.*id:.*\]/i);
+    expect(bodyPortion).not.toMatch(/user id:/i);
+    expect(bodyPortion).not.toMatch(/message id:/i);
+    expect(bodyPortion).not.toMatch(/channel id:/i);
+    expect(bodyPortion).not.toMatch(/chat id:/i);
+  });
+
+  it("body text should pass through unchanged", () => {
+    const userMessage = "Nothing I was just testing";
+    const result = formatInboundEnvelope({
+      channel: "Discord",
+      from: "gnox8339",
+      body: userMessage,
+      chatType: "direct",
+    });
+
+    // The body should appear exactly as provided, without appended metadata
+    expect(result).toContain(userMessage);
+    expect(result).toBe(`[Discord gnox8339] ${userMessage}`);
+  });
+});

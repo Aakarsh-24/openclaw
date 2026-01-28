@@ -40,21 +40,21 @@
 - **Resolution:** Installed ngrok v3.35.0 to ~/.local/bin/ngrok (2026-01-28)
 - **Status:** RESOLVED
 
-### [2026-01-27-044] Message Metadata Mashed Into User Text - CORE Issue (Not Channel-Specific)
+### [2026-01-27-044] Message Metadata Mashed Into User Text - CORE Issue [RESOLVED]
 - **Proposed by:** Simon
 - **Date:** 2026-01-27
 - **Category:** tools
 - **Target file:** Core message handling (NOT channel-specific)
 - **Verified:** YES - confirmed on BOTH Discord AND Telegram
-- **Evidence:**
-  - Discord: `[Discord gnox8339 user id:393272476416606208 +10s 2026-01-27 21:01 PST] Hi like we just did some updates...`
-  - Telegram: `A new session was started via /new or /reset...\n[message_id: 905]`
-  - Both channels append/prepend metadata to user text field
-  - Model can't distinguish user input from metadata - same field in payload
-- **Description:** Message metadata (user ID, message_id, timestamp, channel info) is being mashed into the user text field across ALL channels, not just Discord. The model treats the entire string as user input. This is a core Clawdbot message formatting issue.
-- **Root Cause:** Core message formatting logic, NOT channel plugins
-- **Note:** SOUL.md context-misinterpretation fix helps but doesn't solve the structural issue.
-- **Status:** VERIFIED - Core Clawdbot codebase change required
+- **Description:** Message metadata (user ID, message_id, timestamp, channel info) was being mashed into the user text field across ALL channels. The model treated the entire string as user input.
+- **Resolution (2026-01-28):**
+  - Removed metadata from body in 6 files: Discord (reply-context.ts, message-handler.process.ts), Telegram (bot-message-context.ts), Signal (event-handler.ts), Slack (prepare.ts), iMessage (monitor-provider.ts)
+  - Simplified `buildDirectLabel()` and `buildGuildLabel()` to not include IDs
+  - Added regression test in `envelope.test.ts`
+  - Added documentation in `envelope.ts`, SOUL.md, AGENTS.md
+  - Updated test in `queue.collect-routing.test.ts`
+- **Prevention:** Regression test guards against reintroduction; AGENTS.md has rule; SOUL.md teaches Liam to detect regressions
+- **Status:** RESOLVED
 
 ### [2026-02-10-042] Debug Mode Frequency Reversion (SCHEDULED)
 - **Proposed by:** Cursor
@@ -63,11 +63,24 @@
 - **Description:** Revert debug mode frequencies to normal after 2-week dev period. Actions: disable Evening-Self-Audit + Model-Health-Check cron jobs, revert self-evaluation/Queue-Cleanup to Sunday only.
 - **Status:** SCHEDULED
 
-### [2026-01-27-038] Telegram Multi-Message Split Formatting
+### [2026-01-27-038] Telegram Multi-Message Split Formatting [INVESTIGATED]
 - **Date:** 2026-01-27
-- **Description:** Long responses split into multiple Telegram messages may have weird spacing. Investigation found chunking uses `chunkByParagraph()` with whitespace trimming - may not be a real issue.
-- **Note:** Test on 2026-01-27 showed perfect formatting. May be content-specific.
-- **Status:** NEEDS REPRODUCTION STEPS (screenshot needed)
+- **Description:** Long responses split into multiple Telegram messages may have weird spacing.
+- **Investigation (2026-01-28):**
+  - **Config:** No `chunkMode` or `textChunkLimit` set - defaults: `chunkMode="length"`, `textChunkLimit=4000`
+  - **Session logs:** Found 5 sessions with responses >4000 chars that would trigger chunking
+  - **Chunking code analysis:**
+    - `chunkText()` applies `trimEnd()` to each chunk (line 297) and `trimStart()` to remainder (line 305)
+    - `chunkByParagraph()` applies `replace(/\s+$/g, "")` to strip trailing whitespace (line 220)
+    - This is expected behavior - chunks should be self-contained without trailing whitespace
+  - **Discord comparison:** No sessions with responses >2000 chars, so chunking hasn't been triggered there
+  - **Test on 2026-01-27:** Showed perfect formatting
+- **Root cause candidates:**
+  1. Whitespace trimming is intentional and correct
+  2. Issue may be Telegram client rendering (adds visual spacing between messages)
+  3. Issue may be content-specific (certain markdown patterns)
+- **Status:** CANNOT REPRODUCE - needs screenshot showing actual "weird spacing" to identify specific pattern
+- **Action required:** If issue recurs, capture screenshot showing the problematic spacing and the original message content
 
 ### [2026-01-25-016] PuenteWorks Documentation Import
 - **Proposed by:** Simon (via email)

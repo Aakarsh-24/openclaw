@@ -427,9 +427,8 @@ export async function prepareSlackMessage(params: {
           channel: "Slack",
           from: roomLabel,
           timestamp: entry.timestamp,
-          body: `${entry.body}${
-            entry.messageId ? ` [id:${entry.messageId} channel:${message.channel}]` : ""
-          }`,
+          // Body contains only user content - no metadata (see Evolution Queue #44)
+          body: entry.body,
           chatType: "channel",
           senderLabel: entry.sender,
           envelope: envelopeOptions,

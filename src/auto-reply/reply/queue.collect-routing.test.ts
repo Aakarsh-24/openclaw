@@ -53,7 +53,7 @@ describe("followup queue deduplication", () => {
     const first = enqueueFollowupRun(
       key,
       createRun({
-        prompt: "[Discord Guild #test channel id:123] Hello",
+        prompt: "[Discord Guild #test] Hello",
         messageId: "m1",
         originatingChannel: "discord",
         originatingTo: "channel:123",
@@ -66,7 +66,7 @@ describe("followup queue deduplication", () => {
     const second = enqueueFollowupRun(
       key,
       createRun({
-        prompt: "[Discord Guild #test channel id:123] Hello (dupe)",
+        prompt: "[Discord Guild #test] Hello (dupe)",
         messageId: "m1",
         originatingChannel: "discord",
         originatingTo: "channel:123",
@@ -79,7 +79,7 @@ describe("followup queue deduplication", () => {
     const third = enqueueFollowupRun(
       key,
       createRun({
-        prompt: "[Discord Guild #test channel id:123] World",
+        prompt: "[Discord Guild #test] World",
         messageId: "m2",
         originatingChannel: "discord",
         originatingTo: "channel:123",

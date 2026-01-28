@@ -458,7 +458,8 @@ export async function monitorIMessageProvider(opts: MonitorIMessageOpts = {}): P
             channel: "iMessage",
             from: fromLabel,
             timestamp: entry.timestamp,
-            body: `${entry.body}${entry.messageId ? ` [id:${entry.messageId}]` : ""}`,
+            // Body contains only user content - no metadata (see Evolution Queue #44)
+            body: entry.body,
             chatType: "group",
             senderLabel: entry.sender,
             envelope: envelopeOptions,

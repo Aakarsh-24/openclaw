@@ -15,7 +15,8 @@ export function resolveReplyContext(
   });
   if (!referencedText) return null;
   const fromLabel = referenced.author ? buildDirectLabel(referenced.author) : "Unknown";
-  const body = `${referencedText}\n[discord message id: ${referenced.id} channel: ${referenced.channelId} from: ${formatDiscordUserTag(referenced.author)} user id:${referenced.author?.id ?? "unknown"}]`;
+  // Body contains only user content - no metadata (see Evolution Queue #44)
+  const body = referencedText;
   return formatAgentEnvelope({
     channel: "Discord",
     from: fromLabel,
@@ -26,11 +27,12 @@ export function resolveReplyContext(
 }
 
 export function buildDirectLabel(author: User) {
-  const username = formatDiscordUserTag(author);
-  return `${username} user id:${author.id}`;
+  // Return only username - no user ID (see Evolution Queue #44)
+  return formatDiscordUserTag(author);
 }
 
 export function buildGuildLabel(params: { guild?: Guild; channelName: string; channelId: string }) {
-  const { guild, channelName, channelId } = params;
-  return `${guild?.name ?? "Guild"} #${channelName} channel id:${channelId}`;
+  // Return only guild and channel name - no channel ID (see Evolution Queue #44)
+  const { guild, channelName } = params;
+  return `${guild?.name ?? "Guild"} #${channelName}`;
 }

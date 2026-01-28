@@ -1,3 +1,25 @@
+/**
+ * Message envelope formatting utilities.
+ *
+ * IMPORTANT: Metadata Isolation Rule (Evolution Queue #44)
+ * =========================================================
+ * The `body` field in envelope functions must contain ONLY user content.
+ *
+ * DO NOT embed metadata (user IDs, message IDs, channel IDs, chat IDs) in the body.
+ * The AI model treats the entire body as user content and will try to parse/respond
+ * to any metadata included there.
+ *
+ * Metadata belongs in:
+ * - The envelope header (channel, from, timestamp) - this is contextual info
+ * - Separate internal tracking fields (not shown to model)
+ * - Session metadata (for correlation, not model input)
+ *
+ * BAD:  body: `${entry.body} [id:${messageId} channel:${channelId}]`
+ * GOOD: body: entry.body
+ *
+ * See: Evolution Queue #44 - "Message Metadata Mashed Into User Text"
+ */
+
 import { resolveUserTimezone } from "../agents/date-time.js";
 import { normalizeChatType } from "../channels/chat-type.js";
 import { resolveSenderLabel, type SenderLabelParams } from "../channels/sender-label.js";
