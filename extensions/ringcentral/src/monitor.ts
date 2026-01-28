@@ -30,6 +30,11 @@ export type RingCentralRuntimeEnv = {
 const recentlySentMessageIds = new Set<string>();
 const MESSAGE_ID_TTL = 60000; // 60 seconds
 
+// Reconnection settings
+const RECONNECT_INITIAL_DELAY = 1000; // 1 second
+const RECONNECT_MAX_DELAY = 60000; // 60 seconds
+const RECONNECT_MAX_ATTEMPTS = 10;
+
 function trackSentMessageId(messageId: string): void {
   recentlySentMessageIds.add(messageId);
   setTimeout(() => recentlySentMessageIds.delete(messageId), MESSAGE_ID_TTL);
@@ -651,84 +656,153 @@ export async function startRingCentralMonitor(
   const { account, config, runtime, abortSignal, statusSink } = options;
   const core = getRingCentralRuntime();
 
-  runtime.log?.(`[${account.accountId}] Starting RingCentral WebSocket subscription...`);
-
-  // Get SDK instance
-  const sdk = await getRingCentralSDK(account);
-  
-  // Create subscriptions manager
-  const subscriptions = new Subscriptions({ sdk });
-  const subscription = subscriptions.createSubscription();
-
-  // Track current user ID to filter out self messages
+  let subscription: ReturnType<InstanceType<typeof Subscriptions>["createSubscription"]> | null = null;
+  let reconnectAttempts = 0;
+  let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+  let isShuttingDown = false;
   let ownerId: string | undefined;
-  try {
-    const platform = sdk.platform();
-    const response = await platform.get("/restapi/v1.0/account/~/extension/~");
-    const userInfo = await response.json();
-    ownerId = userInfo?.id?.toString();
-    runtime.log?.(`[${account.accountId}] Authenticated as extension: ${ownerId}`);
-  } catch (err) {
-    runtime.error?.(`[${account.accountId}] Failed to get current user: ${String(err)}`);
-  }
 
-  // Handle notifications
-  subscription.on(subscription.events.notification, (event: unknown) => {
-    logVerbose(core, runtime, `WebSocket notification received: ${JSON.stringify(event).slice(0, 500)}`);
-    const evt = event as RingCentralWebhookEvent;
-    processWebSocketEvent({
-      event: evt,
-      account,
-      config,
-      runtime,
-      core,
-      statusSink,
-      ownerId,
-    }).catch((err) => {
-      runtime.error?.(`[${account.accountId}] WebSocket event processing failed: ${String(err)}`);
-    });
-  });
+  // Calculate delay with exponential backoff
+  const getReconnectDelay = () => {
+    const delay = Math.min(
+      RECONNECT_INITIAL_DELAY * Math.pow(2, reconnectAttempts),
+      RECONNECT_MAX_DELAY
+    );
+    return delay;
+  };
 
-  // Handle subscription status changes
-  subscription.on(subscription.events.subscribeSuccess, () => {
-    runtime.log?.(`[${account.accountId}] WebSocket subscription active`);
-  });
+  // Create and setup subscription
+  const createSubscription = async (): Promise<void> => {
+    if (isShuttingDown || abortSignal.aborted) return;
 
-  subscription.on(subscription.events.subscribeError, (err: unknown) => {
-    runtime.error?.(`[${account.accountId}] WebSocket subscription error: ${String(err)}`);
-  });
+    runtime.log?.(`[${account.accountId}] Starting RingCentral WebSocket subscription...`);
 
-  subscription.on(subscription.events.renewSuccess, () => {
-    logVerbose(core, runtime, "WebSocket subscription renewed");
-  });
+    try {
+      // Get SDK instance
+      const sdk = await getRingCentralSDK(account);
+      
+      // Create subscriptions manager
+      const subscriptions = new Subscriptions({ sdk });
+      subscription = subscriptions.createSubscription();
 
-  subscription.on(subscription.events.renewError, (err: unknown) => {
-    runtime.error?.(`[${account.accountId}] WebSocket subscription renew error: ${String(err)}`);
-  });
+      // Track current user ID to filter out self messages
+      if (!ownerId) {
+        try {
+          const platform = sdk.platform();
+          const response = await platform.get("/restapi/v1.0/account/~/extension/~");
+          const userInfo = await response.json();
+          ownerId = userInfo?.id?.toString();
+          runtime.log?.(`[${account.accountId}] Authenticated as extension: ${ownerId}`);
+        } catch (err) {
+          runtime.error?.(`[${account.accountId}] Failed to get current user: ${String(err)}`);
+        }
+      }
 
-  // Subscribe to Team Messaging events
-  // - /restapi/v1.0/glip/posts: New posts in chats
-  // - /restapi/v1.0/glip/groups: Chat/group changes
-  try {
-    await subscription
-      .setEventFilters([
-        "/restapi/v1.0/glip/posts",
-        "/restapi/v1.0/glip/groups",
-      ])
-      .register();
-    
-    runtime.log?.(`[${account.accountId}] RingCentral WebSocket subscription established`);
-  } catch (err) {
-    runtime.error?.(`[${account.accountId}] Failed to create WebSocket subscription: ${String(err)}`);
-    throw err;
-  }
+      // Handle notifications
+      subscription.on(subscription.events.notification, (event: unknown) => {
+        logVerbose(core, runtime, `WebSocket notification received: ${JSON.stringify(event).slice(0, 500)}`);
+        const evt = event as RingCentralWebhookEvent;
+        processWebSocketEvent({
+          event: evt,
+          account,
+          config,
+          runtime,
+          core,
+          statusSink,
+          ownerId,
+        }).catch((err) => {
+          runtime.error?.(`[${account.accountId}] WebSocket event processing failed: ${String(err)}`);
+        });
+      });
+
+      // Handle subscription status changes
+      subscription.on(subscription.events.subscribeSuccess, () => {
+        runtime.log?.(`[${account.accountId}] WebSocket subscription active`);
+        reconnectAttempts = 0; // Reset attempts on successful connection
+      });
+
+      subscription.on(subscription.events.subscribeError, (err: unknown) => {
+        runtime.error?.(`[${account.accountId}] WebSocket subscription error: ${String(err)}`);
+        scheduleReconnect();
+      });
+
+      subscription.on(subscription.events.renewSuccess, () => {
+        logVerbose(core, runtime, "WebSocket subscription renewed");
+      });
+
+      subscription.on(subscription.events.renewError, (err: unknown) => {
+        runtime.error?.(`[${account.accountId}] WebSocket subscription renew error: ${String(err)}`);
+        scheduleReconnect();
+      });
+
+      // Handle automatic renew errors (connection lost)
+      subscription.on(subscription.events.automaticRenewError, (err: unknown) => {
+        runtime.error?.(`[${account.accountId}] WebSocket automatic renew failed: ${String(err)}`);
+        scheduleReconnect();
+      });
+
+      // Subscribe to Team Messaging events
+      await subscription
+        .setEventFilters([
+          "/restapi/v1.0/glip/posts",
+          "/restapi/v1.0/glip/groups",
+        ])
+        .register();
+      
+      runtime.log?.(`[${account.accountId}] RingCentral WebSocket subscription established`);
+      reconnectAttempts = 0; // Reset on success
+
+    } catch (err) {
+      runtime.error?.(`[${account.accountId}] Failed to create WebSocket subscription: ${String(err)}`);
+      scheduleReconnect();
+    }
+  };
+
+  // Schedule reconnection with exponential backoff
+  const scheduleReconnect = () => {
+    if (isShuttingDown || abortSignal.aborted) return;
+    if (reconnectAttempts >= RECONNECT_MAX_ATTEMPTS) {
+      runtime.error?.(`[${account.accountId}] Max reconnection attempts (${RECONNECT_MAX_ATTEMPTS}) reached. Giving up.`);
+      return;
+    }
+
+    const delay = getReconnectDelay();
+    reconnectAttempts++;
+    runtime.log?.(`[${account.accountId}] Scheduling reconnection attempt ${reconnectAttempts}/${RECONNECT_MAX_ATTEMPTS} in ${delay}ms...`);
+
+    // Clean up existing subscription
+    if (subscription) {
+      subscription.reset().catch(() => {});
+      subscription = null;
+    }
+
+    reconnectTimeout = setTimeout(() => {
+      reconnectTimeout = null;
+      createSubscription().catch((err) => {
+        runtime.error?.(`[${account.accountId}] Reconnection failed: ${String(err)}`);
+      });
+    }, delay);
+  };
+
+  // Initial connection
+  await createSubscription();
 
   // Handle abort signal
   const cleanup = () => {
+    isShuttingDown = true;
     runtime.log?.(`[${account.accountId}] Stopping RingCentral WebSocket subscription...`);
-    subscription.reset().catch((err) => {
-      runtime.error?.(`[${account.accountId}] Failed to reset subscription: ${String(err)}`);
-    });
+    
+    if (reconnectTimeout) {
+      clearTimeout(reconnectTimeout);
+      reconnectTimeout = null;
+    }
+    
+    if (subscription) {
+      subscription.reset().catch((err) => {
+        runtime.error?.(`[${account.accountId}] Failed to reset subscription: ${String(err)}`);
+      });
+      subscription = null;
+    }
   };
 
   if (abortSignal.aborted) {
