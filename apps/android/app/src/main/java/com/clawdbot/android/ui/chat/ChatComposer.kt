@@ -1,31 +1,47 @@
 package com.clawdbot.android.ui.chat
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.AttachFile
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Stop
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -36,8 +52,15 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.clawdbot.android.chat.ChatSessionEntry
 
 @Composable
@@ -50,6 +73,8 @@ fun ChatComposer(
   pendingRunCount: Int,
   errorText: String?,
   attachments: List<PendingImageAttachment>,
+  seamColor: Color = Color(0xFF3B82F6),
+  talkEnabled: Boolean = false,
   onPickImages: () -> Unit,
   onRemoveAttachment: (id: String) -> Unit,
   onSetThinkingLevel: (level: String) -> Unit,
@@ -57,132 +82,264 @@ fun ChatComposer(
   onRefresh: () -> Unit,
   onAbort: () -> Unit,
   onSend: (text: String) -> Unit,
+  onToggleTalk: () -> Unit = {},
 ) {
   var input by rememberSaveable { mutableStateOf("") }
+  var showMenu by remember { mutableStateOf(false) }
   var showThinkingMenu by remember { mutableStateOf(false) }
   var showSessionMenu by remember { mutableStateOf(false) }
+  val haptic = LocalHapticFeedback.current
 
   val sessionOptions = resolveSessionChoices(sessionKey, sessions, mainSessionKey = mainSessionKey)
   val currentSessionLabel =
     sessionOptions.firstOrNull { it.key == sessionKey }?.displayName ?: sessionKey
 
-  val canSend = pendingRunCount == 0 && (input.trim().isNotEmpty() || attachments.isNotEmpty()) && healthOk
+  val hasText = input.trim().isNotEmpty()
+  val canSend = pendingRunCount == 0 && (hasText || attachments.isNotEmpty()) && healthOk
 
-  Surface(
-    shape = MaterialTheme.shapes.large,
-    color = MaterialTheme.colorScheme.surfaceContainer,
-    tonalElevation = 0.dp,
-    shadowElevation = 0.dp,
+  Column(
+    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+    verticalArrangement = Arrangement.spacedBy(8.dp),
   ) {
-    Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    // Error text if any
+    if (!errorText.isNullOrBlank()) {
+      Text(
+        text = errorText,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.error,
+        maxLines = 2,
+        modifier = Modifier.padding(horizontal = 4.dp),
+      )
+    }
+
+    // Attachments strip
+    if (attachments.isNotEmpty()) {
+      AttachmentsStrip(attachments = attachments, onRemoveAttachment = onRemoveAttachment)
+    }
+
+    // Main input row: [Menu] [TextField] [Orb/Send]
+    Surface(
+      shape = RoundedCornerShape(28.dp),
+      color = MaterialTheme.colorScheme.surfaceContainerHigh,
+      tonalElevation = 2.dp,
+    ) {
       Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth().padding(4.dp),
         verticalAlignment = Alignment.CenterVertically,
       ) {
+        // Menu button
         Box {
-          FilledTonalButton(
-            onClick = { showSessionMenu = true },
-            contentPadding = ButtonDefaults.ContentPadding,
+          IconButton(
+            onClick = { showMenu = true },
+            modifier = Modifier.size(44.dp),
           ) {
-            Text("Session: $currentSessionLabel")
+            Icon(
+              Icons.Default.Menu,
+              contentDescription = "Menu",
+              tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
           }
 
-          DropdownMenu(expanded = showSessionMenu, onDismissRequest = { showSessionMenu = false }) {
-            for (entry in sessionOptions) {
-              DropdownMenuItem(
-                text = { Text(entry.displayName ?: entry.key) },
-                onClick = {
-                  onSelectSession(entry.key)
-                  showSessionMenu = false
-                },
-                trailingIcon = {
-                  if (entry.key == sessionKey) {
-                    Text("✓")
-                  } else {
-                    Spacer(modifier = Modifier.width(10.dp))
-                  }
-                },
-              )
-            }
-          }
-        }
-
-        Box {
-          FilledTonalButton(
-            onClick = { showThinkingMenu = true },
-            contentPadding = ButtonDefaults.ContentPadding,
+          DropdownMenu(
+            expanded = showMenu,
+            onDismissRequest = { showMenu = false },
           ) {
-            Text("Thinking: ${thinkingLabel(thinkingLevel)}")
+            // Session selector
+            DropdownMenuItem(
+              text = { Text("Session: $currentSessionLabel") },
+              onClick = { 
+                showMenu = false
+                showSessionMenu = true 
+              },
+              leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null) },
+            )
+            
+            // Thinking level
+            DropdownMenuItem(
+              text = { Text("Thinking: ${thinkingLabel(thinkingLevel)}") },
+              onClick = { 
+                showMenu = false
+                showThinkingMenu = true 
+              },
+              leadingIcon = { 
+                Text("🧠", style = MaterialTheme.typography.bodyLarge) 
+              },
+            )
+            
+            HorizontalDivider()
+            
+            // Attach file
+            DropdownMenuItem(
+              text = { Text("Attach image") },
+              onClick = { 
+                showMenu = false
+                onPickImages() 
+              },
+              leadingIcon = { Icon(Icons.Default.AttachFile, contentDescription = null) },
+            )
+            
+            // Refresh
+            DropdownMenuItem(
+              text = { Text("Refresh") },
+              onClick = { 
+                showMenu = false
+                onRefresh() 
+              },
+              leadingIcon = { Icon(Icons.Default.Refresh, contentDescription = null) },
+            )
           }
+        }
 
-          DropdownMenu(expanded = showThinkingMenu, onDismissRequest = { showThinkingMenu = false }) {
-            ThinkingMenuItem("off", thinkingLevel, onSetThinkingLevel) { showThinkingMenu = false }
-            ThinkingMenuItem("low", thinkingLevel, onSetThinkingLevel) { showThinkingMenu = false }
-            ThinkingMenuItem("medium", thinkingLevel, onSetThinkingLevel) { showThinkingMenu = false }
-            ThinkingMenuItem("high", thinkingLevel, onSetThinkingLevel) { showThinkingMenu = false }
+        // Session menu (separate dropdown)
+        DropdownMenu(expanded = showSessionMenu, onDismissRequest = { showSessionMenu = false }) {
+          for (entry in sessionOptions) {
+            DropdownMenuItem(
+              text = { Text(entry.displayName ?: entry.key) },
+              onClick = {
+                onSelectSession(entry.key)
+                showSessionMenu = false
+              },
+              trailingIcon = {
+                if (entry.key == sessionKey) Text("✓") else Spacer(Modifier.width(10.dp))
+              },
+            )
           }
         }
 
-        Spacer(modifier = Modifier.weight(1f))
-
-        FilledTonalIconButton(onClick = onRefresh, modifier = Modifier.size(42.dp)) {
-          Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+        // Thinking menu (separate dropdown)
+        DropdownMenu(expanded = showThinkingMenu, onDismissRequest = { showThinkingMenu = false }) {
+          ThinkingMenuItem("off", thinkingLevel, onSetThinkingLevel) { showThinkingMenu = false }
+          ThinkingMenuItem("low", thinkingLevel, onSetThinkingLevel) { showThinkingMenu = false }
+          ThinkingMenuItem("medium", thinkingLevel, onSetThinkingLevel) { showThinkingMenu = false }
+          ThinkingMenuItem("high", thinkingLevel, onSetThinkingLevel) { showThinkingMenu = false }
         }
 
-        FilledTonalIconButton(onClick = onPickImages, modifier = Modifier.size(42.dp)) {
-          Icon(Icons.Default.AttachFile, contentDescription = "Add image")
+        // Text field
+        Box(
+          modifier = Modifier
+            .weight(1f)
+            .padding(horizontal = 4.dp),
+        ) {
+          BasicTextField(
+            value = input,
+            onValueChange = { input = it },
+            modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+            textStyle = TextStyle(
+              color = MaterialTheme.colorScheme.onSurface,
+              fontSize = 16.sp,
+            ),
+            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+            maxLines = 4,
+            decorationBox = { innerTextField ->
+              Box {
+                if (input.isEmpty()) {
+                  Text(
+                    "Message Clawd…",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 16.sp,
+                  )
+                }
+                innerTextField()
+              }
+            },
+          )
         }
-      }
 
-      if (attachments.isNotEmpty()) {
-        AttachmentsStrip(attachments = attachments, onRemoveAttachment = onRemoveAttachment)
-      }
-
-      OutlinedTextField(
-        value = input,
-        onValueChange = { input = it },
-        modifier = Modifier.fillMaxWidth(),
-        placeholder = { Text("Message Clawd…") },
-        minLines = 2,
-        maxLines = 6,
-      )
-
-      Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        ConnectionPill(sessionLabel = currentSessionLabel, healthOk = healthOk)
-        Spacer(modifier = Modifier.weight(1f))
-
+        // Right button: Abort / Send / Orb (PTT)
         if (pendingRunCount > 0) {
-          FilledTonalIconButton(
+          // Abort button when running
+          IconButton(
             onClick = onAbort,
-            colors =
-              IconButtonDefaults.filledTonalIconButtonColors(
-                containerColor = Color(0x33E74C3C),
-                contentColor = Color(0xFFE74C3C),
-              ),
+            modifier = Modifier.size(44.dp),
           ) {
-            Icon(Icons.Default.Stop, contentDescription = "Abort")
+            Icon(
+              Icons.Default.Stop,
+              contentDescription = "Abort",
+              tint = Color(0xFFE74C3C),
+            )
           }
-        } else {
-          FilledTonalIconButton(onClick = {
-            val text = input
-            input = ""
-            onSend(text)
-          }, enabled = canSend) {
+        } else if (hasText || attachments.isNotEmpty()) {
+          // Send button when there's content
+          FilledTonalIconButton(
+            onClick = {
+              val text = input
+              input = ""
+              onSend(text)
+            },
+            enabled = canSend,
+            modifier = Modifier.size(44.dp),
+            colors = IconButtonDefaults.filledTonalIconButtonColors(
+              containerColor = seamColor,
+              contentColor = Color.White,
+            ),
+          ) {
             Icon(Icons.Default.ArrowUpward, contentDescription = "Send")
           }
+        } else {
+          // Mini orb (PTT) when empty
+          MiniOrb(
+            seamColor = seamColor,
+            isActive = talkEnabled,
+            onClick = {
+              haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+              onToggleTalk()
+            },
+          )
         }
       }
-
-      if (!errorText.isNullOrBlank()) {
-        Text(
-          text = errorText,
-          style = MaterialTheme.typography.bodySmall,
-          color = MaterialTheme.colorScheme.error,
-          maxLines = 2,
-        )
-      }
     }
+
+    // Connection status pill (compact)
+    ConnectionPill(sessionLabel = currentSessionLabel, healthOk = healthOk)
+  }
+}
+
+@Composable
+private fun MiniOrb(
+  seamColor: Color,
+  isActive: Boolean,
+  onClick: () -> Unit,
+  modifier: Modifier = Modifier,
+) {
+  val alpha = if (isActive) 1f else 0.6f
+  
+  Box(
+    modifier = modifier
+      .size(44.dp)
+      .clip(CircleShape)
+      .clickable(
+        interactionSource = remember { MutableInteractionSource() },
+        indication = null,
+        onClick = onClick,
+      ),
+    contentAlignment = Alignment.Center,
+  ) {
+    Canvas(modifier = Modifier.size(36.dp)) {
+      val center = this.center
+      val radius = size.minDimension / 2
+
+      drawCircle(
+        brush = Brush.radialGradient(
+          colors = listOf(
+            seamColor.copy(alpha = 0.9f * alpha),
+            seamColor.copy(alpha = 0.4f * alpha),
+            Color.Black.copy(alpha = 0.3f * alpha),
+          ),
+          center = center,
+          radius = radius * 1.2f,
+        ),
+        radius = radius,
+        center = center,
+      )
+    }
+    
+    // Mic icon overlay
+    Icon(
+      Icons.Default.Mic,
+      contentDescription = if (isActive) "Listening" else "Tap to talk",
+      tint = Color.White.copy(alpha = alpha),
+      modifier = Modifier.size(20.dp),
+    )
   }
 }
 
@@ -190,19 +347,18 @@ fun ChatComposer(
 private fun ConnectionPill(sessionLabel: String, healthOk: Boolean) {
   Surface(
     shape = RoundedCornerShape(999.dp),
-    color = MaterialTheme.colorScheme.surfaceContainerHighest,
+    color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.7f),
   ) {
     Row(
-      modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-      horizontalArrangement = Arrangement.spacedBy(8.dp),
+      modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+      horizontalArrangement = Arrangement.spacedBy(6.dp),
       verticalAlignment = Alignment.CenterVertically,
     ) {
       Surface(
-        modifier = Modifier.size(7.dp),
-        shape = androidx.compose.foundation.shape.CircleShape,
+        modifier = Modifier.size(6.dp),
+        shape = CircleShape,
         color = if (healthOk) Color(0xFF2ECC71) else Color(0xFFF39C12),
       ) {}
-      Text(sessionLabel, style = MaterialTheme.typography.labelSmall)
       Text(
         if (healthOk) "Connected" else "Connecting…",
         style = MaterialTheme.typography.labelSmall,
@@ -276,9 +432,9 @@ private fun AttachmentChip(fileName: String, onRemove: () -> Unit) {
       Text(text = fileName, style = MaterialTheme.typography.bodySmall, maxLines = 1)
       FilledTonalIconButton(
         onClick = onRemove,
-        modifier = Modifier.size(30.dp),
+        modifier = Modifier.size(24.dp),
       ) {
-        Text("×")
+        Text("×", fontSize = 14.sp)
       }
     }
   }

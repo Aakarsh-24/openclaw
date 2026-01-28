@@ -267,43 +267,16 @@ fun RootScreen(viewModel: MainViewModel) {
     }
   }
 
-  // Chat overlay + PTT orb at bottom
-  Popup(alignment = Alignment.BottomCenter, properties = PopupProperties(focusable = false)) {
-    Column(
-      modifier = Modifier
-        .fillMaxWidth()
-        .windowInsetsPadding(WindowInsets.navigationBars)
-        .padding(bottom = 24.dp),
-      horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-      // Chat messages above the orb
-      val messages by viewModel.chatMessages.collectAsState()
-      val pendingRunCount by viewModel.pendingRunCount.collectAsState()
-      val pendingToolCalls by viewModel.chatPendingToolCalls.collectAsState()
-      val streamingText by viewModel.chatStreamingAssistantText.collectAsState()
-      
-      if (messages.isNotEmpty() || pendingRunCount > 0 || pendingToolCalls.isNotEmpty() || !streamingText.isNullOrBlank()) {
-        com.clawdbot.android.ui.chat.ChatMessageListCard(
-          messages = messages,
-          pendingRunCount = pendingRunCount,
-          pendingToolCalls = pendingToolCalls,
-          streamingAssistantText = streamingText,
-          modifier = Modifier
-            .fillMaxWidth()
-            .weight(1f, fill = false)
-            .heightIn(max = 400.dp)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        )
-      }
-      
-      // PTT orb
+  // PTT orb overlay (only show when talk mode is active, for visual feedback)
+  if (talkEnabled) {
+    Popup(alignment = Alignment.Center, properties = PopupProperties(focusable = false)) {
       TalkOrbOverlay(
         seamColor = seamColor,
         statusText = talkStatusText,
         isListening = talkIsListening,
         isSpeaking = talkIsSpeaking,
-        isActive = talkEnabled,
-        onTap = { viewModel.setTalkEnabled(!talkEnabled) },
+        isActive = true,
+        onTap = { viewModel.setTalkEnabled(false) },
       )
     }
   }

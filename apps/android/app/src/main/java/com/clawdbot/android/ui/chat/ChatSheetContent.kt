@@ -38,6 +38,9 @@ fun ChatSheetContent(viewModel: MainViewModel) {
   val streamingAssistantText by viewModel.chatStreamingAssistantText.collectAsState()
   val pendingToolCalls by viewModel.chatPendingToolCalls.collectAsState()
   val sessions by viewModel.chatSessions.collectAsState()
+  val seamColorArgb by viewModel.seamColorArgb.collectAsState()
+  val talkEnabled by viewModel.talkEnabled.collectAsState()
+  val seamColor = remember(seamColorArgb) { androidx.compose.ui.graphics.Color(seamColorArgb) }
 
   LaunchedEffect(mainSessionKey) {
     viewModel.loadChat(mainSessionKey)
@@ -92,6 +95,8 @@ fun ChatSheetContent(viewModel: MainViewModel) {
       pendingRunCount = pendingRunCount,
       errorText = errorText,
       attachments = attachments,
+      seamColor = seamColor,
+      talkEnabled = talkEnabled,
       onPickImages = { pickImages.launch("image/*") },
       onRemoveAttachment = { id -> attachments.removeAll { it.id == id } },
       onSetThinkingLevel = { level -> viewModel.setChatThinkingLevel(level) },
@@ -101,6 +106,7 @@ fun ChatSheetContent(viewModel: MainViewModel) {
         viewModel.refreshChatSessions(limit = 200)
       },
       onAbort = { viewModel.abortChat() },
+      onToggleTalk = { viewModel.setTalkEnabled(!talkEnabled) },
       onSend = { text ->
         val outgoing =
           attachments.map { att ->

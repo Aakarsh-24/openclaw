@@ -79,7 +79,7 @@ fun TalkOrbOverlay(
     Box(contentAlignment = Alignment.Center) {
       Canvas(
         modifier = Modifier
-          .size(200.dp)
+          .size(280.dp)
           .clickable(
             interactionSource = remember { MutableInteractionSource() },
             indication = null, // No ripple - the orb itself is the feedback
