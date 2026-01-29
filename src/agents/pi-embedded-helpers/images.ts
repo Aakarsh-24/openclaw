@@ -45,7 +45,7 @@ export async function sanitizeSessionMessagesImages(
   // We sanitize historical session messages because Anthropic can reject a request
   // if the transcript contains oversized base64 images (see MAX_IMAGE_DIMENSION_PX).
   const sanitizedIds =
-    allowNonImageSanitization && options?.sanitizeToolCallIds
+    options?.sanitizeToolCallIds
       ? sanitizeToolCallIdsForCloudCodeAssist(messages, options.toolCallIdMode)
       : messages;
   const out: AgentMessage[] = [];
