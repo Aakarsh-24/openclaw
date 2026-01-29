@@ -1,0 +1,11 @@
+{
+  "name": "@moltbot/kook",
+  "version": "2026.1.27-beta.1",
+  "type": "module",
+  "description": "Moltbot Kook channel plugin",
+  "moltbot": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}
