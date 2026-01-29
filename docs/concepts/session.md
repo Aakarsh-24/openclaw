@@ -7,6 +7,8 @@ read_when:
 
 Moltbot treats **one direct-chat session per agent** as primary. Direct chats collapse to `agent:<agentId>:<mainKey>` (default `main`), while group/channel chats get their own keys. `session.mainKey` is honored.
 
+![Session Lifecycle](/images/diagrams/28-session-lifecycle.png)
+
 Use `session.dmScope` to control how **direct messages** are grouped:
 - `main` (default): all DMs share the main session for continuity.
 - `per-peer`: isolate by sender id across channels.

@@ -321,6 +321,8 @@ High-level flow:
 This design keeps the agent on a stable, deterministic interface while letting
 you swap local/remote browsers and profiles.
 
+![Browser Automation Flow](/images/diagrams/21-browser.png)
+
 ## CLI quick reference
 
 All commands accept `--browser-profile <name>` to target a specific profile.

@@ -13,6 +13,8 @@ Moltbot handles failures in two stages:
 
 This doc explains the runtime rules and the data that backs them.
 
+![Model Failover Decision Tree](/images/diagrams/17-model-failover.png)
+
 ## Auth storage (keys + OAuth)
 
 Moltbot uses **auth profiles** for both API keys and OAuth tokens.

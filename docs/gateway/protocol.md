@@ -18,6 +18,8 @@ handshake time.
 - WebSocket, text frames with JSON payloads.
 - First frame **must** be a `connect` request.
 
+![Gateway WebSocket Protocol](/images/diagrams/04-ws-protocol.png)
+
 ## Handshake (connect)
 
 Gateway → Client (pre-connect challenge):

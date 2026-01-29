@@ -112,6 +112,8 @@ manifest.
 If multiple plugins resolve to the same id, the first match in the order above
 wins and lower-precedence copies are ignored.
 
+![Plugin Discovery Precedence](/images/diagrams/19-plugin-discovery.png)
+
 ### Package packs
 
 A plugin directory may include a `package.json` with `moltbot.extensions`:

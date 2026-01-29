@@ -20,6 +20,8 @@ Inbound message
   -> outbound replies (channel limits + chunking)
 ```
 
+![Message Processing Flow](/images/diagrams/03-message-flow.png)
+
 Key knobs live in configuration:
 - `messages.*` for prefixes, queueing, and group behavior.
 - `agents.defaults.*` for block streaming and chunking defaults.

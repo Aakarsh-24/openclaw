@@ -14,6 +14,8 @@ It is used in two places:
 1) **DM pairing** (who is allowed to talk to the bot)
 2) **Node pairing** (which devices/nodes are allowed to join the gateway network)
 
+![Pairing Flows](/images/diagrams/16-pairing.png)
+
 Security context: [Security](/gateway/security)
 
 ## 1) DM pairing (inbound chat access)

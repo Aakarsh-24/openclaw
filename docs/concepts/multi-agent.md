@@ -9,7 +9,9 @@ status: active
 
 Goal: multiple *isolated* agents (separate workspace + `agentDir` + sessions), plus multiple channel accounts (e.g. two WhatsApps) in one running Gateway. Inbound is routed to an agent via bindings.
 
-## What is “one agent”?
+![Multi-Agent Isolation](/images/diagrams/06-multi-agent.png)
+
+## What is "one agent"?
 
 An **agent** is a fully scoped brain with its own:
 

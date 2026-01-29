@@ -11,6 +11,8 @@ Moltbot exposes **first-class agent tools** for browser, canvas, nodes, and cron
 These replace the old `moltbot-*` skills: the tools are typed, no shelling,
 and the agent should rely on them directly.
 
+![Tool Groups](/images/diagrams/18-tool-groups.png)
+
 ## Disabling tools
 
 You can globally allow/deny tools via `tools.allow` / `tools.deny` in `moltbot.json`

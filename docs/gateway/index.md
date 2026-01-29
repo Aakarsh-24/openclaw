@@ -9,6 +9,9 @@ Last updated: 2025-12-09
 
 ## What it is
 - The always-on process that owns the single Baileys/Telegram connection and the control/event plane.
+
+![Gateway Lifecycle States](/images/diagrams/23-gateway-lifecycle.png)
+
 - Replaces the legacy `gateway` command. CLI entry point: `moltbot gateway`.
 - Runs until stopped; exits non-zero on fatal errors so the supervisor restarts it.
 
@@ -22,6 +25,8 @@ moltbot gateway --force
 # dev loop (auto-reload on TS changes):
 pnpm gateway:watch
 ```
+![Config Hot-Reload](/images/diagrams/24-hot-reload.png)
+
 - Config hot reload watches `~/.clawdbot/moltbot.json` (or `CLAWDBOT_CONFIG_PATH`).
   - Default mode: `gateway.reload.mode="hybrid"` (hot-apply safe changes, restart on critical).
   - Hot reload uses in-process restart via **SIGUSR1** when needed.

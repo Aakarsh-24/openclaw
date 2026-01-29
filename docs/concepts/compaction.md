@@ -8,6 +8,8 @@ read_when:
 
 Every model has a **context window** (max tokens it can see). Long-running chats accumulate messages and tool results; once the window is tight, Moltbot **compacts** older history to stay within limits.
 
+![Context Compaction Flow](/images/diagrams/11-compaction.png)
+
 ## What compaction is
 Compaction **summarizes older conversation** into a compact summary entry and keeps recent messages intact. The summary is stored in the session history, so future requests use:
 - The compaction summary

@@ -21,6 +21,8 @@ Last updated: 2026-01-22
 
 ## Components and flows
 
+![Architecture Overview](/images/diagrams/01-architecture.png)
+
 ### Gateway (daemon)
 - Maintains provider connections.
 - Exposes a typed WS API (requests, responses, server‑push events).

@@ -1,7 +1,7 @@
 # 🦞 Moltbot — Personal AI Assistant
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/moltbot/moltbot/main/docs/whatsapp-clawd.jpg" alt="Clawdbot" width="400">
+  <img src="https://raw.githubusercontent.com/davendra/moltbot/main/docs/images/diagrams/30-hero-banner.png" alt="Moltbot — Your AI Agent, Everywhere You Message" width="800">
 </p>
 
 <p align="center">
@@ -51,6 +51,8 @@ moltbot onboard --install-daemon
 
 The wizard installs the Gateway daemon (launchd/systemd user service) so it stays running.
 Legacy note: `clawdbot` remains available as a compatibility shim.
+
+![Moltbot Architecture Overview](https://raw.githubusercontent.com/davendra/moltbot/main/docs/images/diagrams/27-readme-architecture.png)
 
 ## Quick start (TL;DR)
 

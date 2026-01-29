@@ -5,6 +5,8 @@ read_when:
 ---
 # Security 🔒
 
+![Security Trust Hierarchy](/images/diagrams/31-security-threat-model.png)
+
 ## Quick check: `moltbot security audit` (formerly `clawdbot security audit`)
 
 See also: [Formal Verification (Security Models)](/security/formal-verification/)
@@ -34,6 +36,8 @@ Moltbot is both a product and an experiment: you’re wiring frontier-model beha
 - what the bot can touch
 
 Start with the smallest access that still works, then widen it as you gain confidence.
+
+![Three-Layer Security Model](/images/diagrams/15-security.png)
 
 ### What the audit checks (high level)
 

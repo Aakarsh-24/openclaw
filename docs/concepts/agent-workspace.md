@@ -9,6 +9,8 @@ read_when:
 The workspace is the agent's home. It is the only working directory used for
 file tools and for workspace context. Keep it private and treat it as memory.
 
+![Agent Workspace Structure](/images/diagrams/26-workspace.png)
+
 This is separate from `~/.clawdbot/`, which stores config, credentials, and
 sessions.
 

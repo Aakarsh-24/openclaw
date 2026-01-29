@@ -1,6 +1,24 @@
-# Repository Guidelines
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 - Repo: https://github.com/moltbot/moltbot
 - GitHub issues/comments/PR comments: use literal multiline strings or `-F - <<'EOF'` (or $'...') for real newlines; never embed "\\n".
+
+## Architecture Overview
+
+Moltbot is a local-first personal AI assistant that bridges messaging channels to AI agents.
+
+**Message flow:** Inbound message (WhatsApp, Telegram, Slack, etc.) → Gateway WebSocket server (`src/gateway/server.ts`) → Channel plugin routes message → Pi agent runtime (`src/agents/pi-embedded-runner.ts`) executes tools (browser, bash, canvas, etc.) via gateway RPC → Final reply sent back through channel's outbound adapter.
+
+**Key subsystems:**
+- **Gateway** (`src/gateway/`): WebSocket control plane. Hosts sessions, routes messages, serves the Control UI, and exposes RPC methods for agent tool calls. Config is YAML-based (`~/.clawdbot/config.yaml`), hot-reloaded via chokidar.
+- **Agents** (`src/agents/`): Pi agent runtime. Manages LLM provider config, auth profiles, tool definitions, sandbox execution, and skill loading. Sessions are isolated per-agent/group as JSONL files under `~/.clawdbot/sessions/`.
+- **Channel plugins** (`src/channels/plugins/`): Unified `ChannelPlugin` interface with `inbound` (receive) and `outbound` (send) adapters. Core channels live in `src/` (discord, telegram, slack, signal, imessage, web/WhatsApp). Extension channels live in `extensions/*` as workspace packages.
+- **Dependency injection** (`src/cli/deps.ts`): `createDefaultDeps()` wires all channel send functions and services. Used throughout for testability.
+- **Plugin registry** (`src/plugins/runtime.ts`): Channels and extensions are runtime-registered (not statically imported). Access via `getActivePluginRegistry()`.
+
+**Apps:** macOS menu bar (SwiftUI, `apps/macos/`), iOS (`apps/ios/`), Android (Kotlin, `apps/android/`), shared Swift code in `apps/shared/MoltbotKit/`.
 
 ## Project Structure & Module Organization
 - Source code: `src/` (CLI wiring in `src/cli`, commands in `src/commands`, web provider in `src/provider-web.ts`, infra in `src/infra`, media pipeline in `src/media`).
@@ -47,6 +65,7 @@
 - Type-check/build: `pnpm build` (tsc)
 - Lint/format: `pnpm lint` (oxlint), `pnpm format` (oxfmt)
 - Tests: `pnpm test` (vitest); coverage: `pnpm test:coverage`
+- Run a single test file: `pnpm test -- src/path/to/file.test.ts`
 
 ## Coding Style & Naming Conventions
 - Language: TypeScript (ESM). Prefer strict typing; avoid `any`.

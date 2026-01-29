@@ -17,6 +17,8 @@ Broadcast Groups enable multiple agents to process and respond to the same messa
 
 Current scope: **WhatsApp only** (web channel).
 
+![Broadcast Group Flow](/images/diagrams/14-broadcast.png)
+
 Broadcast groups are evaluated after channel allowlists and group activation rules. In WhatsApp groups, this means broadcasts happen when Moltbot would normally reply (for example: on mention, depending on your group settings).
 
 ## Use Cases

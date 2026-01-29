@@ -51,6 +51,8 @@ Routing picks **one agent** for each inbound message:
 
 The matched agent determines which workspace and session store are used.
 
+![Channel Routing Priority Cascade](/images/diagrams/05-channel-routing.png)
+
 ## Broadcast groups (run multiple agents)
 
 Broadcast groups let you run **multiple agents** for the same peer **when Moltbot would normally reply** (for example: in WhatsApp groups, after mention/activation gating).
@@ -68,6 +70,8 @@ Config:
 ```
 
 See: [Broadcast Groups](/broadcast-groups).
+
+![Broadcast vs Normal Routing](/images/diagrams/29-broadcast-vs-normal.png)
 
 ## Config overview
 

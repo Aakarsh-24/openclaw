@@ -9,6 +9,8 @@ read_when:
 
 Gateway can expose a small HTTP webhook endpoint for external triggers.
 
+![Webhook Processing Flow](/images/diagrams/10-webhook.png)
+
 ## Enable
 
 ```json5
