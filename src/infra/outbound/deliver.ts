@@ -21,6 +21,8 @@ import {
   appendAssistantMessageToSessionTranscript,
   resolveMirroredTranscriptText,
 } from "../../config/sessions.js";
+import { getGlobalHookRunner } from "../../plugins/hook-runner-global.js";
+import { logVerbose } from "../../globals.js";
 import type { NormalizedOutboundPayload } from "./payloads.js";
 import { normalizeReplyPayloadsForDelivery } from "./payloads.js";
 import type { OutboundChannel } from "./targets.js";
@@ -312,12 +314,51 @@ export async function deliverOutboundPayloads(params: {
     };
   };
   const normalizedPayloads = normalizeReplyPayloadsForDelivery(payloads);
+  const hookRunner = getGlobalHookRunner();
+
   for (const payload of normalizedPayloads) {
     const payloadSummary: NormalizedOutboundPayload = {
       text: payload.text ?? "",
       mediaUrls: payload.mediaUrls ?? (payload.mediaUrl ? [payload.mediaUrl] : []),
       channelData: payload.channelData,
     };
+
+    if (hookRunner?.hasHooks("message_sending")) {
+      try {
+        const hookResult = await hookRunner.runMessageSending(
+          {
+            to,
+            content: payloadSummary.text,
+            metadata: {
+              channelData: payloadSummary.channelData,
+              mediaUrls: payloadSummary.mediaUrls,
+            },
+          },
+          {
+            channelId: channel,
+            accountId,
+            conversationId: to,
+          },
+        );
+
+        if (hookResult?.cancel) {
+          logVerbose("deliver: message cancelled by message_sending hook");
+          continue;
+        }
+
+        if (hookResult?.content !== undefined) {
+          payloadSummary.text = hookResult.content;
+          // Update original payload text as well since it might be used by sendPayload
+          payload.text = hookResult.content;
+        }
+      } catch (err) {
+        logVerbose(`deliver: message_sending hook failed: ${String(err)}`);
+      }
+    }
+
+    const startResultCount = results.length;
+    let deliveryError: string | undefined;
+
     try {
       throwIfAborted(abortSignal);
       params.onPayload?.(payloadSummary);
@@ -347,7 +388,29 @@ export async function deliverOutboundPayloads(params: {
       }
     } catch (err) {
       if (!params.bestEffort) throw err;
+      deliveryError = String(err);
       params.onError?.(err, payloadSummary);
+    } finally {
+      if (hookRunner?.hasHooks("message_sent")) {
+        const success = results.length > startResultCount;
+        void hookRunner
+          .runMessageSent(
+            {
+              to,
+              content: payloadSummary.text,
+              success,
+              error: deliveryError,
+            },
+            {
+              channelId: channel,
+              accountId,
+              conversationId: to,
+            },
+          )
+          .catch((err) => {
+            logVerbose(`deliver: message_sent hook failed: ${String(err)}`);
+          });
+      }
     }
   }
   if (params.mirror && results.length > 0) {
