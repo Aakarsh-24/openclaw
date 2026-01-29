@@ -2,8 +2,26 @@
    Mobile Layout
    =========================================== */
 
-/* Tablet: Horizontal nav */
+/* Tablet: Horizontal nav - sticky header */
 @media (max-width: 1100px) {
+  /* iOS safe area support - apply to shell container */
+  @supports (padding: env(safe-area-inset-top)) {
+    .shell {
+      padding-top: env(safe-area-inset-top);
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
+      padding-bottom: env(safe-area-inset-bottom);
+      height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    }
+  }
+
+  /* Keep topbar sticky on mobile */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+  }
+
   .nav {
     display: flex;
     flex-direction: row;
@@ -13,6 +31,10 @@
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
+    /* Sticky nav below topbar */
+    position: sticky;
+    top: var(--shell-topbar-height, 56px);
+    z-index: 30;
   }
 
   .nav::-webkit-scrollbar {
