@@ -1,7 +1,8 @@
 import { Type } from "@sinclair/typebox";
 import type { OpenClawConfig } from "../../config/config.js";
-import type { AnyAgentTool } from "./common.js";
 import { formatCliCommand } from "../../cli/command-format.js";
+import { createProxyAgent } from "../../infra/net/ssrf.js";
+import type { AnyAgentTool } from "./common.js";
 import { wrapWebContent } from "../../security/external-content.js";
 import { jsonResult, readNumberParam, readStringParam } from "./common.js";
 import {
@@ -317,6 +318,7 @@ async function runPerplexitySearch(params: {
   timeoutSeconds: number;
 }): Promise<{ content: string; citations: string[] }> {
   const endpoint = `${params.baseUrl.replace(/\/$/, "")}/chat/completions`;
+  const proxyAgent = createProxyAgent();
 
   const res = await fetch(endpoint, {
     method: "POST",
@@ -336,6 +338,8 @@ async function runPerplexitySearch(params: {
       ],
     }),
     signal: withTimeout(undefined, params.timeoutSeconds * 1000),
+    // @ts-expect-error - undici ProxyAgent dispatcher is not in standard fetch types
+    dispatcher: proxyAgent,
   });
 
   if (!res.ok) {
@@ -417,6 +421,7 @@ async function runWebSearch(params: {
     url.searchParams.set("freshness", params.freshness);
   }
 
+  const proxyAgent = createProxyAgent();
   const res = await fetch(url.toString(), {
     method: "GET",
     headers: {
@@ -424,6 +429,8 @@ async function runWebSearch(params: {
       "X-Subscription-Token": params.apiKey,
     },
     signal: withTimeout(undefined, params.timeoutSeconds * 1000),
+    // @ts-expect-error - undici ProxyAgent dispatcher is not in standard fetch types
+    dispatcher: proxyAgent,
   });
 
   if (!res.ok) {
