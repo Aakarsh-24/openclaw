@@ -19,6 +19,7 @@ import {
   resolveThinkingDefault,
 } from "../agents/model-selection.js";
 import { runEmbeddedPiAgent } from "../agents/pi-embedded.js";
+import { orchestrateUserMessage, resolveOrchestratorConfig } from "../agents/orchestrator/index.js";
 import { buildWorkspaceSkillSnapshot } from "../agents/skills.js";
 import { getSkillsSnapshotVersion } from "../agents/skills/refresh.js";
 import { resolveAgentTimeoutMs } from "../agents/timeout.js";
@@ -371,6 +372,11 @@ export async function agentCommand(
     let result: Awaited<ReturnType<typeof runEmbeddedPiAgent>>;
     let fallbackProvider = provider;
     let fallbackModel = model;
+
+    const orchestratorConfig = resolveOrchestratorConfig(cfg);
+    const useOrchestrator =
+      (orchestratorConfig.enabled || opts.orchestrator) && !opts.noOrchestrator;
+
     try {
       const runContext = resolveAgentRunContext(opts);
       const messageChannel = resolveMessageChannel(
@@ -378,88 +384,112 @@ export async function agentCommand(
         opts.replyChannel ?? opts.channel,
       );
       const spawnedBy = opts.spawnedBy ?? sessionEntry?.spawnedBy;
-      const fallbackResult = await runWithModelFallback({
-        cfg,
-        provider,
-        model,
-        agentDir,
-        fallbacksOverride: resolveAgentModelFallbacksOverride(cfg, sessionAgentId),
-        run: (providerOverride, modelOverride) => {
-          if (isCliProvider(providerOverride, cfg)) {
-            const cliSessionId = getCliSessionId(sessionEntry, providerOverride);
-            return runCliAgent({
+
+      if (useOrchestrator) {
+        const orchResult = await orchestrateUserMessage({
+          userMessage: body,
+          sessionId,
+          sessionKey,
+          config: cfg,
+          images: opts.images,
+          timeoutMs,
+          thinking: resolvedThinkLevel,
+        });
+        result = {
+          payloads: orchResult.payloads,
+          meta: {
+            durationMs: orchResult.meta.durationMs,
+            agentMeta: {
+              sessionId,
+              provider: "orchestrator",
+              model: orchResult.meta.orchestratorModel,
+            },
+          },
+        };
+      } else {
+        const fallbackResult = await runWithModelFallback({
+          cfg,
+          provider,
+          model,
+          agentDir,
+          fallbacksOverride: resolveAgentModelFallbacksOverride(cfg, sessionAgentId),
+          run: (providerOverride, modelOverride) => {
+            if (isCliProvider(providerOverride, cfg)) {
+              const cliSessionId = getCliSessionId(sessionEntry, providerOverride);
+              return runCliAgent({
+                sessionId,
+                sessionKey,
+                sessionFile,
+                workspaceDir,
+                config: cfg,
+                prompt: body,
+                provider: providerOverride,
+                model: modelOverride,
+                thinkLevel: resolvedThinkLevel,
+                timeoutMs,
+                runId,
+                extraSystemPrompt: opts.extraSystemPrompt,
+                cliSessionId,
+                images: opts.images,
+                streamParams: opts.streamParams,
+              });
+            }
+            const authProfileId =
+              providerOverride === provider ? sessionEntry?.authProfileOverride : undefined;
+            return runEmbeddedPiAgent({
               sessionId,
               sessionKey,
+              messageChannel,
+              agentAccountId: runContext.accountId,
+              messageTo: opts.replyTo ?? opts.to,
+              messageThreadId: opts.threadId,
+              groupId: runContext.groupId,
+              groupChannel: runContext.groupChannel,
+              groupSpace: runContext.groupSpace,
+              spawnedBy,
+              currentChannelId: runContext.currentChannelId,
+              currentThreadTs: runContext.currentThreadTs,
+              replyToMode: runContext.replyToMode,
+              hasRepliedRef: runContext.hasRepliedRef,
               sessionFile,
               workspaceDir,
               config: cfg,
+              skillsSnapshot,
               prompt: body,
+              images: opts.images,
+              clientTools: opts.clientTools,
               provider: providerOverride,
               model: modelOverride,
+              authProfileId,
+              authProfileIdSource: authProfileId
+                ? sessionEntry?.authProfileOverrideSource
+                : undefined,
               thinkLevel: resolvedThinkLevel,
+              verboseLevel: resolvedVerboseLevel,
               timeoutMs,
               runId,
+              lane: opts.lane,
+              abortSignal: opts.abortSignal,
               extraSystemPrompt: opts.extraSystemPrompt,
-              cliSessionId,
-              images: opts.images,
               streamParams: opts.streamParams,
+              agentDir,
+              onAgentEvent: (evt) => {
+                // Track lifecycle end for fallback emission below.
+                if (
+                  evt.stream === "lifecycle" &&
+                  typeof evt.data?.phase === "string" &&
+                  (evt.data.phase === "end" || evt.data.phase === "error")
+                ) {
+                  lifecycleEnded = true;
+                }
+              },
             });
-          }
-          const authProfileId =
-            providerOverride === provider ? sessionEntry?.authProfileOverride : undefined;
-          return runEmbeddedPiAgent({
-            sessionId,
-            sessionKey,
-            messageChannel,
-            agentAccountId: runContext.accountId,
-            messageTo: opts.replyTo ?? opts.to,
-            messageThreadId: opts.threadId,
-            groupId: runContext.groupId,
-            groupChannel: runContext.groupChannel,
-            groupSpace: runContext.groupSpace,
-            spawnedBy,
-            currentChannelId: runContext.currentChannelId,
-            currentThreadTs: runContext.currentThreadTs,
-            replyToMode: runContext.replyToMode,
-            hasRepliedRef: runContext.hasRepliedRef,
-            sessionFile,
-            workspaceDir,
-            config: cfg,
-            skillsSnapshot,
-            prompt: body,
-            images: opts.images,
-            clientTools: opts.clientTools,
-            provider: providerOverride,
-            model: modelOverride,
-            authProfileId,
-            authProfileIdSource: authProfileId
-              ? sessionEntry?.authProfileOverrideSource
-              : undefined,
-            thinkLevel: resolvedThinkLevel,
-            verboseLevel: resolvedVerboseLevel,
-            timeoutMs,
-            runId,
-            lane: opts.lane,
-            abortSignal: opts.abortSignal,
-            extraSystemPrompt: opts.extraSystemPrompt,
-            streamParams: opts.streamParams,
-            agentDir,
-            onAgentEvent: (evt) => {
-              // Track lifecycle end for fallback emission below.
-              if (
-                evt.stream === "lifecycle" &&
-                typeof evt.data?.phase === "string" &&
-                (evt.data.phase === "end" || evt.data.phase === "error")
-              ) {
-                lifecycleEnded = true;
-              }
-            },
-          });
-        },
-      });
-      result = fallbackResult.result;
-      fallbackProvider = fallbackResult.provider;
-      fallbackModel = fallbackResult.model;
+          },
+        });
+        result = fallbackResult.result;
+        fallbackProvider = fallbackResult.provider;
+        fallbackModel = fallbackResult.model;
+      }
       if (!lifecycleEnded) {
         emitAgentEvent({
           runId,

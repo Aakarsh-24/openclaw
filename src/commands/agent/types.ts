@@ -72,6 +72,8 @@ export type AgentCommandOpts = {
   lane?: string;
   runId?: string;
   extraSystemPrompt?: string;
+  orchestrator?: boolean;
+  noOrchestrator?: boolean;
   /** Per-call stream param overrides (best-effort). */
   streamParams?: AgentStreamParams;
 };

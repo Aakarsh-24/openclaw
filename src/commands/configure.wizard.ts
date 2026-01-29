@@ -13,6 +13,7 @@ import { removeChannelConfigWizard } from "./configure.channels.js";
 import { maybeInstallDaemon } from "./configure.daemon.js";
 import { promptGatewayConfig } from "./configure.gateway.js";
 import { promptAuthConfig } from "./configure.gateway-auth.js";
+import { runOrchestratorWizard } from "./configure.orchestrator.js";
 import type {
   ChannelsWizardMode,
   ConfigureWizardParams,
@@ -349,7 +350,13 @@ export async function runConfigureWizard(
         nextConfig = await setupSkills(nextConfig, wsDir, runtime, prompter);
       }
 
-      await persistConfig();
+      if (selected.includes("orchestrator")) {
+        await runOrchestratorWizard(runtime);
+        const snapshot = await readConfigFileSnapshot();
+        if (snapshot.exists) {
+          nextConfig = snapshot.config;
+        }
+      }
 
       if (selected.includes("daemon")) {
         if (!selected.includes("gateway")) {

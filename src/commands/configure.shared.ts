@@ -16,6 +16,7 @@ export const CONFIGURE_WIZARD_SECTIONS = [
   "daemon",
   "channels",
   "skills",
+  "orchestrator",
   "health",
 ] as const;
 
@@ -48,6 +49,7 @@ export const CONFIGURE_SECTION_OPTIONS: Array<{
     hint: "Link WhatsApp/Telegram/etc and defaults",
   },
   { value: "skills", label: "Skills", hint: "Install/enable workspace skills" },
+  { value: "orchestrator", label: "Orchestrator", hint: "Configure smart routing + OpenCode" },
   {
     value: "health",
     label: "Health check",

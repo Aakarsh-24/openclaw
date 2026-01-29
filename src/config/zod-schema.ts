@@ -5,6 +5,7 @@ import { AgentsSchema, AudioSchema, BindingsSchema, BroadcastSchema } from "./zo
 import { HexColorSchema, ModelsConfigSchema } from "./zod-schema.core.js";
 import { HookMappingSchema, HooksGmailSchema, InternalHooksSchema } from "./zod-schema.hooks.js";
 import { ChannelsSchema } from "./zod-schema.providers.js";
+import { OrchestratorSchema } from "./zod-schema.orchestrator.js";
 import { CommandsSchema, MessagesSchema, SessionSchema } from "./zod-schema.session.js";
 
 const BrowserSnapshotDefaultsSchema = z
@@ -207,6 +208,7 @@ export const MoltbotSchema = z
       .strict()
       .optional(),
     models: ModelsConfigSchema,
+    orchestrator: OrchestratorSchema,
     nodeHost: NodeHostSchema,
     agents: AgentsSchema,
     tools: ToolsSchema,
