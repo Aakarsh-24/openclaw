@@ -804,11 +804,18 @@ export async function applyAuthChoiceApiProviders(
       }
 
       if (action === "retry-apikey") {
-        // Re-prompt for API key and retry
-        apiKey = await promptForApiKey();
-        await setLitellmApiKey(apiKey, params.agentDir);
-        // Retry fetch by recursively calling this function
-        return await applyAuthChoiceApiProviders({ ...params, authChoice: "litellm-api-key" });
+        // Re-prompt for API key and retry the entire flow
+        // Clear the CLI-provided options to force prompting
+        const newParams = {
+          ...params,
+          authChoice: "litellm-api-key" as const,
+          opts: {
+            ...params.opts,
+            litellmApiKey: undefined, // Clear the CLI-provided API key so we can prompt
+            token: undefined, // Also clear token if it was used
+          },
+        };
+        return await applyAuthChoiceApiProviders(newParams);
       }
 
       if (action === "retry-baseurl") {
