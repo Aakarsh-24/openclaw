@@ -12,6 +12,7 @@ import {
   sendGoogleChatMessage,
   updateGoogleChatMessage,
   getGoogleChatMessage,
+  getThreadParentMessage,
 } from "./api.js";
 import { verifyGoogleChatRequest, type GoogleChatAudienceType } from "./auth.js";
 import { getGoogleChatRuntime } from "./runtime.js";
@@ -615,6 +616,24 @@ async function processMessageWithPipeline(params: {
     }
   }
 
+  // Fetch thread parent message for thread replies
+  let threadParentText: string | undefined;
+  if (message.threadReply && message.thread?.name) {
+    try {
+      const parentMsg = await getThreadParentMessage({
+        account,
+        threadResourceName: message.thread.name,
+      });
+      threadParentText = parentMsg?.text;
+    } catch {
+      // Ignore fetch errors
+    }
+  }
+  // Include thread parent context in rawBody for visibility
+  if (threadParentText && !quotedMessageText) {
+    rawBody = `[THREAD PARENT: "${threadParentText.substring(0, 200)}${threadParentText.length > 200 ? '...' : ''}"] ${rawBody}`;
+  }
+
   const previousTimestamp = core.channel.session.readSessionUpdatedAt({
     storePath,
     sessionKey: route.sessionKey,
@@ -662,6 +681,7 @@ async function processMessageWithPipeline(params: {
     IsThreadReply: message.threadReply,
     QuotedMessageId: message.quotedMessageMetadata?.name,
     QuotedMessageText: quotedMessageText,
+    ThreadParentText: threadParentText,
   });
 
   void core.channel.session

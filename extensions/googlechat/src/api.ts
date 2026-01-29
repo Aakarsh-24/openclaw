@@ -298,3 +298,32 @@ export async function getGoogleChatMessage(params: {
     return null;
   }
 }
+
+export async function getThreadParentMessage(params: {
+  account: ResolvedGoogleChatAccount;
+  threadResourceName: string;
+}): Promise<{ text?: string; name?: string } | null> {
+  const { account, threadResourceName } = params;
+  // The parent message ID is often the same as the thread ID
+  // Thread: spaces/XXX/threads/YYY -> Message: spaces/XXX/messages/YYY.YYY
+  const match = threadResourceName.match(/^(.+)\/threads\/(.+)$/);
+  if (!match) return null;
+  const [, spaceId, threadId] = match;
+  
+  // Try common message name patterns
+  const possibleMessageNames = [
+    `${spaceId}/messages/${threadId}.${threadId}`,
+    `${spaceId}/messages/${threadId}`,
+  ];
+  
+  for (const messageName of possibleMessageNames) {
+    try {
+      const result = await getGoogleChatMessage({ account, messageName });
+      if (result) return result;
+    } catch {
+      // Try next pattern
+    }
+  }
+  
+  return null;
+}
