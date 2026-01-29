@@ -48,22 +48,14 @@ describe("discord multi-account logic", () => {
         discord: {
           token: "default_token",
           accounts: {
-            bot_a: {}, // no token
+            bot_a: {},
           },
         },
       },
     } as unknown as MoltbotConfig;
 
     const tokenA = resolveDiscordToken(config, { accountId: "bot_a" });
-    // Current implementation might strictly require per-account token if it's not the default account.
-    // Let's verify behavior.
-    // Actually, looking at token.ts:
-    // const accountToken = ...
-    // if (accountToken) return ...
-    // const allowEnv = accountId === DEFAULT_ACCOUNT_ID;
-    // const configToken = allowEnv ? ... : undefined;
 
-    // So valid behavior: non-default accounts MUST have a specific token.
     expect(tokenA.token).toBe("");
   });
 

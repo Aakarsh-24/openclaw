@@ -53,7 +53,6 @@ describe("resolveAgentRoute - Shared Channel", () => {
     const route = resolveAgentRoute(input);
     console.log("Channel Default:", route.sessionKey);
 
-    // Should NOT have :default
     expect(route.sessionKey).toBe("agent:main:discord:channel:channel_123");
   });
 });
