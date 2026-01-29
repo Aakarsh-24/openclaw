@@ -176,7 +176,7 @@ export default function compactionSafeguardExtension(api: ExtensionAPI): void {
       let messagesToSummarize = preparation.messagesToSummarize;
 
       const runtime = getCompactionSafeguardRuntime(ctx.sessionManager);
-      const maxHistoryShare = runtime?.maxHistoryShare ?? 0.5;
+      const maxHistoryShare = runtime?.maxHistoryShare ?? 0.55; // Balanced: keep 55% (110k) to reduce amnesia while leaving 90k overhead
 
       const tokensBefore =
         typeof preparation.tokensBefore === "number" && Number.isFinite(preparation.tokensBefore)
