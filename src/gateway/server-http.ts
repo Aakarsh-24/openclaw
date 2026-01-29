@@ -30,6 +30,11 @@ import { applyHookMappings } from "./hooks-mapping.js";
 import { handleOpenAiHttpRequest } from "./openai-http.js";
 import { handleOpenResponsesHttpRequest } from "./openresponses-http.js";
 import { handleToolsInvokeHttpRequest } from "./tools-invoke-http.js";
+import {
+  handleMetricsRequest,
+  handleHealthRequest,
+  handleReadyRequest,
+} from "./metrics-http.js";
 
 type SubsystemLogger = ReturnType<typeof createSubsystemLogger>;
 
@@ -86,8 +91,8 @@ export function createHooksRequestHandler(
     if (fromQuery) {
       logHooks.warn(
         "Hook token provided via query parameter is deprecated for security reasons. " +
-          "Tokens in URLs appear in logs, browser history, and referrer headers. " +
-          "Use Authorization: Bearer <token> or X-Moltbot-Token header instead.",
+        "Tokens in URLs appear in logs, browser history, and referrer headers. " +
+        "Use Authorization: Bearer <token> or X-Moltbot-Token header instead.",
       );
     }
 
@@ -225,17 +230,32 @@ export function createGatewayHttpServer(opts: {
   } = opts;
   const httpServer: HttpServer = opts.tlsOptions
     ? createHttpsServer(opts.tlsOptions, (req, res) => {
-        void handleRequest(req, res);
-      })
+      void handleRequest(req, res);
+    })
     : createHttpServer((req, res) => {
-        void handleRequest(req, res);
-      });
+      void handleRequest(req, res);
+    });
 
   async function handleRequest(req: IncomingMessage, res: ServerResponse) {
     // Don't interfere with WebSocket upgrades; ws handles the 'upgrade' event.
     if (String(req.headers.upgrade ?? "").toLowerCase() === "websocket") return;
 
     try {
+      // Observability endpoints - no auth required for health checks
+      const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
+      if (req.method === "GET" && url.pathname === "/metrics") {
+        await handleMetricsRequest(req, res);
+        return;
+      }
+      if (req.method === "GET" && url.pathname === "/health") {
+        handleHealthRequest(req, res);
+        return;
+      }
+      if (req.method === "GET" && url.pathname === "/ready") {
+        await handleReadyRequest(req, res);
+        return;
+      }
+
       const configSnapshot = loadConfig();
       const trustedProxies = configSnapshot.gateway?.trustedProxies ?? [];
       if (await handleHooksRequest(req, res)) return;
