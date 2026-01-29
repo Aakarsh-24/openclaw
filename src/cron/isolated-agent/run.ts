@@ -19,6 +19,10 @@ import {
   resolveHooksGmailModel,
   resolveThinkingDefault,
 } from "../../agents/model-selection.js";
+import {
+  orchestrateUserMessage,
+  resolveOrchestratorConfig,
+} from "../../agents/orchestrator/index.js";
 import { runEmbeddedPiAgent } from "../../agents/pi-embedded.js";
 import type { MessagingToolSend } from "../../agents/pi-embedded-messaging.js";
 import { buildWorkspaceSkillSnapshot } from "../../agents/skills.js";
@@ -317,6 +321,10 @@ export async function runCronIsolatedAgentTurn(params: {
   let runResult: Awaited<ReturnType<typeof runEmbeddedPiAgent>>;
   let fallbackProvider = provider;
   let fallbackModel = model;
+
+  const orchestratorConfig = resolveOrchestratorConfig(cfgWithAgentDefaults);
+  const useOrchestrator = orchestratorConfig.enabled;
+
   try {
     const sessionFile = resolveSessionTranscriptPath(cronSession.sessionEntry.sessionId, agentId);
     const resolvedVerboseLevel =
@@ -328,53 +336,76 @@ export async function runCronIsolatedAgentTurn(params: {
       verboseLevel: resolvedVerboseLevel,
     });
     const messageChannel = resolvedDelivery.channel;
-    const fallbackResult = await runWithModelFallback({
-      cfg: cfgWithAgentDefaults,
-      provider,
-      model,
-      agentDir,
-      fallbacksOverride: resolveAgentModelFallbacksOverride(params.cfg, agentId),
-      run: (providerOverride, modelOverride) => {
-        if (isCliProvider(providerOverride, cfgWithAgentDefaults)) {
-          const cliSessionId = getCliSessionId(cronSession.sessionEntry, providerOverride);
-          return runCliAgent({
+
+    if (useOrchestrator) {
+      const orchResult = await orchestrateUserMessage({
+        userMessage: commandBody,
+        sessionId: cronSession.sessionEntry.sessionId,
+        sessionKey: agentSessionKey,
+        config: cfgWithAgentDefaults,
+        timeoutMs,
+        thinking: thinkLevel,
+      });
+      runResult = {
+        payloads: orchResult.payloads,
+        meta: {
+          durationMs: orchResult.meta.durationMs,
+          agentMeta: {
+            sessionId: cronSession.sessionEntry.sessionId,
+            provider: "orchestrator",
+            model: orchResult.meta.orchestratorModel,
+          },
+        },
+      };
+    } else {
+      const fallbackResult = await runWithModelFallback({
+        cfg: cfgWithAgentDefaults,
+        provider,
+        model,
+        agentDir,
+        fallbacksOverride: resolveAgentModelFallbacksOverride(params.cfg, agentId),
+        run: (providerOverride, modelOverride) => {
+          if (isCliProvider(providerOverride, cfgWithAgentDefaults)) {
+            const cliSessionId = getCliSessionId(cronSession.sessionEntry, providerOverride);
+            return runCliAgent({
+              sessionId: cronSession.sessionEntry.sessionId,
+              sessionKey: agentSessionKey,
+              sessionFile,
+              workspaceDir,
+              config: cfgWithAgentDefaults,
+              prompt: commandBody,
+              provider: providerOverride,
+              model: modelOverride,
+              thinkLevel: thinkLevel,
+              timeoutMs: timeoutMs,
+              runId: cronSession.sessionEntry.sessionId,
+              cliSessionId,
+            });
+          }
+          return runEmbeddedPiAgent({
             sessionId: cronSession.sessionEntry.sessionId,
             sessionKey: agentSessionKey,
+            messageChannel,
+            agentAccountId: resolvedDelivery.accountId,
             sessionFile,
             workspaceDir,
             config: cfgWithAgentDefaults,
+            skillsSnapshot,
             prompt: commandBody,
+            lane: params.lane ?? "cron",
             provider: providerOverride,
             model: modelOverride,
-            thinkLevel,
+            thinkLevel: thinkLevel,
+            verboseLevel: resolvedVerboseLevel,
             timeoutMs,
             runId: cronSession.sessionEntry.sessionId,
-            cliSessionId,
           });
-        }
-        return runEmbeddedPiAgent({
-          sessionId: cronSession.sessionEntry.sessionId,
-          sessionKey: agentSessionKey,
-          messageChannel,
-          agentAccountId: resolvedDelivery.accountId,
-          sessionFile,
-          workspaceDir,
-          config: cfgWithAgentDefaults,
-          skillsSnapshot,
-          prompt: commandBody,
-          lane: params.lane ?? "cron",
-          provider: providerOverride,
-          model: modelOverride,
-          thinkLevel,
-          verboseLevel: resolvedVerboseLevel,
-          timeoutMs,
-          runId: cronSession.sessionEntry.sessionId,
-        });
-      },
-    });
-    runResult = fallbackResult.result;
-    fallbackProvider = fallbackResult.provider;
-    fallbackModel = fallbackResult.model;
+        },
+      });
+      runResult = fallbackResult.result;
+      fallbackProvider = fallbackResult.provider;
+      fallbackModel = fallbackResult.model;
+    }
   } catch (err) {
     return { status: "error", error: String(err) };
   }

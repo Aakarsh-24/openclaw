@@ -433,7 +433,7 @@ export async function runEmbeddedAttempt(
       });
 
       const { builtInTools, customTools } = splitSdkTools({
-        tools,
+        tools: [...tools, ...(params.extraTools ?? [])],
         sandboxEnabled: !!sandbox?.enabled,
       });
 

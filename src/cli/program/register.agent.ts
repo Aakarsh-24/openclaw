@@ -45,6 +45,8 @@ export function registerAgentCommands(program: Command, args: { agentChannelOpti
       "--timeout <seconds>",
       "Override agent command timeout (seconds, default 600 or config value)",
     )
+    .option("--orchestrator", "Force enable the orchestrator for this run", false)
+    .option("--no-orchestrator", "Explicitly disable the orchestrator for this run", false)
     .addHelpText(
       "after",
       () =>

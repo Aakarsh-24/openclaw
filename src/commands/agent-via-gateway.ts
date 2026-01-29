@@ -49,6 +49,8 @@ export type AgentCliOpts = {
   lane?: string;
   runId?: string;
   extraSystemPrompt?: string;
+  orchestrator?: boolean;
+  noOrchestrator?: boolean;
   local?: boolean;
 };
 
@@ -134,6 +136,8 @@ export async function agentViaGatewayCommand(opts: AgentCliOpts, runtime: Runtim
           timeout: timeoutSeconds,
           lane: opts.lane,
           extraSystemPrompt: opts.extraSystemPrompt,
+          orchestrator: opts.orchestrator,
+          noOrchestrator: opts.noOrchestrator,
           idempotencyKey,
         },
         expectFinal: true,
