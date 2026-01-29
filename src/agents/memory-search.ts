@@ -9,6 +9,7 @@ import { resolveAgentConfig } from "./agent-scope.js";
 export type ResolvedMemorySearchConfig = {
   enabled: boolean;
   sources: Array<"memory" | "sessions">;
+  extraPaths: string[];
   provider: "openai" | "local" | "gemini" | "openrouter" | "auto";
   remote?: {
     baseUrl?: string;
@@ -69,6 +70,7 @@ export type ResolvedMemorySearchConfig = {
     maxEntries?: number;
   };
 };
+
 
 const DEFAULT_OPENAI_MODEL = "text-embedding-3-small";
 const DEFAULT_GEMINI_MODEL = "gemini-embedding-001";
@@ -169,6 +171,10 @@ function mergeConfig(
     modelCacheDir: overrides?.local?.modelCacheDir ?? defaults?.local?.modelCacheDir,
   };
   const sources = normalizeSources(overrides?.sources ?? defaults?.sources, sessionMemory);
+  const rawPaths = [...(defaults?.extraPaths ?? []), ...(overrides?.extraPaths ?? [])]
+    .map((value) => value.trim())
+    .filter(Boolean);
+  const extraPaths = Array.from(new Set(rawPaths));
   const vector = {
     enabled: overrides?.store?.vector?.enabled ?? defaults?.store?.vector?.enabled ?? true,
     extensionPath:
@@ -243,6 +249,7 @@ function mergeConfig(
   return {
     enabled,
     sources,
+    extraPaths,
     provider,
     remote,
     experimental: {
