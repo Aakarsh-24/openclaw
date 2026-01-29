@@ -551,9 +551,10 @@ describe("applyMediaUnderstanding", () => {
     const { applyMediaUnderstanding } = await loadApply();
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), "moltbot-media-"));
 
-    // Windows does not allow < or > in filenames.
+    // Windows does not allow < or > (or many other chars) in filenames.
+    // Use a platform-appropriate name.
     const platform = process.platform;
-    const rawName = platform === "win32" ? "file&test>.txt" : "file<test>.txt";
+    const rawName = platform === "win32" ? "file&test.txt" : "file<test>.txt";
 
     // Create file with XML special characters in the name (what filesystem allows)
     // Note: The sanitizeFilename in store.ts would strip most dangerous chars,
@@ -581,10 +582,9 @@ describe("applyMediaUnderstanding", () => {
     expect(result.appliedFile).toBe(true);
     // Verify XML special chars are escaped in the output.
     if (platform === "win32") {
-      expect(ctx.Body).toContain("&gt;");
+      // '&' should be escaped as &amp; inside the name attribute.
       expect(ctx.Body).toContain("&amp;");
-      // The raw > should not appear unescaped in the name attribute
-      expect(ctx.Body).not.toMatch(/name="[^"]*>[^"]*"/);
+      expect(ctx.Body).not.toMatch(/name="[^"]*&[^"]*"/);
     } else {
       expect(ctx.Body).toContain("&lt;");
       expect(ctx.Body).toContain("&gt;");
