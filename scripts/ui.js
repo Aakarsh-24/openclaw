@@ -106,7 +106,7 @@ const script = null
 
 switch(action) {
   case "install":
-    script = install
+    script = "install"
     break;
   case "dev": 
     script = "dev"
