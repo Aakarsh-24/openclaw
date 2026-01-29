@@ -17,7 +17,7 @@ import { discoverVeniceModels, VENICE_BASE_URL } from "./venice-models.js";
 type ModelsConfig = NonNullable<MoltbotConfig["models"]>;
 export type ProviderConfig = NonNullable<ModelsConfig["providers"]>[string];
 
-const MINIMAX_API_BASE_URL = "https://api.minimax.io/anthropic";
+const MINIMAX_API_BASE_URL = "https://api.minimax.chat/v1";
 const MINIMAX_DEFAULT_MODEL_ID = "MiniMax-M2.1";
 const MINIMAX_DEFAULT_VISION_MODEL_ID = "MiniMax-VL-01";
 const MINIMAX_DEFAULT_CONTEXT_WINDOW = 200000;
@@ -30,8 +30,19 @@ const MINIMAX_API_COST = {
   cacheWrite: 10,
 };
 
+const XIAOMI_BASE_URL = "https://api.xiaomimimo.com/anthropic";
+export const XIAOMI_DEFAULT_MODEL_ID = "mimo-v2-flash";
+const XIAOMI_DEFAULT_CONTEXT_WINDOW = 262144;
+const XIAOMI_DEFAULT_MAX_TOKENS = 8192;
+const XIAOMI_DEFAULT_COST = {
+  input: 0,
+  output: 0,
+  cacheRead: 0,
+  cacheWrite: 0,
+};
+
 const MOONSHOT_BASE_URL = "https://api.moonshot.ai/v1";
-const MOONSHOT_DEFAULT_MODEL_ID = "kimi-k2-0905-preview";
+const MOONSHOT_DEFAULT_MODEL_ID = "kimi-k2.5";
 const MOONSHOT_DEFAULT_CONTEXT_WINDOW = 256000;
 const MOONSHOT_DEFAULT_MAX_TOKENS = 8192;
 const MOONSHOT_DEFAULT_COST = {
@@ -244,7 +255,7 @@ export function normalizeProviders(params: {
 function buildMinimaxProvider(): ProviderConfig {
   return {
     baseUrl: MINIMAX_API_BASE_URL,
-    api: "anthropic-messages",
+    api: "openai-completions",
     models: [
       {
         id: MINIMAX_DEFAULT_MODEL_ID,
@@ -275,7 +286,7 @@ function buildMoonshotProvider(): ProviderConfig {
     models: [
       {
         id: MOONSHOT_DEFAULT_MODEL_ID,
-        name: "Kimi K2 0905 Preview",
+        name: "Kimi K2.5",
         reasoning: false,
         input: ["text"],
         cost: MOONSHOT_DEFAULT_COST,
@@ -338,6 +349,24 @@ function buildSyntheticProvider(): ProviderConfig {
     baseUrl: SYNTHETIC_BASE_URL,
     api: "anthropic-messages",
     models: SYNTHETIC_MODEL_CATALOG.map(buildSyntheticModelDefinition),
+  };
+}
+
+export function buildXiaomiProvider(): ProviderConfig {
+  return {
+    baseUrl: XIAOMI_BASE_URL,
+    api: "anthropic-messages",
+    models: [
+      {
+        id: XIAOMI_DEFAULT_MODEL_ID,
+        name: "Xiaomi MiMo V2 Flash",
+        reasoning: false,
+        input: ["text"],
+        cost: XIAOMI_DEFAULT_COST,
+        contextWindow: XIAOMI_DEFAULT_CONTEXT_WINDOW,
+        maxTokens: XIAOMI_DEFAULT_MAX_TOKENS,
+      },
+    ],
   };
 }
 
@@ -408,6 +437,13 @@ export async function resolveImplicitProviders(params: {
       ...buildQwenPortalProvider(),
       apiKey: QWEN_PORTAL_OAUTH_PLACEHOLDER,
     };
+  }
+
+  const xiaomiKey =
+    resolveEnvApiKeyVarName("xiaomi") ??
+    resolveApiKeyFromProfiles({ provider: "xiaomi", store: authStore });
+  if (xiaomiKey) {
+    providers.xiaomi = { ...buildXiaomiProvider(), apiKey: xiaomiKey };
   }
 
   // Ollama provider - only add if explicitly configured
