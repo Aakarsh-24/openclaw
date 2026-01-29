@@ -56,6 +56,7 @@ type RegisterTelegramNativeCommandsParams = {
   nativeEnabled: boolean;
   nativeSkillsEnabled: boolean;
   nativeDisabledExplicit: boolean;
+  customFirst: boolean;
   resolveGroupPolicy: (chatId: string | number) => ChannelGroupPolicy;
   resolveTelegramGroupConfig: (
     chatId: string | number,
@@ -79,6 +80,7 @@ export const registerTelegramNativeCommands = ({
   nativeEnabled,
   nativeSkillsEnabled,
   nativeDisabledExplicit,
+  customFirst,
   resolveGroupPolicy,
   resolveTelegramGroupConfig,
   shouldSkipUpdate,
@@ -103,13 +105,13 @@ export const registerTelegramNativeCommands = ({
     runtime.error?.(danger(issue.message));
   }
   const customCommands = customResolution.commands;
-  const allCommands: Array<{ command: string; description: string }> = [
-    ...nativeCommands.map((command) => ({
-      command: command.name,
-      description: command.description,
-    })),
-    ...customCommands,
-  ];
+  const nativeCommandItems = nativeCommands.map((command) => ({
+    command: command.name,
+    description: command.description,
+  }));
+  const allCommands: Array<{ command: string; description: string }> = customFirst
+    ? [...customCommands, ...nativeCommandItems]
+    : [...nativeCommandItems, ...customCommands];
 
   if (allCommands.length > 0) {
     bot.api.setMyCommands(allCommands).catch((err) => {

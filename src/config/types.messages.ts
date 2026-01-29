@@ -114,4 +114,6 @@ export type ProviderCommandsConfig = {
   native?: NativeCommandsSetting;
   /** Override native skill command registration for this provider (bool or "auto"). */
   nativeSkills?: NativeCommandsSetting;
+  /** If true, custom commands appear before native commands in the menu. Default: false (native first). */
+  customFirst?: boolean;
 };

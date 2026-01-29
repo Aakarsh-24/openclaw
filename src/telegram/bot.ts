@@ -236,6 +236,7 @@ export function createTelegramBot(opts: TelegramBotOptions) {
     providerSetting: telegramCfg.commands?.native,
     globalSetting: cfg.commands?.native,
   });
+  const customFirst = telegramCfg.commands?.customFirst === true;
   const useAccessGroups = cfg.commands?.useAccessGroups !== false;
   const ackReactionScope = cfg.messages?.ackReactionScope ?? "group-mentions";
   const mediaMaxBytes = (opts.mediaMaxMb ?? telegramCfg.mediaMaxMb ?? 5) * 1024 * 1024;
@@ -341,6 +342,7 @@ export function createTelegramBot(opts: TelegramBotOptions) {
     nativeEnabled,
     nativeSkillsEnabled,
     nativeDisabledExplicit,
+    customFirst,
     resolveGroupPolicy,
     resolveTelegramGroupConfig,
     shouldSkipUpdate,

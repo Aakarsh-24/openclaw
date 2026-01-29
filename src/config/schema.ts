@@ -604,6 +604,8 @@ const FIELD_HELP: Record<string, string> = {
   "channels.telegram.commands.native": 'Override native commands for Telegram (bool or "auto").',
   "channels.telegram.commands.nativeSkills":
     'Override native skill commands for Telegram (bool or "auto").',
+  "channels.telegram.commands.customFirst":
+    "If true, custom commands appear before native commands in the Telegram menu (default: false).",
   "channels.slack.commands.native": 'Override native commands for Slack (bool or "auto").',
   "channels.slack.commands.nativeSkills":
     'Override native skill commands for Slack (bool or "auto").',
