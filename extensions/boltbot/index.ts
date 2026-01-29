@@ -4,6 +4,7 @@ import { eigenCloudProvider } from "./src/provider.js";
 import { createActionLogger } from "./src/action-logger.js";
 import { createReceiptStore } from "./src/receipt-store.js";
 import { registerBoltbotApi } from "./src/api.js";
+import { registerDashboardRoutes } from "./src/dashboard-serve.js";
 
 export default {
   id: "boltbot",
@@ -19,5 +20,6 @@ export default {
     api.on("after_tool_call", logger);
 
     registerBoltbotApi(api, store);
+    registerDashboardRoutes(api);
   },
 };
