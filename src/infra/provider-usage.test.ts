@@ -137,6 +137,49 @@ describe("provider usage loading", () => {
     expect(mockFetch).toHaveBeenCalled();
   });
 
+  // TODO: Implement fetchZhipuUsage in provider-usage.load.ts
+  it("loads zhipu usage from bigmodel.cn endpoint", async () => {
+    const makeResponse = (status: number, body: unknown): Response => {
+      const payload = typeof body === "string" ? body : JSON.stringify(body);
+      const headers = typeof body === "string" ? undefined : { "Content-Type": "application/json" };
+      return new Response(payload, { status, headers });
+    };
+
+    const mockFetch = vi.fn<Parameters<typeof fetch>, ReturnType<typeof fetch>>(async (input) => {
+      const url =
+        typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      if (url.includes("open.bigmodel.cn")) {
+        return makeResponse(200, {
+          success: true,
+          code: 200,
+          data: {
+            planName: "Basic",
+            limits: [
+              {
+                type: "TOKENS_LIMIT",
+                percentage: 30,
+                unit: 3,
+                number: 6,
+                nextResetTime: "2026-01-07T06:00:00Z",
+              },
+            ],
+          },
+        });
+      }
+      return makeResponse(404, "not found");
+    });
+
+    const summary = await loadProviderUsageSummary({
+      now: Date.UTC(2026, 0, 7, 0, 0, 0),
+      auth: [{ provider: "zhipu", token: "token-1" }],
+      fetch: mockFetch,
+    });
+
+    const zhipu = summary.providers.find((p) => p.provider === "zhipu");
+    expect(zhipu?.plan).toBe("Basic");
+    expect(zhipu?.windows[0]?.usedPercent).toBe(30);
+  });
+
   it("handles nested MiniMax usage payloads", async () => {
     const makeResponse = (status: number, body: unknown): Response => {
       const payload = typeof body === "string" ? body : JSON.stringify(body);
