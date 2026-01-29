@@ -976,9 +976,17 @@ export class MemoryIndexManager {
     progress?: MemorySyncProgressState;
   }) {
     const files = await listMemoryFiles(this.workspaceDir);
-    const fileEntries = await Promise.all(
+    const settled = await Promise.allSettled(
       files.map(async (file) => buildFileEntry(file, this.workspaceDir)),
     );
+    const fileEntries = settled.flatMap((result, i) => {
+      if (result.status === "fulfilled") return [result.value];
+      log.warn("memory sync: skipping unreadable file", {
+        file: files[i],
+        error: String(result.reason),
+      });
+      return [];
+    });
     log.debug("memory sync: indexing memory files", {
       files: fileEntries.length,
       needsFullReindex: params.needsFullReindex,

@@ -48,6 +48,9 @@ function normalizeRoomToken(to: string): string {
   }
 
   if (!normalized) throw new Error("Room token is required for Nextcloud Talk sends");
+  if (!/^[a-zA-Z0-9_-]+$/.test(normalized)) {
+    throw new Error(`Invalid room token: contains disallowed characters`);
+  }
   return normalized;
 }
 
@@ -177,6 +180,9 @@ export async function sendReactionNextcloudTalk(
     account,
   );
   const normalizedToken = normalizeRoomToken(roomToken);
+  if (!/^[a-zA-Z0-9_-]+$/.test(messageId)) {
+    throw new Error("Invalid message ID: contains disallowed characters");
+  }
 
   const body = JSON.stringify({ reaction });
   const { random, signature } = generateNextcloudTalkSignature({
