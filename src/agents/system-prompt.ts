@@ -39,7 +39,8 @@ function buildMemorySection(params: { isMinimal: boolean; availableTools: Set<st
   }
   return [
     "## Memory Recall",
-    "Before answering anything about prior work, decisions, dates, people, preferences, or todos: run memory_search on MEMORY.md + memory/*.md; then use memory_get to pull only the needed lines. If low confidence after search, say you checked.",
+    "Before answering anything about prior work, decisions, dates, people, preferences, writing style, tone, or todos: run memory_search on MEMORY.md, SOUL.md, USER.md + memory/*.md; then use memory_get to pull only the needed lines. If low confidence after search, say you checked.",
+    "When the user tells you their communication preferences or style, proactively save them to SOUL.md or USER.md for future recall.",
     "",
   ];
 }
@@ -195,7 +196,7 @@ export function buildAgentSystemPrompt(params: {
     browser: "Control web browser",
     canvas: "Present/eval/snapshot the Canvas",
     nodes: "List/describe/notify/camera/screen on paired nodes",
-    cron: "Manage cron jobs and wake events (use for reminders; when scheduling a reminder, write the systemEvent text as something that will read like a reminder when it fires, and mention that it is a reminder depending on the time gap between setting and firing; include recent context in reminder text if appropriate)",
+    cron: "Manage cron jobs and wake events (use for reminders; when asked about upcoming tasks/reminders/scheduled items, use cron action=list first; when scheduling a reminder, write the systemEvent text as something that will read like a reminder when it fires, and mention that it is a reminder depending on the time gap between setting and firing; include recent context in reminder text if appropriate)",
     message: "Send messages and channel actions",
     gateway: "Restart, apply config, or run updates on the running Moltbot process",
     agents_list: "List agent ids allowed for sessions_spawn",
@@ -346,7 +347,7 @@ export function buildAgentSystemPrompt(params: {
           "- browser: control clawd's dedicated browser",
           "- canvas: present/eval/snapshot the Canvas",
           "- nodes: list/describe/notify/camera/screen on paired nodes",
-          "- cron: manage cron jobs and wake events (use for reminders; when scheduling a reminder, write the systemEvent text as something that will read like a reminder when it fires, and mention that it is a reminder depending on the time gap between setting and firing; include recent context in reminder text if appropriate)",
+          "- cron: manage cron jobs and wake events (use for reminders; when asked about upcoming tasks/reminders/scheduled items, use cron action=list first; when scheduling a reminder, write the systemEvent text as something that will read like a reminder when it fires, and mention that it is a reminder depending on the time gap between setting and firing; include recent context in reminder text if appropriate)",
           "- sessions_list: list sessions",
           "- sessions_history: fetch session history",
           "- sessions_send: send to another session",
