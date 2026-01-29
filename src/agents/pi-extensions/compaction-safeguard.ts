@@ -177,6 +177,31 @@ export default function compactionSafeguardExtension(api: ExtensionAPI): void {
 
       const runtime = getCompactionSafeguardRuntime(ctx.sessionManager);
       const maxHistoryShare = runtime?.maxHistoryShare ?? 0.5;
+      const workspaceContext = runtime?.workspaceContext;
+
+      const buildEnhancedInstructions = (baseInstructions?: string): string | undefined => {
+        if (!workspaceContext) {
+          return baseInstructions;
+        }
+        const contextSection = `
+## Workspace Context Files
+The following files define this workspace's identity, user, and configuration:
+
+${workspaceContext}
+
+IMPORTANT: Your summary MUST preserve:
+- References to projects, tasks, and goals mentioned in these context files
+- User identity and preferences from USER.md
+- Agent identity and capabilities from SOUL.md or AGENTS.md
+- Tool configurations and infrastructure from TOOLS.md
+- Any ongoing work items referenced in MEMORY.md
+
+The summary will be used to continue this work - ensure the next agent session understands WHO the user is, WHAT they're working on, and WHY.`;
+
+        return baseInstructions ? `${baseInstructions}\n\n${contextSection}` : contextSection;
+      };
+
+      const enhancedCustomInstructions = buildEnhancedInstructions(customInstructions);
 
       const tokensBefore =
         typeof preparation.tokensBefore === "number" && Number.isFinite(preparation.tokensBefore)
@@ -228,7 +253,7 @@ export default function compactionSafeguardExtension(api: ExtensionAPI): void {
                   reserveTokens: Math.max(1, Math.floor(preparation.settings.reserveTokens)),
                   maxChunkTokens: droppedMaxChunkTokens,
                   contextWindow: contextWindowTokens,
-                  customInstructions,
+                  customInstructions: enhancedCustomInstructions,
                   previousSummary: preparation.previousSummary,
                 });
               } catch (droppedError) {
@@ -261,7 +286,7 @@ export default function compactionSafeguardExtension(api: ExtensionAPI): void {
         reserveTokens,
         maxChunkTokens,
         contextWindow: contextWindowTokens,
-        customInstructions,
+        customInstructions: enhancedCustomInstructions,
         previousSummary: effectivePreviousSummary,
       });
 
@@ -275,7 +300,7 @@ export default function compactionSafeguardExtension(api: ExtensionAPI): void {
           reserveTokens,
           maxChunkTokens,
           contextWindow: contextWindowTokens,
-          customInstructions: TURN_PREFIX_INSTRUCTIONS,
+          customInstructions: buildEnhancedInstructions(TURN_PREFIX_INSTRUCTIONS),
           previousSummary: undefined,
         });
         summary = `${historySummary}\n\n---\n\n**Turn Context (split turn):**\n\n${prefixSummary}`;

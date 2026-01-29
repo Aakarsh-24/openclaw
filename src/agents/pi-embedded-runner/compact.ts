@@ -69,6 +69,7 @@ import type { EmbeddedPiCompactResult } from "./types.js";
 import { formatUserTime, resolveUserTimeFormat, resolveUserTimezone } from "../date-time.js";
 import { describeUnknownError, mapThinkingLevel, resolveExecToolDefaults } from "./utils.js";
 import { buildTtsSystemPromptHint } from "../../tts/tts.js";
+import { setCompactionSafeguardRuntime } from "../pi-extensions/compaction-safeguard-runtime.js";
 
 export type CompactEmbeddedPiSessionParams = {
   sessionId: string;
@@ -210,6 +211,12 @@ export async function compactEmbeddedPiSessionDirect(
       sessionId: params.sessionId,
       warn: makeBootstrapWarn({ sessionLabel, warn: (message) => log.warn(message) }),
     });
+
+    const workspaceContextForCompaction = contextFiles
+      .filter((f) => f.content?.trim())
+      .map((f) => `## ${f.path}\n${f.content}`)
+      .join("\n\n---\n\n");
+
     const runAbortController = new AbortController();
     const toolsRaw = createMoltbotCodingTools({
       exec: {
@@ -365,6 +372,10 @@ export async function compactEmbeddedPiSessionDirect(
         allowSyntheticToolResults: transcriptPolicy.allowSyntheticToolResults,
       });
       trackSessionManagerAccess(params.sessionFile);
+
+      setCompactionSafeguardRuntime(sessionManager, {
+        workspaceContext: workspaceContextForCompaction || undefined,
+      });
       const settingsManager = SettingsManager.create(effectiveWorkspace, agentDir);
       ensurePiCompactionReserveTokens({
         settingsManager,
