@@ -3,9 +3,11 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import {
+  appendAssistantTranscriptEntry,
   readFirstUserMessageFromTranscript,
   readLastMessagePreviewFromTranscript,
   readSessionPreviewItemsFromTranscript,
+  resolveSessionTranscriptCandidates,
 } from "./session-utils.fs.js";
 
 describe("readFirstUserMessageFromTranscript", () => {
@@ -402,5 +404,199 @@ describe("readSessionPreviewItemsFromTranscript", () => {
     expect(result).toHaveLength(1);
     expect(result[0]?.text.length).toBe(24);
     expect(result[0]?.text.endsWith("...")).toBe(true);
+  });
+});
+
+describe("appendAssistantTranscriptEntry", () => {
+  let tmpDir: string;
+  let storePath: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "moltbot-append-test-"));
+    storePath = path.join(tmpDir, "sessions.json");
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  test("creates transcript file when createIfMissing is true", () => {
+    const sessionId = "new-session-1";
+    const result = appendAssistantTranscriptEntry({
+      message: "Hello from assistant",
+      sessionId,
+      storePath,
+      createIfMissing: true,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.messageId).toBeDefined();
+    expect(result.message).toBeDefined();
+    expect(result.message?.role).toBe("assistant");
+
+    const transcriptPath = path.join(tmpDir, `${sessionId}.jsonl`);
+    expect(fs.existsSync(transcriptPath)).toBe(true);
+
+    const content = fs.readFileSync(transcriptPath, "utf-8");
+    const lines = content.split("\n").filter(Boolean);
+    expect(lines.length).toBe(2); // header + message
+  });
+
+  test("fails when transcript does not exist and createIfMissing is false", () => {
+    const sessionId = "nonexistent-session";
+    const result = appendAssistantTranscriptEntry({
+      message: "Hello",
+      sessionId,
+      storePath,
+      createIfMissing: false,
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain("not found");
+  });
+
+  test("appends to existing transcript file", () => {
+    const sessionId = "existing-session";
+    const transcriptPath = path.join(tmpDir, `${sessionId}.jsonl`);
+    const header = JSON.stringify({ type: "session", version: 1, id: sessionId });
+    fs.writeFileSync(transcriptPath, `${header}\n`, "utf-8");
+
+    const result = appendAssistantTranscriptEntry({
+      message: "New assistant message",
+      sessionId,
+      storePath,
+      createIfMissing: false,
+    });
+
+    expect(result.ok).toBe(true);
+
+    const content = fs.readFileSync(transcriptPath, "utf-8");
+    const lines = content.split("\n").filter(Boolean);
+    expect(lines.length).toBe(2);
+
+    const lastLine = JSON.parse(lines[1]);
+    expect(lastLine.message.role).toBe("assistant");
+    expect(lastLine.message.content[0].text).toBe("New assistant message");
+  });
+
+  test("includes label prefix when provided", () => {
+    const sessionId = "labeled-session";
+    const result = appendAssistantTranscriptEntry({
+      message: "Message content",
+      label: "webchat",
+      sessionId,
+      storePath,
+      createIfMissing: true,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.message?.content[0].text).toContain("[webchat]");
+    expect(result.message?.content[0].text).toContain("Message content");
+  });
+
+  test("returns error when storePath is undefined and no sessionFile", () => {
+    const result = appendAssistantTranscriptEntry({
+      message: "Hello",
+      sessionId: "test",
+      storePath: undefined,
+      createIfMissing: true,
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain("not resolved");
+  });
+});
+
+describe("resolveSessionTranscriptCandidates with CLI config", () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "moltbot-candidates-test-"));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  test("includes CLI transcript path when cliConfig is provided", () => {
+    const sessionId = "cli-session";
+    const storePath = path.join(tmpDir, "sessions.json");
+
+    const candidates = resolveSessionTranscriptCandidates(
+      sessionId,
+      storePath,
+      undefined,
+      undefined,
+      {
+        transcriptDir: tmpDir,
+        transcriptPattern: "{sessionId}.jsonl",
+      },
+    );
+
+    expect(candidates).toContain(path.join(tmpDir, `${sessionId}.jsonl`));
+  });
+
+  test("uses default pattern when transcriptPattern is not provided", () => {
+    const sessionId = "default-pattern-session";
+    const storePath = path.join(tmpDir, "sessions.json");
+
+    const candidates = resolveSessionTranscriptCandidates(
+      sessionId,
+      storePath,
+      undefined,
+      undefined,
+      {
+        transcriptDir: tmpDir,
+      },
+    );
+
+    expect(candidates).toContain(path.join(tmpDir, `${sessionId}.jsonl`));
+  });
+
+  test("expands tilde in transcriptDir", () => {
+    const sessionId = "tilde-session";
+    const storePath = path.join(tmpDir, "sessions.json");
+    const homeDir = os.homedir();
+
+    const candidates = resolveSessionTranscriptCandidates(
+      sessionId,
+      storePath,
+      undefined,
+      undefined,
+      {
+        transcriptDir: "~/.test-cli-logs",
+      },
+    );
+
+    const expectedPath = path.join(homeDir, ".test-cli-logs", `${sessionId}.jsonl`);
+    expect(candidates).toContain(expectedPath);
+  });
+
+  test("does not add CLI path when cliConfig is undefined", () => {
+    const sessionId = "no-cli-session";
+    const storePath = path.join(tmpDir, "sessions.json");
+
+    const candidates = resolveSessionTranscriptCandidates(sessionId, storePath);
+
+    // Should only have storePath-derived path and default clawdbot path
+    expect(candidates.length).toBe(2);
+  });
+
+  test("supports custom transcript pattern", () => {
+    const sessionId = "custom-pattern";
+    const storePath = path.join(tmpDir, "sessions.json");
+
+    const candidates = resolveSessionTranscriptCandidates(
+      sessionId,
+      storePath,
+      undefined,
+      undefined,
+      {
+        transcriptDir: tmpDir,
+        transcriptPattern: "logs-{sessionId}.json",
+      },
+    );
+
+    expect(candidates).toContain(path.join(tmpDir, `logs-${sessionId}.json`));
   });
 });

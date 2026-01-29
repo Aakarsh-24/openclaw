@@ -89,6 +89,10 @@ export type CliBackendConfig = {
   imageMode?: "repeat" | "list";
   /** Serialize runs for this CLI. */
   serialize?: boolean;
+  /** Directory where this CLI stores session transcripts (for reading history). */
+  transcriptDir?: string;
+  /** Pattern for transcript file names (use {sessionId} placeholder, defaults to {sessionId}.jsonl). */
+  transcriptPattern?: string;
 };
 
 export type AgentDefaultsConfig = {

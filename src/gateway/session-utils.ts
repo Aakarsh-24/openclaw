@@ -34,6 +34,7 @@ import type {
 } from "./session-utils.types.js";
 
 export {
+  appendAssistantTranscriptEntry,
   archiveFileOnDisk,
   capArrayByJsonBytes,
   readFirstUserMessageFromTranscript,
@@ -42,6 +43,7 @@ export {
   readSessionMessages,
   resolveSessionTranscriptCandidates,
 } from "./session-utils.fs.js";
+export type { CliTranscriptConfig, TranscriptAppendResult } from "./session-utils.fs.js";
 export type {
   GatewayAgentRow,
   GatewaySessionRow,

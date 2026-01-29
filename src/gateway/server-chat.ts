@@ -2,6 +2,7 @@ import { normalizeVerboseLevel } from "../auto-reply/thinking.js";
 import { loadConfig } from "../config/config.js";
 import { type AgentEventPayload, getAgentRunContext } from "../infra/agent-events.js";
 import { resolveHeartbeatVisibility } from "../infra/heartbeat-visibility.js";
+import { appendAssistantTranscriptEntry } from "./session-utils.fs.js";
 import { loadSessionEntry } from "./session-utils.js";
 import { formatForLog } from "./ws-log.js";
 
@@ -168,6 +169,22 @@ export function createAgentEventHandler({
     chatRunState.buffers.delete(clientRunId);
     chatRunState.deltaSentAt.delete(clientRunId);
     if (jobState === "done") {
+      // Write transcript for CLI provider runs (which don't write their own gateway transcripts)
+      if (text) {
+        try {
+          const { storePath, entry } = loadSessionEntry(sessionKey);
+          const sessionId = entry?.sessionId ?? clientRunId;
+          appendAssistantTranscriptEntry({
+            message: text,
+            sessionId,
+            storePath,
+            sessionFile: entry?.sessionFile,
+            createIfMissing: true,
+          });
+        } catch {
+          // Transcript write failure shouldn't block the response
+        }
+      }
       const payload = {
         runId: clientRunId,
         sessionKey,
