@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dopamine Depot - Sticker Business</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f0f0f;
+            color: #e0e0e0;
+            line-height: 1.6;
+        }
+        .header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            padding: 2rem;
+            border-bottom: 1px solid #333;
+        }
+        .header h1 { font-size: 1.8rem; color: #fff; margin-bottom: 0.5rem; }
+        .header p { color: #888; font-size: 0.9rem; }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            padding: 1.5rem;
+            background: #1a1a1a;
+        }
+        .stat-card {
+            background: #252525;
+            padding: 1.5rem;
+            border-radius: 8px;
+            border-left: 4px solid #ff6b6b;
+        }
+        .stat-card h3 { font-size: 2rem; color: #ff6b6b; margin-bottom: 0.3rem; }
+        .stat-card p { color: #888; font-size: 0.9rem; }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .nav { display: flex; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap; }
+        .nav a {
+            color: #888;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+        .nav a:hover, .nav a.active { background: #252525; color: #ff6b6b; }
+
+        /* Status Banner */
+        .status-banner {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            border-left: 4px solid #ff6b6b;
+        }
+        .status-banner h2 { color: #fff; margin-bottom: 1rem; }
+        .status-row { display: flex; gap: 2rem; flex-wrap: wrap; }
+        .status-item { display: flex; align-items: center; gap: 0.5rem; }
+        .status-label { color: #666; font-size: 0.85rem; }
+        .status-value { color: #fff; font-weight: 500; }
+        .status-value.pending { color: #ffa500; }
+        .status-value.ready { color: #7ec8a0; }
+
+        /* Quick Actions */
+        .actions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .action-card {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid #333;
+            transition: all 0.2s;
+        }
+        .action-card:hover { border-color: #ff6b6b; transform: translateY(-2px); }
+        .action-card h3 { color: #fff; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
+        .action-card p { color: #888; font-size: 0.9rem; margin-bottom: 1rem; }
+        .action-btn {
+            background: #ff6b6b;
+            color: #fff;
+            border: none;
+            padding: 0.6rem 1.2rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.2s;
+        }
+        .action-btn:hover { background: #e55a5a; }
+        .action-btn:disabled { background: #444; cursor: not-allowed; }
+
+        /* Design Gallery */
+        .gallery-section {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+        .gallery-section h2 {
+            color: #fff;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .gallery-section h2::before { content: "🎨"; }
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+        .gallery-item {
+            background: #252525;
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+            border: 2px dashed #333;
+            transition: all 0.2s;
+        }
+        .gallery-item:hover { border-color: #ff6b6b; }
+        .gallery-item .placeholder {
+            width: 100%;
+            height: 150px;
+            background: #1a1a1a;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #555;
+            font-size: 3rem;
+            margin-bottom: 0.75rem;
+        }
+        .gallery-item p { color: #888; font-size: 0.85rem; }
+        .gallery-item .status { font-size: 0.75rem; color: #666; margin-top: 0.5rem; }
+
+        /* Sales Channels */
+        .channels-section {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+        .channels-section h2 {
+            color: #fff;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .channels-section h2::before { content: "🛒"; }
+        .channels-list {
+            display: grid;
+            gap: 1rem;
+        }
+        .channel-item {
+            background: #252525;
+            border-radius: 8px;
+            padding: 1rem 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-left: 4px solid #444;
+        }
+        .channel-item.shopify { border-color: #96bf48; }
+        .channel-item.etsy { border-color: #f56400; }
+        .channel-item.instagram { border-color: #e4405f; }
+        .channel-item.tiktok { border-color: #00f2ea; }
+        .channel-info h4 { color: #fff; margin-bottom: 0.25rem; }
+        .channel-info p { color: #666; font-size: 0.8rem; }
+        .channel-status {
+            padding: 0.4rem 1rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        .channel-status.pending { background: #3d3d1f; color: #ffa500; }
+        .channel-status.setup { background: #1f3d3d; color: #7ec8a0; }
+        .channel-status.live { background: #1f3d1f; color: #4a9eff; }
+
+        /* Tasks */
+        .tasks-section {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 2rem;
+        }
+        .tasks-section h2 {
+            color: #fff;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .tasks-section h2::before { content: "✅"; }
+        .task-list {
+            list-style: none;
+        }
+        .task-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            border-bottom: 1px solid #333;
+        }
+        .task-item:last-child { border-bottom: none; }
+        .task-checkbox {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #444;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .task-checkbox:hover { border-color: #ff6b6b; }
+        .task-checkbox.checked { background: #ff6b6b; border-color: #ff6b6b; }
+        .task-text { flex: 1; color: #ccc; }
+        .task-text.done { text-decoration: line-through; color: #666; }
+        .task-priority {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+        }
+        .task-priority.high { background: #3d1f1f; color: #ff6b6b; }
+        .task-priority.medium { background: #3d3d1f; color: #ffa500; }
+        .task-priority.low { background: #1f3d3d; color: #7ec8a0; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🏷️ Dopamine Depot</h1>
+        <p>Sticker business — design, print, sell</p>
+    </div>
+
+    <div class="stats">
+        <div class="stat-card">
+            <h3 id="design-count">0</h3>
+            <p>Designs Created</p>
+        </div>
+        <div class="stat-card">
+            <h3 id="print-count">0</h3>
+            <p>Stickers Printed</p>
+        </div>
+        <div class="stat-card">
+            <h3 id="sale-count">0</h3>
+            <p>Sales Made</p>
+        </div>
+        <div class="stat-card">
+            <h3 id="revenue">$0</h3>
+            <p>Revenue</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Status Banner -->
+        <div class="status-banner">
+            <h2>📊 Current Status</h2>
+            <div class="status-row">
+                <div class="status-item">
+                    <span class="status-label">Hardware:</span>
+                    <span class="status-value ready">LIENE Printer Ready</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Brand Name:</span>
+                    <span class="status-value ready">"Dopamine Depot"</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Designs:</span>
+                    <span class="status-value pending">In Progress</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Store:</span>
+                    <span class="status-value pending">Not Started</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="actions-grid">
+            <div class="action-card">
+                <h3>🎨 Design Stickers</h3>
+                <p>Create new sticker designs. 4"×7" sheets. What sells: memes, tech, mental health, dopamine themes.</p>
+                <button class="action-btn" onclick="alert('Open design tool')">Start Designing</button>
+            </div>
+            <div class="action-card">
+                <h3>📦 Print Batch</h3>
+                <p>Send designs to LIENE printer. Test prints, quality check, inventory.</p>
+                <button class="action-btn" disabled>No Designs Ready</button>
+            </div>
+            <div class="action-card">
+                <h3>🛒 Setup Store</h3>
+                <p>Shopify, Etsy, or Instagram Shop. Connect payment, shipping, listings.</p>
+                <button class="action-btn" onclick="alert('Store setup wizard')">Setup Store</button>
+            </div>
+            <div class="action-card">
+                <h3>📱 Social Launch</h3>
+                <p>Create Instagram/TikTok. Post sticker reveals, behind-the-scenes, dopamine content.</p>
+                <button class="action-btn" disabled>Needs Store First</button>
+            </div>
+        </div>
+
+        <!-- Design Gallery -->
+        <div class="gallery-section">
+            <h2>Design Gallery</h2>
+            <div class="gallery-grid">
+                <div class="gallery-item">
+                    <div class="placeholder">+</div>
+                    <p>Add First Design</p>
+                    <span class="status">Click to upload</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sales Channels -->
+        <div class="channels-section">
+            <h2>Sales Channels</h2>
+            <div class="channels-list">
+                <div class="channel-item shopify">
+                    <div class="channel-info">
+                        <h4>Shopify</h4>
+                        <p>Full e-commerce, inventory, shipping</p>
+                    </div>
+                    <span class="channel-status pending">Not Setup</span>
+                </div>
+                <div class="channel-item etsy">
+                    <div class="channel-info">
+                        <h4>Etsy</h4>
+                        <p>Sticker marketplace, built-in audience</p>
+                    </div>
+                    <span class="channel-status pending">Not Setup</span>
+                </div>
+                <div class="channel-item instagram">
+                    <div class="channel-info">
+                        <h4>Instagram Shop</h4>
+                        <p>Native selling, visual discovery</p>
+                    </div>
+                    <span class="channel-status pending">Not Setup</span>
+                </div>
+                <div class="channel-item tiktok">
+                    <div class="channel-info">
+                        <h4>TikTok Shop</h4>
+                        <p>Viral potential, younger audience</p>
+                    </div>
+                    <span class="channel-status pending">Not Setup</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tasks -->
+        <div class="tasks-section">
+            <h2>Next Actions</h2>
+            <ul class="task-list">
+                <li class="task-item">
+                    <div class="task-checkbox"></div>
+                    <span class="task-text">Confirm "Dopamine Depot" brand name (or alternatives)</span>
+                    <span class="task-priority high">HIGH</span>
+                </li>
+                <li class="task-item">
+                    <div class="task-checkbox"></div>
+                    <span class="task-text">Create first 5 sticker designs</span>
+                    <span class="task-priority high">HIGH</span>
+                </li>
+                <li class="task-item">
+                    <div class="task-checkbox"></div>
+                    <span class="task-text">Test print on LIENE printer</span>
+                    <span class="task-priority medium">MED</span>
+                </li>
+                <li class="task-item">
+                    <div class="task-checkbox"></div>
+                    <span class="task-text">Choose and setup primary sales channel</span>
+                    <span class="task-priority medium">MED</span>
+                </li>
+                <li class="task-item">
+                    <div class="task-checkbox"></div>
+                    <span class="task-text">Research sticker trends and pricing</span>
+                    <span class="task-priority low">LOW</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Task checkbox toggle
+        document.querySelectorAll('.task-checkbox').forEach(box => {
+            box.addEventListener('click', function() {
+                this.classList.toggle('checked');
+                this.nextElementSibling.classList.toggle('done');
+            });
+        });
+    </script>
+</body>
+</html>

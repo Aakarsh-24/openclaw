@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ceramics Intelligence</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f0f0f;
+            color: #e0e0e0;
+            line-height: 1.6;
+        }
+        .header {
+            background: linear-gradient(135deg, #2e1a1a 0%, #3d1620 100%);
+            padding: 2rem;
+            border-bottom: 1px solid #333;
+        }
+        .header h1 { font-size: 1.8rem; color: #fff; margin-bottom: 0.5rem; }
+        .header p { color: #888; font-size: 0.9rem; }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            padding: 1.5rem;
+            background: #1a1a1a;
+        }
+        .stat-card {
+            background: #252525;
+            padding: 1.5rem;
+            border-radius: 8px;
+            border-left: 4px solid #c9a87c;
+        }
+        .stat-card h3 { font-size: 2rem; color: #c9a87c; margin-bottom: 0.3rem; }
+        .stat-card p { color: #888; font-size: 0.9rem; }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .nav { display: flex; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap; }
+        .nav a {
+            color: #888;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+        .nav a:hover, .nav a.active { background: #252525; color: #c9a87c; }
+
+        /* Phase Tracker */
+        .phase-tracker {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+        .phase-tracker h2 { color: #fff; margin-bottom: 1.5rem; }
+        .phases {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+        .phase {
+            background: #252525;
+            border-radius: 8px;
+            padding: 1.5rem;
+            border: 2px solid #333;
+            position: relative;
+        }
+        .phase.active { border-color: #c9a87c; }
+        .phase.complete { border-color: #7ec8a0; }
+        .phase.pending { border-color: #444; opacity: 0.7; }
+        .phase-number {
+            position: absolute;
+            top: -10px;
+            left: 1rem;
+            background: #333;
+            color: #888;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .phase.active .phase-number { background: #c9a87c; color: #0f0f0f; }
+        .phase.complete .phase-number { background: #7ec8a0; color: #0f0f0f; }
+        .phase h3 { color: #fff; margin-bottom: 0.5rem; margin-top: 0.5rem; }
+        .phase p { color: #888; font-size: 0.85rem; }
+        .phase-status {
+            margin-top: 1rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        .phase-status.active { color: #c9a87c; }
+        .phase-status.complete { color: #7ec8a0; }
+        .phase-status.pending { color: #666; }
+
+        /* Instagram Post Generator */
+        .generator-section {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+        .generator-section h2 {
+            color: #fff;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .generator-section h2::before { content: "📸"; }
+        .generator-controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .control-group label {
+            color: #888;
+            font-size: 0.85rem;
+        }
+        .control-group input,
+        .control-group select,
+        .control-group textarea {
+            background: #252525;
+            border: 1px solid #333;
+            color: #fff;
+            padding: 0.75rem;
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+        .control-group input:focus,
+        .control-group select:focus,
+        .control-group textarea:focus {
+            outline: none;
+            border-color: #c9a87c;
+        }
+        .generate-btn {
+            background: #c9a87c;
+            color: #0f0f0f;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .generate-btn:hover { background: #b8986c; }
+
+        /* Output Preview */
+        .preview-section {
+            background: #252525;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+        }
+        .preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .preview-header h3 { color: #fff; }
+        .copy-btn {
+            background: #333;
+            color: #888;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+        .copy-btn:hover { background: #444; color: #fff; }
+        .preview-content {
+            background: #1a1a1a;
+            border-radius: 6px;
+            padding: 1rem;
+            color: #ccc;
+            white-space: pre-wrap;
+            font-family: inherit;
+            line-height: 1.6;
+        }
+
+        /* Content Library */
+        .library-section {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+        .library-section h2 {
+            color: #fff;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .library-section h2::before { content: "🗂️"; }
+        .content-tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid #333;
+            padding-bottom: 1rem;
+        }
+        .content-tab {
+            background: none;
+            border: none;
+            color: #888;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            font-size: 0.9rem;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+        .content-tab:hover { color: #c9a87c; }
+        .content-tab.active { background: #252525; color: #c9a87c; }
+        .content-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+        .content-card {
+            background: #252525;
+            border-radius: 8px;
+            padding: 1rem;
+            border: 1px solid #333;
+            transition: all 0.2s;
+        }
+        .content-card:hover { border-color: #c9a87c; }
+        .content-card .placeholder {
+            width: 100%;
+            height: 150px;
+            background: #1a1a1a;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #555;
+            font-size: 3rem;
+            margin-bottom: 0.75rem;
+        }
+        .content-card h4 { color: #fff; margin-bottom: 0.5rem; }
+        .content-card p { color: #888; font-size: 0.8rem; }
+        .content-card .meta {
+            display: flex;
+            gap: 1rem;
+            margin-top: 0.75rem;
+            font-size: 0.75rem;
+            color: #666;
+        }
+
+        /* Analytics */
+        .analytics-section {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 2rem;
+        }
+        .analytics-section h2 {
+            color: #fff;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .analytics-section h2::before { content: "📈"; }
+        .analytics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+        .analytics-card {
+            background: #252525;
+            border-radius: 8px;
+            padding: 1.5rem;
+        }
+        .analytics-card h4 { color: #fff; margin-bottom: 1rem; }
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid #333;
+        }
+        .metric-row:last-child { border-bottom: none; }
+        .metric-label { color: #888; }
+        .metric-value { color: #c9a87c; font-weight: 600; }
+        .chart-placeholder {
+            height: 200px;
+            background: #1a1a1a;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🏺 Ceramics Intelligence</h1>
+        <p>AI-powered content and strategy for your ceramics business</p>
+    </div>
+
+    <div class="stats">
+        <div class="stat-card">
+            <h3 id="pieces-count">0</h3>
+            <p>Pieces Documented</p>
+        </div>
+        <div class="stat-card">
+            <h3 id="posts-count">0</h3>
+            <p>Posts Generated</p>
+        </div>
+        <div class="stat-card">
+            <h3 id="photos-count">0</h3>
+            <p>Photos Processed</p>
+        </div>
+        <div class="stat-card">
+            <h3 id="engagement">0%</h3>
+            <p>Avg Engagement</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Phase Tracker -->
+        <div class="phase-tracker">
+            <h2>Implementation Phases</h2>
+            <div class="phases">
+                <div class="phase active">
+                    <span class="phase-number">PHASE 1</span>
+                    <h3>Instagram Post Generator</h3>
+                    <p>Generate captions from piece photos and context</p>
+                    <div class="phase-status active">In Progress</div>
+                </div>
+                <div class="phase pending">
+                    <span class="phase-number">PHASE 2</span>
+                    <h3>Piece Archive</h3>
+                    <p>Catalog all work with metadata and stories</p>
+                    <div class="phase-status pending">Pending</div>
+                </div>
+                <div class="phase pending">
+                    <span class="phase-number">PHASE 3</span>
+                    <h3>Content Calendar</h3>
+                    <p>Schedule posts, track performance</p>
+                    <div class="phase-status pending">Pending</div>
+                </div>
+                <div class="phase pending">
+                    <span class="phase-number">PHASE 4</span>
+                    <h3>Analytics & Insights</h3>
+                    <p>Track what resonates, optimize strategy</p>
+                    <div class="phase-status pending">Pending</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Instagram Post Generator -->
+        <div class="generator-section">
+            <h2>Instagram Post Generator</h2>
+            <div class="generator-controls">
+                <div class="control-group">
+                    <label>Piece Name</label>
+                    <input type="text" placeholder="e.g., Desert Bowl #3">
+                </div>
+                <div class="control-group">
+                    <label>Clay Type</label>
+                    <select>
+                        <option>Stoneware</option>
+                        <option>Porcelain</option>
+                        <option>Earthenware</option>
+                        <option>Raku</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Glaze</label>
+                    <input type="text" placeholder="e.g., Shino with ash deposits">
+                </div>
+                <div class="control-group">
+                    <label>Firing Method</label>
+                    <select>
+                        <option>Electric Kiln</option>
+                        <option>Gas Reduction</option>
+                        <option>Wood Fire</option>
+                        <option>Soda Fire</option>
+                        <option>Raku</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Vibe / Story</label>
+                    <textarea rows="3" placeholder="What's the story? Struggle, breakthrough, inspiration, process detail..."></textarea>
+                </div>
+                <div class="control-group">
+                    <label>Caption Length</label>
+                    <select>
+                        <option>Short (1-2 sentences)</option>
+                        <option>Medium (paragraph)</option>
+                        <option>Long (story + details)</option>
+                    </select>
+                </div>
+            </div>
+            <button class="generate-btn" onclick="generatePost()">Generate Caption</button>
+
+            <div class="preview-section" id="preview-section" style="display: none;">
+                <div class="preview-header">
+                    <h3>Generated Caption</h3>
+                    <button class="copy-btn" onclick="copyCaption()">Copy</button>
+                </div>
+                <div class="preview-content" id="preview-content"></div>
+            </div>
+        </div>
+
+        <!-- Content Library -->
+        <div class="library-section">
+            <h2>Content Library</h2>
+            <div class="content-tabs">
+                <button class="content-tab active">All Pieces</button>
+                <button class="content-tab">Posted</button>
+                <button class="content-tab">Drafts</button>
+                <button class="content-tab">Archived</button>
+            </div>
+            <div class="content-grid">
+                <div class="content-card">
+                    <div class="placeholder">🏺</div>
+                    <h4>Add First Piece</h4>
+                    <p>Upload photo, add details, generate content</p>
+                    <div class="meta">
+                        <span>No photos</span>
+                        <span>No posts</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analytics -->
+        <div class="analytics-section">
+            <h2>Performance Analytics</h2>
+            <div class="analytics-grid">
+                <div class="analytics-card">
+                    <h4>Account Overview</h4>
+                    <div class="metric-row">
+                        <span class="metric-label">Followers</span>
+                        <span class="metric-value">--</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Following</span>
+                        <span class="metric-value">--</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Total Posts</span>
+                        <span class="metric-value">--</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Avg Likes</span>
+                        <span class="metric-value">--</span>
+                    </div>
+                </div>
+                <div class="analytics-card">
+                    <h4>Engagement Trends</h4>
+                    <div class="chart-placeholder">Chart: 30-day engagement</div>
+                </div>
+                <div class="analytics-card">
+                    <h4>Top Performing Content</h4>
+                    <div class="chart-placeholder">Chart: Posts by engagement</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function generatePost() {
+            const preview = document.getElementById('preview-section');
+            const content = document.getElementById('preview-content');
+            
+            // Mock generated caption
+            content.textContent = `This piece started as a mistake. The glaze ran too far, the fire was too hot. But sometimes the kiln knows better than you do.
+
+Desert Bowl #3
+Stoneware | Shino glaze | Cone 10 reduction
+
+The ash deposits settled exactly where they needed to. I couldn't have planned this if I tried.
+
+What's your favorite "happy accident" in your work?
+
+#ceramics #pottery #handmade #stoneware #shino #woodfire #kiln #craft #clay #ceramicartist`;
+            
+            preview.style.display = 'block';
+        }
+
+        function copyCaption() {
+            const content = document.getElementById('preview-content').textContent;
+            navigator.clipboard.writeText(content).then(() => {
+                alert('Caption copied to clipboard!');
+            });
+        }
+    </script>
+</body>
+</html>

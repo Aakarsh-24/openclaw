@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Natural Capture</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f0f0f;
+            color: #e0e0e0;
+            line-height: 1.6;
+        }
+        .header {
+            background: linear-gradient(135deg, #1a2e1a 0%, #162e16 100%);
+            padding: 2rem;
+            border-bottom: 1px solid #333;
+        }
+        .header h1 { font-size: 1.8rem; color: #fff; margin-bottom: 0.5rem; }
+        .header p { color: #888; font-size: 0.9rem; }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            padding: 1.5rem;
+            background: #1a1a1a;
+        }
+        .stat-card {
+            background: #252525;
+            padding: 1.5rem;
+            border-radius: 8px;
+            border-left: 4px solid #7ec8a0;
+        }
+        .stat-card h3 { font-size: 2rem; color: #7ec8a0; margin-bottom: 0.3rem; }
+        .stat-card p { color: #888; font-size: 0.9rem; }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .nav { display: flex; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap; }
+        .nav a {
+            color: #888;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+        .nav a:hover, .nav a.active { background: #252525; color: #7ec8a0; }
+
+        /* Status Panel */
+        .status-panel {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            border-left: 4px solid #7ec8a0;
+        }
+        .status-panel h2 { color: #fff; margin-bottom: 1rem; }
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: #1f3d1f;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            color: #7ec8a0;
+        }
+        .status-indicator::before {
+            content: "●";
+            color: #4a9eff;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Capture Triggers */
+        .triggers-section {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+        .triggers-section h2 {
+            color: #fff;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .triggers-section h2::before { content: "⚡"; }
+        .triggers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+        .trigger-card {
+            background: #252525;
+            border-radius: 8px;
+            padding: 1rem;
+            border: 1px solid #333;
+            transition: all 0.2s;
+        }
+        .trigger-card:hover { border-color: #7ec8a0; }
+        .trigger-card .keyword {
+            display: inline-block;
+            background: #7ec8a0;
+            color: #0f0f0f;
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+        .trigger-card p { color: #888; font-size: 0.85rem; }
+
+        /* Recent Captures */
+        .captures-section {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+        .captures-section h2 {
+            color: #fff;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .captures-section h2::before { content: "📥"; }
+        .capture-list {
+            display: grid;
+            gap: 0.75rem;
+        }
+        .capture-item {
+            background: #252525;
+            border-radius: 8px;
+            padding: 1rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            border-left: 3px solid #444;
+            transition: all 0.2s;
+        }
+        .capture-item:hover { border-color: #7ec8a0; }
+        .capture-item.idea { border-color: #4a9eff; }
+        .capture-item.todo { border-color: #ff6b6b; }
+        .capture-item.note { border-color: #7ec8a0; }
+        .capture-item.reminder { border-color: #ffa500; }
+        .capture-type {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .capture-type.idea { background: #1f2d3d; color: #4a9eff; }
+        .capture-type.todo { background: #3d1f1f; color: #ff6b6b; }
+        .capture-type.note { background: #1f3d2d; color: #7ec8a0; }
+        .capture-type.reminder { background: #3d3d1f; color: #ffa500; }
+        .capture-content { flex: 1; }
+        .capture-text { color: #ccc; margin-bottom: 0.25rem; }
+        .capture-meta { color: #666; font-size: 0.8rem; }
+        .capture-time { color: #666; font-size: 0.8rem; }
+
+        /* Processing Queue */
+        .queue-section {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+        .queue-section h2 {
+            color: #fff;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .queue-section h2::before { content: "⚙️"; }
+        .queue-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .queue-stat {
+            background: #252525;
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+        }
+        .queue-stat h4 { font-size: 1.5rem; color: #fff; margin-bottom: 0.25rem; }
+        .queue-stat p { color: #888; font-size: 0.8rem; }
+
+        /* Test Capture */
+        .test-section {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 2rem;
+        }
+        .test-section h2 {
+            color: #fff;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .test-section h2::before { content: "🧪"; }
+        .capture-input-wrapper {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        .capture-input {
+            flex: 1;
+            background: #252525;
+            border: 1px solid #333;
+            color: #fff;
+            padding: 1rem;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+        .capture-input:focus { outline: none; border-color: #7ec8a0; }
+        .capture-btn {
+            background: #7ec8a0;
+            color: #0f0f0f;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .capture-btn:hover { background: #6ab88f; }
+        .hint {
+            color: #666;
+            font-size: 0.85rem;
+        }
+        .hint code {
+            background: #252525;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            color: #7ec8a0;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🌿 Natural Capture</h1>
+        <p>Zero-friction capture for ideas, todos, notes, and reminders</p>
+    </div>
+
+    <div class="stats">
+        <div class="stat-card">
+            <h3 id="today-captures">0</h3>
+            <p>Today's Captures</p>
+        </div>
+        <div class="stat-card">
+            <h3 id="week-captures">0</h3>
+            <p>This Week</p>
+        </div>
+        <div class="stat-card">
+            <h3 id="total-captures">0</h3>
+            <p>Total Captures</p>
+        </div>
+        <div class="stat-card">
+            <h3 id="para-routed">0</h3>
+            <p>PARA Routed</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Status Panel -->
+        <div class="status-panel">
+            <h2>System Status</h2>
+            <span class="status-indicator">Capture System Active</span>
+            <p style="color: #888; margin-top: 1rem; font-size: 0.9rem;">
+                Listening for trigger phrases: "idea:", "todo:", "note:", "remind me..."
+            </p>
+        </div>
+
+        <!-- Capture Triggers -->
+        <div class="triggers-section">
+            <h2>Trigger Phrases</h2>
+            <div class="triggers-grid">
+                <div class="trigger-card">
+                    <span class="keyword">idea:</span>
+                    <p>Captures ideas, concepts, possibilities</p>
+                </div>
+                <div class="trigger-card">
+                    <span class="keyword">todo:</span>
+                    <p>Tasks, actions, things to do</p>
+                </div>
+                <div class="trigger-card">
+                    <span class="keyword">note:</span>
+                    <p>General notes, observations, thoughts</p>
+                </div>
+                <div class="trigger-card">
+                    <span class="keyword">remind me...</span>
+                    <p>Time-based reminders</p>
+                </div>
+                <div class="trigger-card">
+                    <span class="keyword">bookmark:</span>
+                    <p>Save for later reference</p>
+                </div>
+                <div class="trigger-card">
+                    <span class="keyword">question:</span>
+                    <p>Open questions to revisit</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Processing Queue -->
+        <div class="queue-section">
+            <h2>Processing Queue</h2>
+            <div class="queue-stats">
+                <div class="queue-stat">
+                    <h4 id="queued-count">0</h4>
+                    <p>Queued</p>
+                </div>
+                <div class="queue-stat">
+                    <h4 id="processing-count">0</h4>
+                    <p>Processing</p>
+                </div>
+                <div class="queue-stat">
+                    <h4 id="completed-count">0</h4>
+                    <p>Completed</p>
+                </div>
+                <div class="queue-stat">
+                    <h4 id">failed-count">0</h4>
+                    <p>Failed</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Captures -->
+        <div class="captures-section">
+            <h2>Recent Captures</h2>
+            <div class="capture-list" id="capture-list">
+                <div class="capture-item note">
+                    <span class="capture-type note">Note</span>
+                    <div class="capture-content">
+                        <div class="capture-text">Natural Capture system deployed to dashboard</div>
+                        <div class="capture-meta">Routed to: system-log</div>
+                    </div>
+                    <span class="capture-time">Just now</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Capture -->
+        <div class="test-section">
+            <h2>Test Capture</h2>
+            <div class="capture-input-wrapper">
+                <input type="text" class="capture-input" id="test-input" placeholder="Try: 'idea: build a sticker business' or 'todo: buy more coffee'">
+                <button class="capture-btn" onclick="testCapture()">CAPTURE</button>
+            </div>
+            <p class="hint">
+                Try phrases like: <code>idea:</code> <code>todo:</code> <code>note:</code> <code>remind me to...</code>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        function testCapture() {
+            const input = document.getElementById('test-input');
+            const text = input.value.trim();
+            if (!text) return;
+
+            // Simple classification
+            let type = 'note';
+            if (text.toLowerCase().startsWith('idea:')) type = 'idea';
+            else if (text.toLowerCase().startsWith('todo:')) type = 'todo';
+            else if (text.toLowerCase().startsWith('remind')) type = 'reminder';
+
+            // Add to list
+            const list = document.getElementById('capture-list');
+            const item = document.createElement('div');
+            item.className = `capture-item ${type}`;
+            item.innerHTML = `
+                <span class="capture-type ${type}">${type}</span>
+                <div class="capture-content">
+                    <div class="capture-text">${text}</div>
+                    <div class="capture-meta">Routed to: ${type === 'todo' ? 'tasks' : 'inbox'}</div>
+                </div>
+                <span class="capture-time">Just now</span>
+            `;
+            list.insertBefore(item, list.firstChild);
+
+            input.value = '';
+        }
+
+        // Enter key to submit
+        document.getElementById('test-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') testCapture();
+        });
+    </script>
+</body>
+</html>
