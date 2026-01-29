@@ -52,7 +52,7 @@ export function registerOnboardCommand(program: Command) {
     .option("--mode <mode>", "Wizard mode: local|remote")
     .option(
       "--auth-choice <choice>",
-      "Auth: setup-token|token|chutes|openai-codex|openai-api-key|openrouter-api-key|ai-gateway-api-key|moonshot-api-key|kimi-code-api-key|synthetic-api-key|venice-api-key|gemini-api-key|zai-api-key|zai-coding-api-key|zhipu-api-key|zhipu-coding-api-key|apiKey|minimax-api|minimax-api-lightning|opencode-zen|skip",
+      "Auth: setup-token|token|chutes|openai-codex|openai-api-key|openrouter-api-key|ai-gateway-api-key|moonshot-api-key|kimi-code-api-key|synthetic-api-key|venice-api-key|gemini-api-key|zai-api-key|zai-coding-api-key|zhipu-api-key|zhipu-coding-api-key|xiaomi-api-key|apiKey|minimax-api|minimax-api-lightning|opencode-zen|skip",
     )
     .option(
       "--token-provider <id>",
@@ -75,6 +75,7 @@ export function registerOnboardCommand(program: Command) {
     .option("--zai-coding-api-key <key>", "Z.AI Coding Plan API key")
     .option("--zhipu-api-key <key>", "Zhipu AI API key")
     .option("--zhipu-coding-api-key <key>", "Zhipu AI Coding Plan API key")
+    .option("--xiaomi-api-key <key>", "Xiaomi API key")
     .option("--minimax-api-key <key>", "MiniMax API key")
     .option("--synthetic-api-key <key>", "Synthetic API key")
     .option("--venice-api-key <key>", "Venice API key")
@@ -128,6 +129,7 @@ export function registerOnboardCommand(program: Command) {
             zaiCodingApiKey: opts.zaiCodingApiKey as string | undefined,
             zhipuApiKey: opts.zhipuApiKey as string | undefined,
             zhipuCodingApiKey: opts.zhipuCodingApiKey as string | undefined,
+            xiaomiApiKey: opts.xiaomiApiKey as string | undefined,
             minimaxApiKey: opts.minimaxApiKey as string | undefined,
             syntheticApiKey: opts.syntheticApiKey as string | undefined,
             veniceApiKey: opts.veniceApiKey as string | undefined,

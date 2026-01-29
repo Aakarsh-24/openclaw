@@ -43,6 +43,7 @@ See [Venice AI](/providers/venice).
 - [Amazon Bedrock](/bedrock)
 - [Z.AI / Zhipu AI (GLM models)](/providers/zai) - International + China, pay-as-you-go + Coding Plan
 - [GLM models](/providers/glm) - Model family overview
+- [Xiaomi](/providers/xiaomi)
 - [MiniMax](/providers/minimax)
 - [Venius (Venice AI, privacy-focused)](/providers/venice)
 - [Ollama (local models)](/providers/ollama)

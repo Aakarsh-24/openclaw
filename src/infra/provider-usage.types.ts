@@ -24,6 +24,7 @@ export type UsageProviderId =
   | "google-antigravity"
   | "minimax"
   | "openai-codex"
+  | "xiaomi"
   | "zai"
   | "zai-coding"
   | "zhipu"

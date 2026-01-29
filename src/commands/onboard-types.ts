@@ -26,6 +26,7 @@ export type AuthChoice =
   | "zai-coding-api-key"
   | "zhipu-api-key"
   | "zhipu-coding-api-key"
+  | "xiaomi-api-key"
   | "minimax-cloud"
   | "minimax"
   | "minimax-api"
@@ -73,6 +74,7 @@ export type OnboardOptions = {
   zaiCodingApiKey?: string;
   zhipuApiKey?: string;
   zhipuCodingApiKey?: string;
+  xiaomiApiKey?: string;
   minimaxApiKey?: string;
   syntheticApiKey?: string;
   veniceApiKey?: string;

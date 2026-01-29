@@ -27,6 +27,8 @@ import {
   applyVeniceProviderConfig,
   applyVercelAiGatewayConfig,
   applyVercelAiGatewayProviderConfig,
+  applyXiaomiConfig,
+  applyXiaomiProviderConfig,
   applyZaiCodingConfig,
   applyZaiCodingProviderConfig,
   applyZaiConfig,
@@ -41,6 +43,7 @@ import {
   SYNTHETIC_DEFAULT_MODEL_REF,
   VENICE_DEFAULT_MODEL_REF,
   VERCEL_AI_GATEWAY_DEFAULT_MODEL_REF,
+  XIAOMI_DEFAULT_MODEL_REF,
   setGeminiApiKey,
   setKimiCodeApiKey,
   setMoonshotApiKey,
@@ -49,6 +52,7 @@ import {
   setSyntheticApiKey,
   setVeniceApiKey,
   setVercelAiGatewayApiKey,
+  setXiaomiApiKey,
   setZaiApiKey,
   setZaiCodingApiKey,
   setZhipuApiKey,
@@ -98,6 +102,8 @@ export async function applyAuthChoiceApiProviders(
       authChoice = "zhipu-api-key";
     } else if (params.opts.tokenProvider === "zhipu-coding") {
       authChoice = "zhipu-coding-api-key";
+    } else if (params.opts.tokenProvider === "xiaomi") {
+      authChoice = "xiaomi-api-key";
     } else if (params.opts.tokenProvider === "synthetic") {
       authChoice = "synthetic-api-key";
     } else if (params.opts.tokenProvider === "venice") {
@@ -586,6 +592,54 @@ export async function applyAuthChoiceApiProviders(
         applyDefaultConfig: applyZhipuCodingConfig,
         applyProviderConfig: applyZhipuCodingProviderConfig,
         noteDefault: ZHIPU_CODING_DEFAULT_MODEL_REF,
+        noteAgentModel,
+        prompter: params.prompter,
+      });
+      nextConfig = applied.config;
+      agentModelOverride = applied.agentModelOverride ?? agentModelOverride;
+    }
+    return { config: nextConfig, agentModelOverride };
+  }
+
+  if (authChoice === "xiaomi-api-key") {
+    let hasCredential = false;
+
+    if (!hasCredential && params.opts?.token && params.opts?.tokenProvider === "xiaomi") {
+      await setXiaomiApiKey(normalizeApiKeyInput(params.opts.token), params.agentDir);
+      hasCredential = true;
+    }
+
+    const envKey = resolveEnvApiKey("xiaomi");
+    if (envKey) {
+      const useExisting = await params.prompter.confirm({
+        message: `Use existing XIAOMI_API_KEY (${envKey.source}, ${formatApiKeyPreview(envKey.apiKey)})?`,
+        initialValue: true,
+      });
+      if (useExisting) {
+        await setXiaomiApiKey(envKey.apiKey, params.agentDir);
+        hasCredential = true;
+      }
+    }
+    if (!hasCredential) {
+      const key = await params.prompter.text({
+        message: "Enter Xiaomi API key",
+        validate: validateApiKeyInput,
+      });
+      await setXiaomiApiKey(normalizeApiKeyInput(String(key)), params.agentDir);
+    }
+    nextConfig = applyAuthProfileConfig(nextConfig, {
+      profileId: "xiaomi:default",
+      provider: "xiaomi",
+      mode: "api_key",
+    });
+    {
+      const applied = await applyDefaultModelChoice({
+        config: nextConfig,
+        setDefaultModel: params.setDefaultModel,
+        defaultModel: XIAOMI_DEFAULT_MODEL_REF,
+        applyDefaultConfig: applyXiaomiConfig,
+        applyProviderConfig: applyXiaomiProviderConfig,
+        noteDefault: XIAOMI_DEFAULT_MODEL_REF,
         noteAgentModel,
         prompter: params.prompter,
       });

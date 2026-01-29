@@ -17,6 +17,7 @@ export type AuthChoiceGroupId =
   | "moonshot"
   | "zai"
   | "zhipu"
+  | "xiaomi"
   | "opencode-zen"
   | "minimax"
   | "synthetic"
@@ -115,6 +116,12 @@ const AUTH_CHOICE_GROUP_DEFS: {
     choices: ["zhipu-api-key", "zhipu-coding-api-key"],
   },
   {
+    value: "xiaomi",
+    label: "Xiaomi",
+    hint: "API key",
+    choices: ["xiaomi-api-key"],
+  },
+  {
     value: "opencode-zen",
     label: "OpenCode Zen",
     hint: "API key",
@@ -181,6 +188,10 @@ export function buildAuthChoiceOptions(params: {
     value: "zhipu-coding-api-key",
     label: "Zhipu AI Coding Plan API key",
     hint: "China mainland, subscription-based",
+  });
+  options.push({
+    value: "xiaomi-api-key",
+    label: "Xiaomi API key",
   });
   options.push({ value: "qwen-portal", label: "Qwen OAuth" });
   options.push({
