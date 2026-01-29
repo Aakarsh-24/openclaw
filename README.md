@@ -1,22 +1,79 @@
-# 🦞 Moltbot — Personal AI Assistant
+# 🦞 Crayfish — Moltbot 中文版
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/moltbot/moltbot/main/docs/whatsapp-clawd.jpg" alt="Clawdbot" width="400">
+  <strong>小龙虾 —— 个人 AI 助手</strong>
 </p>
 
 <p align="center">
-  <strong>EXFOLIATE! EXFOLIATE!</strong>
+  Moltbot 中文维护分支 | 国内服务适配 | 持续汉化中
 </p>
 
-<p align="center">
-  <a href="https://github.com/moltbot/moltbot/actions/workflows/ci.yml?branch=main"><img src="https://img.shields.io/github/actions/workflow/status/moltbot/moltbot/ci.yml?branch=main&style=for-the-badge" alt="CI status"></a>
-  <a href="https://github.com/moltbot/moltbot/releases"><img src="https://img.shields.io/github/v/release/moltbot/moltbot?include_prereleases&style=for-the-badge" alt="GitHub release"></a>
-  <a href="https://deepwiki.com/moltbot/moltbot"><img src="https://img.shields.io/badge/DeepWiki-moltbot-111111?style=for-the-badge" alt="DeepWiki"></a>
-  <a href="https://discord.gg/clawd"><img src="https://img.shields.io/discord/1456350064065904867?label=Discord&logo=discord&logoColor=white&color=5865F2&style=for-the-badge" alt="Discord"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge" alt="MIT License"></a>
-</p>
+> 本项目是 [Moltbot](https://github.com/moltbot/moltbot) 的中文分支，致力于为国内用户提供更好的使用体验。
 
-**Moltbot** is a *personal AI assistant* you run on your own devices.
+## 快速开始
+
+```bash
+# 克隆本项目
+git clone https://github.com/BlackBearCC/crayfish.git
+cd crayfish
+
+# 安装依赖
+pnpm install
+
+# 构建
+pnpm build
+
+# 启动引导
+pnpm moltbot onboard --install-daemon
+```
+
+## 主要特性
+
+- ✅ **国内模型支持** - 适配 MiniMax、硅基流动等国产模型
+- ✅ **汉化完善** - 文档、界面、错误信息全面汉化
+- ✅ **国内服务集成** - 适配国内 API 服务
+- ✅ **持续同步** - 定期同步上游更新
+
+## 安装
+
+```bash
+# 全局安装
+pnpm add -g crayfish
+
+# 启动
+crayfish onboard --install-daemon
+```
+
+## 文档
+
+- [中文文档 (建设中)](https://docs.crayfish.cn)
+- [上游文档](https://docs.molt.bot)
+- [常见问题](docs/faq.md)
+
+## 参与贡献
+
+欢迎提交 Issue 和 PR！
+
+1. Fork 本项目
+2. 创建分支 (`git checkout -b feature/xxx`)
+3. 提交更改 (`git commit -am '添加新功能'`)
+4. 推送到分支 (`git push origin feature/xxx`)
+5. 创建 Pull Request
+
+## 交流群
+
+- GitHub Issues: https://github.com/BlackBearCC/crayfish/issues
+- QQ群: 123456789 (筹备中)
+- 微信群: 扫码加入 (筹备中)
+
+## 与上游区别
+
+| 特性 | 上游 Moltbot | 本项目 (Crayfish) |
+|------|-------------|-------------------|
+| 模型 | OpenAI/Anthropic | + MiniMax/国产模型 |
+| 文档 | 英文 | 中文为主 |
+| 服务 | 国外为主 | 国内优先 |
+| 社区 | Discord | QQ群/微信群(筹备中) |
 It answers you on the channels you already use (WhatsApp, Telegram, Slack, Discord, Google Chat, Signal, iMessage, Microsoft Teams, WebChat), plus extension channels like BlueBubbles, Matrix, Zalo, and Zalo Personal. It can speak and listen on macOS/iOS/Android, and can render a live Canvas you control. The Gateway is just the control plane — the product is the assistant.
 
 If you want a personal, single-user assistant that feels local, fast, and always-on, this is it.
