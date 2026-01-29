@@ -498,13 +498,10 @@ export function renderApp(state: AppViewState) {
               assistantName: state.assistantName,
               assistantAvatar: state.assistantAvatar,
               // Delete session (disabled for main session)
-              showDeleteConfirm: state.chatDeleteConfirm,
               isMainSession:
                 state.sessionKey === "main" ||
                 parseAgentSessionKey(state.sessionKey)?.rest === "main",
-              onDeleteClick: () => (state.chatDeleteConfirm = true),
-              onDeleteConfirm: async () => {
-                state.chatDeleteConfirm = false;
+              onDelete: async () => {
                 const { deleteSession } = await import("./controllers/sessions");
                 await deleteSession(state as Parameters<typeof deleteSession>[0], state.sessionKey);
                 // Switch to main session after deletion
@@ -517,7 +514,6 @@ export function renderApp(state: AppViewState) {
                 });
                 void loadChatHistory(state);
               },
-              onDeleteCancel: () => (state.chatDeleteConfirm = false),
             })
           : nothing}
 
