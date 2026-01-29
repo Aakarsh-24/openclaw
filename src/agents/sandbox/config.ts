@@ -1,4 +1,5 @@
 import type { MoltbotConfig } from "../../config/config.js";
+import { logInfo } from "../../logger.js";
 import { resolveAgentConfig } from "../agent-scope.js";
 import {
   DEFAULT_SANDBOX_BROWSER_AUTOSTART_TIMEOUT_MS,
@@ -138,17 +139,27 @@ export function resolveSandboxConfigForAgent(cfg?: MoltbotConfig, agentId?: stri
 
   const toolPolicy = resolveSandboxToolPolicyForAgent(cfg, agentId);
 
+  const dockerConfig = resolveSandboxDockerConfig({
+    scope,
+    globalDocker: agent?.docker,
+    agentDocker: agentSandbox?.docker,
+  });
+
+  // SECURITY: Log warning if network is explicitly enabled
+  if (dockerConfig.network && dockerConfig.network !== "none") {
+    logInfo(
+      `[security] Sandbox network enabled (${dockerConfig.network}) for agent ${agentId ?? "default"}. ` +
+        "Consider using network=none for better isolation."
+    );
+  }
+
   return {
     mode: agentSandbox?.mode ?? agent?.mode ?? "off",
     scope,
     workspaceAccess: agentSandbox?.workspaceAccess ?? agent?.workspaceAccess ?? "none",
     workspaceRoot:
       agentSandbox?.workspaceRoot ?? agent?.workspaceRoot ?? DEFAULT_SANDBOX_WORKSPACE_ROOT,
-    docker: resolveSandboxDockerConfig({
-      scope,
-      globalDocker: agent?.docker,
-      agentDocker: agentSandbox?.docker,
-    }),
+    docker: dockerConfig,
     browser: resolveSandboxBrowserConfig({
       scope,
       globalBrowser: agent?.browser,
@@ -164,4 +175,69 @@ export function resolveSandboxConfigForAgent(cfg?: MoltbotConfig, agentId?: stri
       agentPrune: agentSandbox?.prune,
     }),
   };
+}
+
+/**
+ * SECURITY: Sandbox security validation types and functions.
+ */
+export type SandboxSecurityWarning = {
+  code: string;
+  message: string;
+  severity: "info" | "warn" | "critical";
+};
+
+/**
+ * SECURITY: Validate sandbox configuration for potential security issues.
+ */
+export function validateSandboxSecurity(config: SandboxConfig): SandboxSecurityWarning[] {
+  const warnings: SandboxSecurityWarning[] = [];
+
+  // Check network isolation
+  if (config.docker.network && config.docker.network !== "none") {
+    warnings.push({
+      code: "sandbox.network_enabled",
+      message: `Sandbox has network access (${config.docker.network}). ` +
+        "This allows the sandboxed agent to make network requests.",
+      severity: "warn",
+    });
+  }
+
+  // Check if root filesystem is writable
+  if (config.docker.readOnlyRoot === false) {
+    warnings.push({
+      code: "sandbox.writable_root",
+      message: "Sandbox root filesystem is writable. Consider enabling readOnlyRoot.",
+      severity: "warn",
+    });
+  }
+
+  // Check if all capabilities are dropped
+  if (!config.docker.capDrop || !config.docker.capDrop.includes("ALL")) {
+    warnings.push({
+      code: "sandbox.capabilities_not_dropped",
+      message: "Sandbox may retain Linux capabilities. Consider capDrop: ['ALL'].",
+      severity: "warn",
+    });
+  }
+
+  // Check workspace access level
+  if (config.workspaceAccess === "rw") {
+    warnings.push({
+      code: "sandbox.workspace_rw",
+      message: "Sandbox has read-write access to workspace. " +
+        "Consider 'ro' (read-only) if writes aren't needed.",
+      severity: "info",
+    });
+  }
+
+  // Check browser host control
+  if (config.browser.allowHostControl) {
+    warnings.push({
+      code: "sandbox.browser_host_control",
+      message: "Sandbox can control host browser. This bypasses sandbox isolation for browser actions.",
+      severity: "warn",
+    });
+  }
+
+  return warnings;
 }
