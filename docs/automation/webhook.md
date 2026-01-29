@@ -98,8 +98,40 @@ Mapping options (summary):
   (`channel` defaults to `last` and falls back to WhatsApp).
 - `allowUnsafeExternalContent: true` disables the external content safety wrapper for that hook
   (dangerous; only for trusted internal sources).
+- `cleanup: "delete"` automatically deletes the session and transcript after the hook completes.
+  Use `cleanupDelayMinutes` to delay cleanup for debugging or auditing.
 - `moltbot webhooks gmail setup` writes `hooks.gmail` config for `moltbot webhooks gmail run`.
 See [Gmail Pub/Sub](/automation/gmail-pubsub) for the full Gmail watch flow.
+
+### Session Cleanup
+
+By default, webhook hook sessions persist indefinitely. For fire-and-forget webhooks where session history has no value after completion, use the `cleanup` option:
+
+```json
+{
+  "hooks": {
+    "mappings": [{
+      "match": { "path": "gmail" },
+      "action": "agent",
+      "sessionKey": "hook:gmail:{{messages[0].id}}",
+      "cleanup": "delete",
+      "cleanupDelayMinutes": 5
+    }]
+  }
+}
+```
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `cleanup` | `"delete"` \| `"keep"` | `"keep"` | Whether to delete session + transcript after completion |
+| `cleanupDelayMinutes` | `number` | `0` | Minutes to wait before cleanup (allows debugging/auditing) |
+
+When `cleanup: "delete"` is set:
+- The session entry is removed from `sessions.json`
+- The transcript `.jsonl` file is deleted
+- Cleanup runs asynchronously via a sweeper (every 60 seconds)
+- If `cleanupDelayMinutes` is set, cleanup is delayed by that many minutes
+- Failed cleanups are automatically retried on the next sweep
 
 ## Responses
 
