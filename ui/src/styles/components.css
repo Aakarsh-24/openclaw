@@ -1370,14 +1370,18 @@
 }
 
 @media (max-width: 480px) {
+  .chat-compose__row {
+    flex-direction: column;
+  }
+
   .chat-compose__actions {
     gap: 4px;
+    justify-content: flex-end;
   }
 
   .chat-compose__actions .btn {
     padding: 4px 8px;
     font-size: 13px;
-    flex-shrink: 0;
   }
 
   .chat-compose__actions .btn-kbd {

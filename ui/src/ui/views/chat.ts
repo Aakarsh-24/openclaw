@@ -367,7 +367,7 @@ export function renderChat(props: ChatProps) {
             ${props.onDelete
               ? html`
                   <button
-                    class="btn danger"
+                    class="btn"
                     ?disabled=${!props.connected || isBusy || props.isMainSession}
                     @click=${() => {
                       if (confirm(`Delete session "${props.sessionKey}"?`)) {
