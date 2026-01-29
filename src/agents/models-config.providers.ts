@@ -293,9 +293,9 @@ function buildKimiCodeProvider(): ProviderConfig {
     models: [
       {
         id: KIMI_CODE_MODEL_ID,
-        name: "Kimi For Coding",
+        name: "Kimi-K2.5",
         reasoning: true,
-        input: ["text"],
+        input: ["text,image"],
         cost: KIMI_CODE_DEFAULT_COST,
         contextWindow: KIMI_CODE_CONTEXT_WINDOW,
         maxTokens: KIMI_CODE_MAX_TOKENS,
