@@ -79,3 +79,4 @@ memory/code-index/
 # Copilot agent settings
 .github/prompts/
 /.vs
+/memory/codebase-index
