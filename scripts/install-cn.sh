@@ -158,7 +158,40 @@ ensure_git() {
     if check_cmd git; then
         return 0
     fi
-    echo -e "${ERROR}请先安装 Git"
+    
+    echo -e "${INFO}未检测到 Git，正在尝试自动安装..."
+    
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        if check_cmd brew; then
+            echo -e "${INFO}使用 Homebrew 安装 Git..."
+            brew install git
+            return 0
+        elif check_cmd xcode-select; then
+            echo -e "${INFO}触发 Xcode 命令行工具安装..."
+            xcode-select --install || true
+            # xcode-select 只是触发弹窗，通常需要用户手动完成，或者脚本暂停等待
+            echo -e "${WARN}请在弹出的窗口中完成安装后，再次运行此脚本。"
+            exit 1
+        fi
+    elif [[ -f /etc/debian_version ]]; then
+        echo -e "${INFO}使用 apt 安装 Git..."
+        sudo apt-get update && sudo apt-get install -y git
+        return 0
+    elif [[ -f /etc/redhat-release ]]; then
+        echo -e "${INFO}使用 yum/dnf 安装 Git..."
+        if check_cmd dnf; then
+            sudo dnf install -y git
+        else
+            sudo yum install -y git
+        fi
+        return 0
+    elif [[ -f /etc/alpine-release ]]; then
+        echo -e "${INFO}使用 apk 安装 Git..."
+        sudo apk add git
+        return 0
+    fi
+
+    echo -e "${ERROR}无法自动安装 Git，请手动安装后重试。"
     exit 1
 }
 
