@@ -68,11 +68,15 @@ Status: stable.
 - Docs: credit both contributors for Control UI refresh. (#1852) Thanks @EnzeD.
 - Docs: keep docs header sticky so navbar stays visible while scrolling. (#2445) Thanks @chenyuan99.
 - Docs: update exe.dev install instructions. (#https://github.com/openclaw/openclaw/pull/3047) Thanks @zackerthescar.
+- Build: skip redundant UI install step in the Dockerfile. (#4584) Thanks @obviyus.
 ### Breaking
 - **BREAKING:** Gateway auth mode "none" is removed; gateway now requires token/password (Tailscale Serve identity still allowed).
 
 ### Fixes
+- Telegram: use undici fetch for per-account proxy dispatcher. (#4456) Thanks @spiceoogway.
+- Telegram: fix HTML nesting for overlapping styles and links. (#4578) Thanks @ThanhNguyxn.
 - Telegram: avoid silent empty replies by tracking normalization skips before fallback. (#3796)
+- Telegram: accept numeric messageId/chatId in react action and honor channelId fallback. (#4533) Thanks @Ayush10.
 - Telegram: scope native skill commands to bound agent per bot. (#4360) Thanks @robhparker.
 - Mentions: honor mentionPatterns even when explicit mentions are present. (#3303) Thanks @HirokiKobayashi-R.
 - Discord: restore username directory lookup in target resolution. (#3131) Thanks @bonald.
