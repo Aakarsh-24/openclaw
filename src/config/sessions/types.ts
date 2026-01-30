@@ -58,13 +58,13 @@ export type SessionEntry = {
   groupActivationNeedsSystemIntro?: boolean;
   sendPolicy?: "allow" | "deny";
   queueMode?:
-  | "steer"
-  | "followup"
-  | "collect"
-  | "steer-backlog"
-  | "steer+backlog"
-  | "queue"
-  | "interrupt";
+    | "steer"
+    | "followup"
+    | "collect"
+    | "steer-backlog"
+    | "steer+backlog"
+    | "queue"
+    | "interrupt";
   queueDebounceMs?: number;
   queueCap?: number;
   queueDrop?: "old" | "new" | "summarize";

@@ -174,13 +174,13 @@ export async function runEmbeddedAttempt(
       : [];
     restoreSkillEnv = params.skillsSnapshot
       ? applySkillEnvOverridesFromSnapshot({
-        snapshot: params.skillsSnapshot,
-        config: params.config,
-      })
+          snapshot: params.skillsSnapshot,
+          config: params.config,
+        })
       : applySkillEnvOverrides({
-        skills: skillEntries ?? [],
-        config: params.config,
-      });
+          skills: skillEntries ?? [],
+          config: params.config,
+        });
 
     const skillsPrompt = resolveSkillsPromptForRun({
       skillsSnapshot: params.skillsSnapshot,
@@ -211,37 +211,37 @@ export async function runEmbeddedAttempt(
     const rawToolsUnwrapped = params.disableTools
       ? []
       : createOpenClawCodingTools({
-        exec: {
-          ...params.execOverrides,
-          elevated: params.bashElevated,
-        },
-        sandbox,
-        messageProvider: params.messageChannel ?? params.messageProvider,
-        agentAccountId: params.agentAccountId,
-        messageTo: params.messageTo,
-        messageThreadId: params.messageThreadId,
-        groupId: params.groupId,
-        groupChannel: params.groupChannel,
-        groupSpace: params.groupSpace,
-        spawnedBy: params.spawnedBy,
-        senderId: params.senderId,
-        senderName: params.senderName,
-        senderUsername: params.senderUsername,
-        senderE164: params.senderE164,
-        sessionKey: params.sessionKey ?? params.sessionId,
-        agentDir,
-        workspaceDir: effectiveWorkspace,
-        config: params.config,
-        abortSignal: runAbortController.signal,
-        modelProvider: params.model.provider,
-        modelId: params.modelId,
-        modelAuthMode: resolveModelAuthMode(params.model.provider, params.config),
-        currentChannelId: params.currentChannelId,
-        currentThreadTs: params.currentThreadTs,
-        replyToMode: params.replyToMode,
-        hasRepliedRef: params.hasRepliedRef,
-        modelHasVision,
-      });
+          exec: {
+            ...params.execOverrides,
+            elevated: params.bashElevated,
+          },
+          sandbox,
+          messageProvider: params.messageChannel ?? params.messageProvider,
+          agentAccountId: params.agentAccountId,
+          messageTo: params.messageTo,
+          messageThreadId: params.messageThreadId,
+          groupId: params.groupId,
+          groupChannel: params.groupChannel,
+          groupSpace: params.groupSpace,
+          spawnedBy: params.spawnedBy,
+          senderId: params.senderId,
+          senderName: params.senderName,
+          senderUsername: params.senderUsername,
+          senderE164: params.senderE164,
+          sessionKey: params.sessionKey ?? params.sessionId,
+          agentDir,
+          workspaceDir: effectiveWorkspace,
+          config: params.config,
+          abortSignal: runAbortController.signal,
+          modelProvider: params.model.provider,
+          modelId: params.modelId,
+          modelAuthMode: resolveModelAuthMode(params.model.provider, params.config),
+          currentChannelId: params.currentChannelId,
+          currentThreadTs: params.currentThreadTs,
+          replyToMode: params.replyToMode,
+          hasRepliedRef: params.hasRepliedRef,
+          modelHasVision,
+        });
     // Wrap tools with Hipocap analysis and tracing
     const toolsRaw = rawToolsUnwrapped.map((tool) => ({
       ...tool,
@@ -249,9 +249,16 @@ export async function runEmbeddedAttempt(
         const userQuery = params.prompt || "(empty prompt)";
 
         // 1. Pre-execution analysis (on tool arguments)
-        const inputAnalysis = await analyzeToolCall(tool.name, toolParams, null, userQuery, "assistant", {
-          config: params.config,
-        });
+        const inputAnalysis = await analyzeToolCall(
+          tool.name,
+          toolParams,
+          null,
+          userQuery,
+          "assistant",
+          {
+            config: params.config,
+          },
+        );
 
         if (!inputAnalysis.safe) {
           log.warn(
@@ -293,9 +300,16 @@ export async function runEmbeddedAttempt(
 
         // 3. Post-execution analysis (on tool results)
         // Pass both parameters and result for full context analysis
-        const outputAnalysis = await analyzeToolCall(tool.name, toolParams, result, userQuery, "assistant", {
-          config: params.config,
-        });
+        const outputAnalysis = await analyzeToolCall(
+          tool.name,
+          toolParams,
+          result,
+          userQuery,
+          "assistant",
+          {
+            config: params.config,
+          },
+        );
 
         if (!outputAnalysis.safe) {
           log.warn(
@@ -321,7 +335,9 @@ export async function runEmbeddedAttempt(
           // Ensure details reflect the advisory
           if (result && typeof result === "object") {
             result.details = {
-              ...(result.details || {}),
+              ...(typeof result.details === "object" && result.details !== null
+                ? result.details
+                : {}),
               security_advisory: true,
               security_reason: outputAnalysis.reason,
               phase: "output",
@@ -340,10 +356,10 @@ export async function runEmbeddedAttempt(
     const runtimeChannel = normalizeMessageChannel(params.messageChannel ?? params.messageProvider);
     let runtimeCapabilities = runtimeChannel
       ? (resolveChannelCapabilities({
-        cfg: params.config,
-        channel: runtimeChannel,
-        accountId: params.agentAccountId,
-      }) ?? [])
+          cfg: params.config,
+          channel: runtimeChannel,
+          accountId: params.agentAccountId,
+        }) ?? [])
       : undefined;
     if (runtimeChannel === "telegram" && params.config) {
       const inlineButtonsScope = resolveTelegramInlineButtonsScope({
@@ -362,24 +378,24 @@ export async function runEmbeddedAttempt(
     const reactionGuidance =
       runtimeChannel && params.config
         ? (() => {
-          if (runtimeChannel === "telegram") {
-            const resolved = resolveTelegramReactionLevel({
-              cfg: params.config,
-              accountId: params.agentAccountId ?? undefined,
-            });
-            const level = resolved.agentReactionGuidance;
-            return level ? { level, channel: "Telegram" } : undefined;
-          }
-          if (runtimeChannel === "signal") {
-            const resolved = resolveSignalReactionLevel({
-              cfg: params.config,
-              accountId: params.agentAccountId ?? undefined,
-            });
-            const level = resolved.agentReactionGuidance;
-            return level ? { level, channel: "Signal" } : undefined;
-          }
-          return undefined;
-        })()
+            if (runtimeChannel === "telegram") {
+              const resolved = resolveTelegramReactionLevel({
+                cfg: params.config,
+                accountId: params.agentAccountId ?? undefined,
+              });
+              const level = resolved.agentReactionGuidance;
+              return level ? { level, channel: "Telegram" } : undefined;
+            }
+            if (runtimeChannel === "signal") {
+              const resolved = resolveSignalReactionLevel({
+                cfg: params.config,
+                accountId: params.agentAccountId ?? undefined,
+              });
+              const level = resolved.agentReactionGuidance;
+              return level ? { level, channel: "Signal" } : undefined;
+            }
+            return undefined;
+          })()
         : undefined;
     const { defaultAgentId, sessionAgentId } = resolveSessionAgentIds({
       sessionKey: params.sessionKey,
@@ -390,16 +406,16 @@ export async function runEmbeddedAttempt(
     // Resolve channel-specific message actions for system prompt
     const channelActions = runtimeChannel
       ? listChannelSupportedActions({
-        cfg: params.config,
-        channel: runtimeChannel,
-      })
+          cfg: params.config,
+          channel: runtimeChannel,
+        })
       : undefined;
     const messageToolHints = runtimeChannel
       ? resolveChannelMessageToolHints({
-        cfg: params.config,
-        channel: runtimeChannel,
-        accountId: params.agentAccountId,
-      })
+          cfg: params.config,
+          channel: runtimeChannel,
+          accountId: params.agentAccountId,
+        })
       : undefined;
 
     const defaultModelRef = resolveDefaultModelForAgent({
@@ -541,8 +557,8 @@ export async function runEmbeddedAttempt(
       let clientToolCallDetected: { name: string; params: Record<string, unknown> } | null = null;
       const clientToolDefs = params.clientTools
         ? toClientToolDefinitions(params.clientTools, (toolName, toolParams) => {
-          clientToolCallDetected = { name: toolName, params: toolParams };
-        })
+            clientToolCallDetected = { name: toolName, params: toolParams };
+          })
         : [];
 
       const allCustomTools = [...customTools, ...clientToolDefs];
@@ -828,7 +844,7 @@ export async function runEmbeddedAttempt(
           activeSession.agent.replaceMessages(sessionContext.messages);
           log.warn(
             `Removed orphaned user message to prevent consecutive user turns. ` +
-            `runId=${params.runId} sessionId=${params.sessionId}`,
+              `runId=${params.runId} sessionId=${params.sessionId}`,
           );
         }
 
@@ -934,7 +950,9 @@ export async function runEmbeddedAttempt(
               });
 
               if (imageResult.images.length > 0) {
-                await abortable(activeSession.prompt(effectivePrompt, { images: imageResult.images }));
+                await abortable(
+                  activeSession.prompt(effectivePrompt, { images: imageResult.images }),
+                );
               } else {
                 await abortable(activeSession.prompt(effectivePrompt));
               }

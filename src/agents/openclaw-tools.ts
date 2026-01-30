@@ -57,11 +57,11 @@ export function createOpenClawTools(options?: {
 }): AnyAgentTool[] {
   const imageTool = options?.agentDir?.trim()
     ? createImageTool({
-      config: options?.config,
-      agentDir: options.agentDir,
-      sandboxRoot: options?.sandboxRoot,
-      modelHasVision: options?.modelHasVision,
-    })
+        config: options?.config,
+        agentDir: options.agentDir,
+        sandboxRoot: options?.sandboxRoot,
+        modelHasVision: options?.modelHasVision,
+      })
     : null;
   const webSearchTool = createWebSearchTool({
     config: options?.config,

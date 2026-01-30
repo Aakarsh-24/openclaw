@@ -68,9 +68,9 @@ export async function applySessionsPatchToStore(params: {
   const existing = store[storeKey];
   const next: SessionEntry = existing
     ? {
-      ...existing,
-      updatedAt: Math.max(existing.updatedAt ?? 0, now),
-    }
+        ...existing,
+        updatedAt: Math.max(existing.updatedAt ?? 0, now),
+      }
     : { sessionId: randomUUID(), updatedAt: now };
 
   if ("spawnedBy" in patch) {

@@ -198,10 +198,10 @@ export async function runOnboardingWizard(
     const bindRaw = baseConfig.gateway?.bind;
     const bind =
       bindRaw === "loopback" ||
-        bindRaw === "lan" ||
-        bindRaw === "auto" ||
-        bindRaw === "custom" ||
-        bindRaw === "tailnet"
+      bindRaw === "lan" ||
+      bindRaw === "auto" ||
+      bindRaw === "custom" ||
+      bindRaw === "tailnet"
         ? bindRaw
         : "loopback";
 
@@ -255,23 +255,23 @@ export async function runOnboardingWizard(
     };
     const quickstartLines = quickstartGateway.hasExisting
       ? [
-        "Keeping your current gateway settings:",
-        `Gateway port: ${quickstartGateway.port}`,
-        `Gateway bind: ${formatBind(quickstartGateway.bind)}`,
-        ...(quickstartGateway.bind === "custom" && quickstartGateway.customBindHost
-          ? [`Gateway custom IP: ${quickstartGateway.customBindHost}`]
-          : []),
-        `Gateway auth: ${formatAuth(quickstartGateway.authMode)}`,
-        `Tailscale exposure: ${formatTailscale(quickstartGateway.tailscaleMode)}`,
-        "Direct to chat channels.",
-      ]
+          "Keeping your current gateway settings:",
+          `Gateway port: ${quickstartGateway.port}`,
+          `Gateway bind: ${formatBind(quickstartGateway.bind)}`,
+          ...(quickstartGateway.bind === "custom" && quickstartGateway.customBindHost
+            ? [`Gateway custom IP: ${quickstartGateway.customBindHost}`]
+            : []),
+          `Gateway auth: ${formatAuth(quickstartGateway.authMode)}`,
+          `Tailscale exposure: ${formatTailscale(quickstartGateway.tailscaleMode)}`,
+          "Direct to chat channels.",
+        ]
       : [
-        `Gateway port: ${DEFAULT_GATEWAY_PORT}`,
-        "Gateway bind: Loopback (127.0.0.1)",
-        "Gateway auth: Token (default)",
-        "Tailscale exposure: Off",
-        "Direct to chat channels.",
-      ];
+          `Gateway port: ${DEFAULT_GATEWAY_PORT}`,
+          "Gateway bind: Loopback (127.0.0.1)",
+          "Gateway auth: Token (default)",
+          "Tailscale exposure: Off",
+          "Direct to chat channels.",
+        ];
     await prompter.note(quickstartLines.join("\n"), "QuickStart");
   }
 
@@ -285,9 +285,9 @@ export async function runOnboardingWizard(
   const remoteUrl = baseConfig.gateway?.remote?.url?.trim() ?? "";
   const remoteProbe = remoteUrl
     ? await probeGatewayReachable({
-      url: remoteUrl,
-      token: baseConfig.gateway?.remote?.token,
-    })
+        url: remoteUrl,
+        token: baseConfig.gateway?.remote?.token,
+      })
     : null;
 
   const mode =
@@ -295,26 +295,26 @@ export async function runOnboardingWizard(
     (flow === "quickstart"
       ? "local"
       : ((await prompter.select({
-        message: "What do you want to set up?",
-        options: [
-          {
-            value: "local",
-            label: "Local gateway (this machine)",
-            hint: localProbe.ok
-              ? `Gateway reachable (${localUrl})`
-              : `No gateway detected (${localUrl})`,
-          },
-          {
-            value: "remote",
-            label: "Remote gateway (info-only)",
-            hint: !remoteUrl
-              ? "No remote URL configured yet"
-              : remoteProbe?.ok
-                ? `Gateway reachable (${remoteUrl})`
-                : `Configured but unreachable (${remoteUrl})`,
-          },
-        ],
-      })) as OnboardMode));
+          message: "What do you want to set up?",
+          options: [
+            {
+              value: "local",
+              label: "Local gateway (this machine)",
+              hint: localProbe.ok
+                ? `Gateway reachable (${localUrl})`
+                : `No gateway detected (${localUrl})`,
+            },
+            {
+              value: "remote",
+              label: "Remote gateway (info-only)",
+              hint: !remoteUrl
+                ? "No remote URL configured yet"
+                : remoteProbe?.ok
+                  ? `Gateway reachable (${remoteUrl})`
+                  : `Configured but unreachable (${remoteUrl})`,
+            },
+          ],
+        })) as OnboardMode));
 
   if (mode === "remote") {
     let nextConfig = await promptRemoteGatewayConfig(baseConfig, prompter);
@@ -330,9 +330,9 @@ export async function runOnboardingWizard(
     (flow === "quickstart"
       ? (baseConfig.agents?.defaults?.workspace ?? DEFAULT_WORKSPACE)
       : await prompter.text({
-        message: "Workspace directory",
-        initialValue: baseConfig.agents?.defaults?.workspace ?? DEFAULT_WORKSPACE,
-      }));
+          message: "Workspace directory",
+          initialValue: baseConfig.agents?.defaults?.workspace ?? DEFAULT_WORKSPACE,
+        }));
 
   const workspaceDir = resolveUserPath(workspaceInput.trim() || DEFAULT_WORKSPACE);
 
@@ -409,8 +409,8 @@ export async function runOnboardingWizard(
     const quickstartAllowFromChannels =
       flow === "quickstart"
         ? listChannelPlugins()
-          .filter((plugin) => plugin.meta.quickstartAllowFrom)
-          .map((plugin) => plugin.id)
+            .filter((plugin) => plugin.meta.quickstartAllowFrom)
+            .map((plugin) => plugin.id)
         : [];
     nextConfig = await setupChannels(nextConfig, runtime, prompter, {
       allowSignalInstall: true,
@@ -434,11 +434,10 @@ export async function runOnboardingWizard(
   }
 
   // Setup Hipocap AI Security
-  nextConfig = await setupHipocap(nextConfig, runtime, prompter);
+  nextConfig = await setupHipocap(nextConfig, prompter);
 
   // Setup hooks (session memory on /new)
   nextConfig = await setupInternalHooks(nextConfig, runtime, prompter);
-
 
   nextConfig = applyWizardMetadata(nextConfig, { command: "onboard", mode });
   await writeConfigFile(nextConfig);
