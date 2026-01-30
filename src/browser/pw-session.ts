@@ -98,8 +98,9 @@ const MAX_CONSOLE_MESSAGES = 500;
 const MAX_PAGE_ERRORS = 200;
 const MAX_NETWORK_REQUESTS = 500;
 
-let cached: ConnectedBrowser | null = null;
-let connecting: Promise<ConnectedBrowser> | null = null;
+// Per-profile caching to allow parallel connections to different Chrome instances
+const cachedByUrl = new Map<string, ConnectedBrowser>();
+const connectingByUrl = new Map<string, Promise<ConnectedBrowser>>();
 
 function normalizeCdpUrl(raw: string) {
   return raw.replace(/\/$/, "");
@@ -281,8 +282,14 @@ function observeBrowser(browser: Browser) {
 
 async function connectBrowser(cdpUrl: string): Promise<ConnectedBrowser> {
   const normalized = normalizeCdpUrl(cdpUrl);
-  if (cached?.cdpUrl === normalized) return cached;
-  if (connecting) return await connecting;
+
+  // Check if we already have a cached connection for this specific URL
+  const cached = cachedByUrl.get(normalized);
+  if (cached) return cached;
+
+  // Check if there's already a connection in progress for this specific URL
+  const existingConnecting = connectingByUrl.get(normalized);
+  if (existingConnecting) return await existingConnecting;
 
   const connectWithRetry = async (): Promise<ConnectedBrowser> => {
     let lastErr: unknown;
@@ -294,10 +301,12 @@ async function connectBrowser(cdpUrl: string): Promise<ConnectedBrowser> {
         const headers = getHeadersWithAuth(endpoint);
         const browser = await chromium.connectOverCDP(endpoint, { timeout, headers });
         const connected: ConnectedBrowser = { browser, cdpUrl: normalized };
-        cached = connected;
+        cachedByUrl.set(normalized, connected);
         observeBrowser(browser);
         browser.on("disconnected", () => {
-          if (cached?.browser === browser) cached = null;
+          if (cachedByUrl.get(normalized)?.browser === browser) {
+            cachedByUrl.delete(normalized);
+          }
         });
         return connected;
       } catch (err) {
@@ -313,11 +322,12 @@ async function connectBrowser(cdpUrl: string): Promise<ConnectedBrowser> {
     throw new Error(message);
   };
 
-  connecting = connectWithRetry().finally(() => {
-    connecting = null;
+  const connectingPromise = connectWithRetry().finally(() => {
+    connectingByUrl.delete(normalized);
   });
+  connectingByUrl.set(normalized, connectingPromise);
 
-  return await connecting;
+  return await connectingPromise;
 }
 
 async function getAllPages(browser: Browser): Promise<Page[]> {
@@ -450,10 +460,11 @@ export function refLocator(page: Page, ref: string) {
 }
 
 export async function closePlaywrightBrowserConnection(): Promise<void> {
-  const cur = cached;
-  cached = null;
-  if (!cur) return;
-  await cur.browser.close().catch(() => {});
+  // Close all cached browser connections
+  const connections = Array.from(cachedByUrl.values());
+  cachedByUrl.clear();
+  connectingByUrl.clear();
+  await Promise.all(connections.map((c) => c.browser.close().catch(() => {})));
 }
 
 /**
