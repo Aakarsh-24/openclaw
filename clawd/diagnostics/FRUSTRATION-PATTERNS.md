@@ -204,6 +204,38 @@
 
 ---
 
+### Pattern #11: Model Handoff Blind Spots (Sonnet → Opus)
+**Date:** 2026-01-30
+**Incident:** Sonnet's "Complete Systems Fix" plan missed the PRIMARY APEX file
+**Frustration Level:** HIGH
+**Context:** User escalated Sonnet's plan to Opus for supervisory review
+
+**What happened:**
+- Sonnet created a comprehensive systems fix plan
+- Plan identified 10 files needing version updates to v6.3.3
+- Plan **MISSED** the most critical file: `/home/liam/clawd/apex-vault/APEX_COMPACT.md`
+- This is the PRIMARY file LIAM loads (referenced in SOUL.md)
+- If executed as-is: All references would say v6.3.3, but LIAM would run v6.3.2 rules
+- New Core Laws (End-to-End Trace, Complete Propagation) would NOT be enforced
+- **Irony**: Plan violated the very "Complete Propagation" rule we just created
+
+**Root cause:** 
+- `grep -r` found version strings but not the canonical source
+- Sonnet prioritized speed over completeness
+- No verification that "primary source" was included
+
+**APEX Rule Violated:** "Complete Propagation" - When updating a concept, find ALL locations first
+
+**APEX Update Needed:**
+- New instinct: "Version update → Find CANONICAL source first, then references"
+- Verification step: "Is the PRIMARY/SOURCE file included, not just references?"
+- Cross-model review should be standard for critical system changes
+
+**Metacognition:**
+This incident demonstrates why supervisory review by a different model is valuable - different models have different blind spots. Sonnet is fast and capable but may miss "obvious" connections that Opus catches through deeper analysis.
+
+---
+
 ## Historical Patterns Summary
 
 | # | Pattern | Occurrences | Severity | Status |
@@ -218,6 +250,7 @@
 | 8 | Identity amnesia | 1 | CRITICAL | FIXED (code) |
 | 9 | Requiring proof (trust erosion) | ongoing | MEDIUM | CONSEQUENCE |
 | 10 | Neurodivergent communication | 2+ | CRITICAL | EXISTS (not enforced) |
+| 11 | Model handoff blind spots | 1 | HIGH | NEW - needs verification protocol |
 
 ---
 
@@ -295,4 +328,4 @@ Based on pattern analysis, the following additions are recommended:
 
 *This file is the source of truth for improving AI-human collaboration.*
 *Every frustration is data. Every pattern is an opportunity to improve APEX.*
-*Updated: 2026-01-30*
+*Updated: 2026-01-30 (Pattern #11 added - Sonnet/Opus handoff incident)*

@@ -605,4 +605,4 @@ To enable Tier 1/2 supervision, moltbot needs:
 
 ---
 
-*Supervisor Skill v2.0 | Tier 3 Active with Verification Compliance, Trust Ladder, Staging Review | APEX v6.2.0 Compliant | January 29, 2026*
+*Supervisor Skill v2.0 | Tier 3 Active with Verification Compliance, Trust Ladder, Staging Review | APEX v6.3.3 Compliant | January 29, 2026*
