@@ -42,7 +42,7 @@ const XIAOMI_DEFAULT_COST = {
 };
 
 const NEBIUS_BASE_URL = "https://api.tokenfactory.nebius.com/v1";
-const NEBIUS_DEFAULT_MODEL_ID = "Qwen/Qwen3-32B-fast";
+export const NEBIUS_DEFAULT_MODEL_ID = "Qwen/Qwen3-32B-fast";
 const NEBIUS_DEFAULT_CONTEXT_WINDOW = 128000;
 const NEBIUS_DEFAULT_MAX_TOKENS = 8192;
 const NEBIUS_DEFAULT_COST = {
