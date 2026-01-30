@@ -116,7 +116,23 @@ check_cmd() {
     command -v "$1" >/dev/null 2>&1
 }
 
+# 辅助函数：以 root 权限运行命令
+run_root() {
+    if [[ $EUID -eq 0 ]]; then
+        "$@"
+    elif check_cmd sudo; then
+        sudo "$@"
+    else
+        echo -e "${ERROR}需要 root 权限执行此操作，但未检测到 sudo。请以 root 用户运行脚本或安装 sudo。"
+        exit 1
+    fi
+}
+
 ensure_node() {
+    # 尝试加载 nvm (如果用户安装了但没在 PATH 中)
+    export NVM_DIR="$HOME/.nvm"
+    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
     if check_cmd node; then
         local ver
         ver=$(node -v | cut -d. -f1 | tr -d 'v')
@@ -126,16 +142,57 @@ ensure_node() {
         echo -e "${WARN}Node.js 版本过低 (检测到 v${ver})，需要 v18+"
     fi
 
-    echo -e "${INFO}正在安装 Node.js (使用 nvm)..."
-    # 这里可以使用 nvm 或其他方式安装，为简化起见，提示用户手动安装或尝试自动安装
+    echo -e "${INFO}未检测到 Node.js v18+，正在尝试自动安装..."
+
+    # macOS
     if [[ "$OSTYPE" == "darwin"* ]]; then
          if check_cmd brew; then
+             echo -e "${INFO}使用 Homebrew 安装 Node.js..."
              brew install node
              return 0
          fi
+         # 尝试安装 nvm
+         echo -e "${INFO}尝试安装 nvm..."
+         curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+         export NVM_DIR="$HOME/.nvm"
+         [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+         if check_cmd nvm; then
+             nvm install 20
+             nvm alias default 20
+             return 0
+         fi
+    
+    # Linux
+    elif [[ -f /etc/debian_version ]]; then
+        echo -e "${INFO}检测到 Debian/Ubuntu，使用 NodeSource 安装 Node.js v20..."
+        if ! check_cmd curl; then 
+            run_root apt-get update && run_root apt-get install -y curl
+        fi
+        curl -fsSL https://deb.nodesource.com/setup_20.x | run_root bash -
+        run_root apt-get install -y nodejs build-essential
+        return 0
+    elif [[ -f /etc/redhat-release ]]; then
+        echo -e "${INFO}检测到 CentOS/RedHat，使用 NodeSource 安装 Node.js v20..."
+        if ! check_cmd curl; then 
+            if check_cmd dnf; then run_root dnf install -y curl; else run_root yum install -y curl; fi
+        fi
+        curl -fsSL https://rpm.nodesource.com/setup_20.x | run_root bash -
+        if check_cmd dnf; then
+            run_root dnf install -y nodejs
+            # 尝试安装构建工具，失败不阻断
+            run_root dnf groupinstall -y "Development Tools" || true
+        else
+            run_root yum install -y nodejs
+            run_root yum groupinstall -y "Development Tools" || true
+        fi
+        return 0
+    elif [[ -f /etc/alpine-release ]]; then
+        echo -e "${INFO}检测到 Alpine，安装 Node.js..."
+        run_root apk add nodejs npm make g++
+        return 0
     fi
     
-    echo -e "${ERROR}请先安装 Node.js v18+ 环境"
+    echo -e "${ERROR}无法自动安装 Node.js，请手动安装 v18+ 后重试。"
     exit 1
 }
 
