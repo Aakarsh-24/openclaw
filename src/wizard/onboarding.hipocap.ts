@@ -35,8 +35,8 @@ export async function setupHipocap(
     initialValue: false,
   });
 
-  let serverUrl = config.hipocap?.serverUrl || "http://localhost:8006";
-  let observabilityUrl = config.hipocap?.observabilityUrl || "http://localhost:8000";
+  let serverUrl = config.hipocap?.serverUrl || "http://127.0.0.1:8006";
+  let observabilityUrl = config.hipocap?.observabilityUrl || "http://127.0.0.1:8000";
   let defaultPolicy = config.hipocap?.defaultPolicy || "default";
   let defaultShield = config.hipocap?.defaultShield || "jailbreak";
 
