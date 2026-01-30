@@ -64,7 +64,7 @@ import { log } from "./logger.js";
 import { buildModelAliasLines, resolveModel } from "./model.js";
 import { buildEmbeddedSandboxInfo } from "./sandbox-info.js";
 import { prewarmSessionFile, trackSessionManagerAccess } from "./session-manager-cache.js";
-import { buildEmbeddedSystemPrompt } from "./system-prompt.js";
+import { buildEmbeddedSystemPrompt, createSystemPromptOverride } from "./system-prompt.js";
 import { splitSdkTools } from "./tool-split.js";
 import type { EmbeddedPiCompactResult } from "./types.js";
 import { formatUserTime, resolveUserTimeFormat, resolveUserTimezone } from "../date-time.js";
@@ -348,6 +348,7 @@ export async function compactEmbeddedPiSessionDirect(
       userTimeFormat,
       contextFiles,
     });
+    const systemPrompt = createSystemPromptOverride(appendPrompt);
 
     const sessionLock = await acquireSessionWriteLock({
       sessionFile: params.sessionFile,
@@ -388,7 +389,7 @@ export async function compactEmbeddedPiSessionDirect(
         cwd: resolvedWorkspace,
         agentDir,
         settingsManager,
-        systemPromptOverride: (_base) => appendPrompt,
+        systemPromptOverride: (_) => systemPrompt(_ ?? ""),
         agentsFilesOverride: (current) => ({
           agentsFiles: [
             ...current.agentsFiles,
