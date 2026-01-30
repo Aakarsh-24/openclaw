@@ -87,7 +87,6 @@ const cursorMcpPlugin = {
           .action(async (opts) => {
             const {
               checkCursorProxyHealth,
-              generateCursorProviderConfig,
               CURSOR_AVAILABLE_MODELS,
               CURSOR_SETUP_INSTRUCTIONS,
             } = await import("./src/cursor-models.js");
@@ -111,8 +110,7 @@ const cursorMcpPlugin = {
               return;
             }
 
-            // Generate and apply config
-            const configPatch = generateCursorProviderConfig({ baseUrl: opts.url });
+            // Show configuration instructions
             console.log("\nTo use Cursor models, add this to your OpenClaw config:\n");
             console.log("```yaml");
             console.log("models:");
