@@ -1,4 +1,4 @@
-import type { MoltbotConfig } from "../config/config.js";
+import type { OpenClawConfig } from "../config/config.js";
 
 export {
   hasBinary,
@@ -14,7 +14,7 @@ export {
   applySkillEnvOverridesFromSnapshot,
 } from "./skills/env-overrides.js";
 export type {
-  MoltbotSkillMetadata,
+  OpenClawSkillMetadata,
   SkillEligibilityContext,
   SkillCommandSpec,
   SkillEntry,
@@ -39,7 +39,7 @@ export {
   type PlatformInfo,
 } from "./skills/dependency-manager.js";
 
-export function resolveSkillsInstallPreferences(config?: MoltbotConfig) {
+export function resolveSkillsInstallPreferences(config?: OpenClawConfig) {
   const raw = config?.skills?.install;
   const preferBrew = raw?.preferBrew ?? true;
   const managerRaw = typeof raw?.nodeManager === "string" ? raw.nodeManager.trim() : "";
