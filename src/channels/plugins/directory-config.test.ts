@@ -31,10 +31,10 @@ describe("directory (config-backed)", () => {
       limit: null,
     });
     expect(peers?.map((e) => e.id).sort()).toEqual([
-      "user:u123",
-      "user:u234",
-      "user:u777",
-      "user:u999",
+      "user:U123",
+      "user:U234",
+      "user:U777",
+      "user:U999",
     ]);
 
     const groups = await listSlackDirectoryGroupsFromConfig({
@@ -43,7 +43,7 @@ describe("directory (config-backed)", () => {
       query: null,
       limit: null,
     });
-    expect(groups?.map((e) => e.id)).toEqual(["channel:c111"]);
+    expect(groups?.map((e) => e.id)).toEqual(["channel:C111"]);
   });
 
   it("lists Discord peers/groups from config (numeric ids only)", async () => {
