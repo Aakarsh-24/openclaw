@@ -131,6 +131,8 @@ export function resolveFailoverReasonFromError(err: unknown): FailoverReason | n
   if (status === 429) return "rate_limit";
   if (status === 401 || status === 403) return "auth";
   if (status === 408) return "timeout";
+  // 5xx server errors - transient provider failures that should trigger fallback
+  if (status && status >= 500 && status < 600) return "timeout";
 
   const code = (getErrorCode(err) ?? "").toUpperCase();
   // Network error codes that should trigger fallback (classified as timeout for retry)

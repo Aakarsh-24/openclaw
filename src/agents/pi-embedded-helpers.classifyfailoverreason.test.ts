@@ -38,4 +38,32 @@ describe("classifyFailoverReason", () => {
       "rate_limit",
     );
   });
+
+  it("classifies 5xx server errors as timeout for fallback", () => {
+    expect(classifyFailoverReason('500 "Internal Server Error"')).toBe("timeout");
+    expect(classifyFailoverReason("502 Bad Gateway")).toBe("timeout");
+    expect(classifyFailoverReason("503 Service Unavailable")).toBe("timeout");
+    expect(classifyFailoverReason("504 Gateway Timeout")).toBe("timeout");
+    expect(classifyFailoverReason("internal server error")).toBe("timeout");
+    expect(classifyFailoverReason("bad gateway")).toBe("timeout");
+    expect(classifyFailoverReason("service unavailable")).toBe("timeout");
+  });
+
+  it("classifies model unavailable errors as timeout for fallback", () => {
+    expect(classifyFailoverReason("model not found")).toBe("timeout");
+    expect(classifyFailoverReason("model is loading")).toBe("timeout");
+    expect(classifyFailoverReason("model unavailable")).toBe("timeout");
+    expect(classifyFailoverReason("model does not exist")).toBe("timeout");
+    expect(classifyFailoverReason("no such model")).toBe("timeout");
+    expect(classifyFailoverReason("model is currently unavailable")).toBe("timeout");
+  });
+
+  it("classifies capacity errors as rate_limit for backoff", () => {
+    expect(classifyFailoverReason("no available workers")).toBe("rate_limit");
+    expect(classifyFailoverReason("capacity exceeded")).toBe("rate_limit");
+    expect(classifyFailoverReason("queue full")).toBe("rate_limit");
+    expect(classifyFailoverReason("server is busy")).toBe("rate_limit");
+    expect(classifyFailoverReason("all workers are busy")).toBe("rate_limit");
+    expect(classifyFailoverReason("temporarily unavailable")).toBe("rate_limit");
+  });
 });

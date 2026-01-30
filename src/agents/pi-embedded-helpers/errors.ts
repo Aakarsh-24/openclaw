@@ -396,6 +396,40 @@ const ERROR_PATTERNS = {
     "messages.1.content.1.tool_use.id",
     "invalid request format",
   ],
+  // 5xx server errors - transient provider failures that should trigger fallback
+  serverError: [
+    /\b500\b/,
+    /\b502\b/,
+    /\b503\b/,
+    /\b504\b/,
+    "internal server error",
+    "bad gateway",
+    "service unavailable",
+    "gateway timeout",
+    "server error",
+  ],
+  // Model availability errors - provider can't load the model, try another
+  modelUnavailable: [
+    "model not found",
+    "model not available",
+    "model is loading",
+    "model unavailable",
+    "model does not exist",
+    "no such model",
+    "model is currently unavailable",
+    "model is not ready",
+  ],
+  // Provider capacity errors - different from rate limits, provider is overloaded
+  capacityError: [
+    "capacity exceeded",
+    "no available workers",
+    "queue full",
+    "server is busy",
+    "all workers are busy",
+    "no capacity",
+    "temporarily unavailable",
+    "try again later",
+  ],
 } as const;
 
 const IMAGE_DIMENSION_ERROR_RE =
@@ -443,6 +477,18 @@ export function isAuthErrorMessage(raw: string): boolean {
 
 export function isOverloadedErrorMessage(raw: string): boolean {
   return matchesErrorPatterns(raw, ERROR_PATTERNS.overloaded);
+}
+
+export function isServerErrorMessage(raw: string): boolean {
+  return matchesErrorPatterns(raw, ERROR_PATTERNS.serverError);
+}
+
+export function isModelUnavailableMessage(raw: string): boolean {
+  return matchesErrorPatterns(raw, ERROR_PATTERNS.modelUnavailable);
+}
+
+export function isCapacityErrorMessage(raw: string): boolean {
+  return matchesErrorPatterns(raw, ERROR_PATTERNS.capacityError);
 }
 
 export function parseImageDimensionError(raw: string): {
@@ -517,6 +563,12 @@ export function classifyFailoverReason(raw: string): FailoverReason | null {
   if (isNetworkErrorMessage(raw)) return "timeout";
   // Context overflow should trigger fallback to larger-context models
   if (isContextOverflowError(raw)) return "timeout";
+  // 5xx server errors - transient provider failures, retry with fallback
+  if (isServerErrorMessage(raw)) return "timeout";
+  // Model unavailable - provider can't serve this model, try another
+  if (isModelUnavailableMessage(raw)) return "timeout";
+  // Capacity errors - provider overloaded but not rate-limited
+  if (isCapacityErrorMessage(raw)) return "rate_limit";
   return null;
 }
 
