@@ -143,11 +143,12 @@ export class SearchableSelectList implements Component {
     for (const token of uniqueTokens) {
       // CRITICAL FIX: Skip ANSI escape sequences to avoid breaking color codes
       // Split text into ANSI and visible parts, only highlight visible parts
+      // eslint-disable-next-line no-control-regex -- intentional: matching ANSI escape sequences
       const ansiRegex = /\x1b\[[0-9;]*m/g;
       const parts: Array<{ text: string; isAnsi: boolean }> = [];
       let lastIndex = 0;
       let match: RegExpExecArray | null;
-      
+
       while ((match = ansiRegex.exec(text)) !== null) {
         if (match.index > lastIndex) {
           parts.push({ text: text.slice(lastIndex, match.index), isAnsi: false });
@@ -158,7 +159,7 @@ export class SearchableSelectList implements Component {
       if (lastIndex < text.length) {
         parts.push({ text: text.slice(lastIndex), isAnsi: false });
       }
-      
+
       // Only highlight in non-ANSI parts
       const regex = this.getCachedRegex(token);
       result = parts
@@ -168,7 +169,7 @@ export class SearchableSelectList implements Component {
           return part.text.replace(regex, (m) => this.theme.matchHighlight(m));
         })
         .join("");
-      
+
       // Update text for next token iteration
       text = result;
     }
@@ -233,7 +234,7 @@ export class SearchableSelectList implements Component {
   private ensureLineWidth(text: string, width: number): string {
     // Use pi-tui's visibleWidth for accurate measurement
     const currentWidth = visibleWidth(text);
-    
+
     if (currentWidth <= width) {
       return text;
     }
@@ -273,9 +274,7 @@ export class SearchableSelectList implements Component {
         const truncatedDesc = truncateToWidth(item.description, remainingWidth, "");
         // Highlight first, then apply theme - avoids breaking ANSI codes
         const highlightedDesc = this.highlightMatch(truncatedDesc, query);
-        const descText = isSelected
-          ? highlightedDesc
-          : this.theme.description(highlightedDesc);
+        const descText = isSelected ? highlightedDesc : this.theme.description(highlightedDesc);
         const line = `${prefix}${valueText}${spacing}${descText}`;
         const rendered = isSelected ? this.theme.selectedText(line) : line;
         return this.ensureLineWidth(rendered, width);
