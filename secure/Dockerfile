@@ -23,8 +23,8 @@ RUN npm run build
 # Production image
 FROM node:22-slim AS runner
 
-# Security: Run as non-root user
-RUN useradd -m -u 1000 -s /bin/bash assurebot
+# Security: Run as non-root user (use different UID since 1000 exists)
+RUN useradd -m -u 1001 -s /bin/bash assurebot
 
 WORKDIR /app
 
