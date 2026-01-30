@@ -72,7 +72,10 @@ Status: stable.
 - **BREAKING:** Gateway auth mode "none" is removed; gateway now requires token/password (Tailscale Serve identity still allowed).
 
 ### Fixes
+- Telegram: use undici fetch for per-account proxy dispatcher. (#4456) Thanks @spiceoogway.
 - Telegram: avoid silent empty replies by tracking normalization skips before fallback. (#3796)
+- Telegram: accept numeric messageId/chatId in react action and honor channelId fallback. (#4533) Thanks @Ayush10.
+- Telegram: scope native skill commands to bound agent per bot. (#4360) Thanks @robhparker.
 - Mentions: honor mentionPatterns even when explicit mentions are present. (#3303) Thanks @HirokiKobayashi-R.
 - Discord: restore username directory lookup in target resolution. (#3131) Thanks @bonald.
 - Agents: align MiniMax base URL test expectation with default provider config. (#3131) Thanks @bonald.
