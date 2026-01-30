@@ -53,6 +53,8 @@ export async function checkInboundAccessControl(params: {
   const groupAllowFrom =
     account.groupAllowFrom ??
     (configuredAllowFrom && configuredAllowFrom.length > 0 ? configuredAllowFrom : undefined);
+  const groupContextFromAll =
+    account.groupContextFromAll ?? cfg.channels?.whatsapp?.groupContextFromAll ?? false;
   const isSamePhone = params.from === params.selfE164;
   const isSelfChat = isSelfChatMode(params.selfE164, configuredAllowFrom);
   const pairingGraceMs =
@@ -107,12 +109,24 @@ export async function checkInboundAccessControl(params: {
       groupHasWildcard ||
       (params.senderE164 != null && normalizedGroupAllowFrom.includes(params.senderE164));
     if (!senderAllowed) {
+      if (groupContextFromAll) {
+        logVerbose(
+          `Group message from ${params.senderE164 ?? "unknown sender"} not in groupAllowFrom (storing for context)`,
+        );
+        return {
+          allowed: false,
+          storeForContext: true,
+          shouldMarkRead: false,
+          isSelfChat,
+          resolvedAccountId: account.accountId,
+        };
+      }
       logVerbose(
-        `Group message from ${params.senderE164 ?? "unknown sender"} not in groupAllowFrom (storing for context)`,
+        `Blocked group message from ${params.senderE164 ?? "unknown sender"} (groupPolicy: allowlist)`,
       );
       return {
         allowed: false,
-        storeForContext: true,
+        storeForContext: false,
         shouldMarkRead: false,
         isSelfChat,
         resolvedAccountId: account.accountId,

@@ -47,6 +47,12 @@ export type WhatsAppConfig = {
    * - "allowlist": only allow group messages from senders in groupAllowFrom/allowFrom
    */
   groupPolicy?: GroupPolicy;
+  /**
+   * When true, messages from group members not in groupAllowFrom are still
+   * stored as pending context (visible in "[Chat messages since your last reply]")
+   * even though they cannot trigger a reply. Default: false (old behavior: drop entirely).
+   */
+  groupContextFromAll?: boolean;
   /** Max group messages to keep as history context (0 disables). */
   historyLimit?: number;
   /** Max DM turns to keep as history context. */
@@ -118,6 +124,8 @@ export type WhatsAppAccountConfig = {
   allowFrom?: string[];
   groupAllowFrom?: string[];
   groupPolicy?: GroupPolicy;
+  /** Store context from non-allowlisted group senders (default: false). */
+  groupContextFromAll?: boolean;
   /** Max group messages to keep as history context (0 disables). */
   historyLimit?: number;
   /** Max DM turns to keep as history context. */
