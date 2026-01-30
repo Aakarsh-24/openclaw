@@ -14,7 +14,9 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [toolsExpanded, setToolsExpanded] = useState(false);
 
   return (
-    <SettingsContext.Provider value={{ showThinking, setShowThinking, toolsExpanded, setToolsExpanded }}>
+    <SettingsContext.Provider
+      value={{ showThinking, setShowThinking, toolsExpanded, setToolsExpanded }}
+    >
       {children}
     </SettingsContext.Provider>
   );

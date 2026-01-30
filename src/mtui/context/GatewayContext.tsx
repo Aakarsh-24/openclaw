@@ -4,14 +4,13 @@ import type { TuiOptions } from "../../tui/tui-types.js";
 
 const GatewayContext = createContext<GatewayChatClient | null>(null);
 
-export const GatewayProvider: React.FC<{ options: TuiOptions; children: React.ReactNode }> = ({ options, children }) => {
+export const GatewayProvider: React.FC<{ options: TuiOptions; children: React.ReactNode }> = ({
+  options,
+  children,
+}) => {
   const client = useMemo(() => new GatewayChatClient(options), [options]);
-  
-  return (
-    <GatewayContext.Provider value={client}>
-      {children}
-    </GatewayContext.Provider>
-  );
+
+  return <GatewayContext.Provider value={client}>{children}</GatewayContext.Provider>;
 };
 
 export const useGateway = () => {

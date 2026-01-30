@@ -30,25 +30,37 @@ export const MessageView: React.FC<MessageViewProps> = ({ message }) => {
             </Box>
             {showThinking && (
               <Box paddingLeft={2} borderStyle="single" borderColor="gray">
-                <Text italic dimColor>{message.thinking}</Text>
+                <Text italic dimColor>
+                  {message.thinking}
+                </Text>
               </Box>
             )}
           </Box>
         )}
-        
+
         {renderContent(message.content)}
-        
+
         {message.tools && message.tools.length > 0 && (
           <Box flexDirection="column" marginTop={1}>
             {message.tools.map((tool) => (
-              <Box key={tool.id} flexDirection="column" borderStyle="round" borderColor="gray" paddingX={1} marginBottom={1}>
-                <Text bold color="cyan">Tool: {tool.name}</Text>
+              <Box
+                key={tool.id}
+                flexDirection="column"
+                borderStyle="round"
+                borderColor="gray"
+                paddingX={1}
+                marginBottom={1}
+              >
+                <Text bold color="cyan">
+                  Tool: {tool.name}
+                </Text>
                 <Text dimColor>Args: {JSON.stringify(tool.args)}</Text>
                 {tool.isStreaming && <Text color="yellow">Running...</Text>}
                 {tool.result && (
                   <Box marginTop={1}>
                     <Text color={tool.isError ? "red" : "gray"}>
-                      Result: {typeof tool.result === "string" ? tool.result : JSON.stringify(tool.result)}
+                      Result:{" "}
+                      {typeof tool.result === "string" ? tool.result : JSON.stringify(tool.result)}
                     </Text>
                   </Box>
                 )}

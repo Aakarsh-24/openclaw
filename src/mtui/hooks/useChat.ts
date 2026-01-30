@@ -32,7 +32,7 @@ export const useChat = (initialSessionKey: string) => {
 
   const refreshSessionInfo = useCallback(async () => {
     try {
-      const statusRes = await gateway.getStatus() as any;
+      const statusRes = (await gateway.getStatus()) as any;
       if (statusRes?.sessions?.recent) {
         const current = statusRes.sessions.recent.find((s: any) => s.key === sessionKey);
         if (current) {
@@ -61,15 +61,23 @@ export const useChat = (initialSessionKey: string) => {
             const last = prev[prev.length - 1];
             if (last && last.id === payload.runId) {
               return [
-                ...prev.slice(0, -1), 
-                { 
-                  ...last, 
-                  content: last.content + (content || ""), 
-                  thinking: last.thinking + (thinking || "") 
-                }
+                ...prev.slice(0, -1),
+                {
+                  ...last,
+                  content: last.content + (content || ""),
+                  thinking: last.thinking + (thinking || ""),
+                },
               ];
             }
-            return [...prev, { id: payload.runId, role: "assistant", content: content || "", thinking: thinking || "" }];
+            return [
+              ...prev,
+              {
+                id: payload.runId,
+                role: "assistant",
+                content: content || "",
+                thinking: thinking || "",
+              },
+            ];
           });
           setStatus("streaming");
         } else if (payload.state === "final") {
@@ -81,16 +89,25 @@ export const useChat = (initialSessionKey: string) => {
             const last = prev[prev.length - 1];
             if (last && last.id === payload.runId) {
               return [
-                ...prev.slice(0, -1), 
-                { 
-                  ...last, 
-                  content: content || last.content, 
+                ...prev.slice(0, -1),
+                {
+                  ...last,
+                  content: content || last.content,
                   thinking: thinking || last.thinking,
-                  isFinal: true 
-                }
+                  isFinal: true,
+                },
               ];
             }
-            return [...prev, { id: payload.runId, role: "assistant", content: content || "", thinking: thinking || "", isFinal: true }];
+            return [
+              ...prev,
+              {
+                id: payload.runId,
+                role: "assistant",
+                content: content || "",
+                thinking: thinking || "",
+                isFinal: true,
+              },
+            ];
           });
           setActiveRunId(null);
           setStatus("idle");
@@ -105,22 +122,33 @@ export const useChat = (initialSessionKey: string) => {
         if (payload.stream === "tool") {
           const data = payload.data as any;
           const { phase, toolCallId, name: toolName } = data;
-          
+
           setMessages((prev) => {
             const last = prev[prev.length - 1];
             if (!last || last.role !== "assistant") return prev;
-            
+
             const tools = last.tools || [];
             let nextTools = [...tools];
-            
+
             if (phase === "start") {
-              nextTools.push({ id: toolCallId, name: toolName, args: data.args, isStreaming: true });
+              nextTools.push({
+                id: toolCallId,
+                name: toolName,
+                args: data.args,
+                isStreaming: true,
+              });
             } else if (phase === "update") {
-              nextTools = nextTools.map(t => t.id === toolCallId ? { ...t, result: data.partialResult } : t);
+              nextTools = nextTools.map((t) =>
+                t.id === toolCallId ? { ...t, result: data.partialResult } : t,
+              );
             } else if (phase === "result") {
-              nextTools = nextTools.map(t => t.id === toolCallId ? { ...t, result: data.result, isError: data.isError, isStreaming: false } : t);
+              nextTools = nextTools.map((t) =>
+                t.id === toolCallId
+                  ? { ...t, result: data.result, isError: data.isError, isStreaming: false }
+                  : t,
+              );
             }
-            
+
             return [...prev.slice(0, -1), { ...last, tools: nextTools }];
           });
         }
@@ -136,14 +164,14 @@ export const useChat = (initialSessionKey: string) => {
 
   const loadHistory = useCallback(async () => {
     try {
-      const history = await gateway.loadHistory({ sessionKey, limit: 100 }) as any;
+      const history = (await gateway.loadHistory({ sessionKey, limit: 100 })) as any;
       if (Array.isArray(history?.messages)) {
         const msgs = history.messages.map((m: any) => ({
           id: m.id || Math.random().toString(),
           role: m.role,
           content: extractContentFromMessage(m) || "",
           thinking: extractThinkingFromMessage(m) || "",
-          isFinal: true
+          isFinal: true,
         }));
         setMessages(msgs);
       }
@@ -152,12 +180,26 @@ export const useChat = (initialSessionKey: string) => {
     }
   }, [gateway, sessionKey]);
 
-  const sendMessage = useCallback(async (text: string) => {
-    addMessage({ id: Math.random().toString(), role: "user", content: text });
-    setStatus("running");
-    const { runId } = await gateway.sendChat({ sessionKey, message: text });
-    setActiveRunId(runId);
-  }, [gateway, sessionKey, addMessage]);
+  const sendMessage = useCallback(
+    async (text: string) => {
+      addMessage({ id: Math.random().toString(), role: "user", content: text });
+      setStatus("running");
+      const { runId } = await gateway.sendChat({ sessionKey, message: text });
+      setActiveRunId(runId);
+    },
+    [gateway, sessionKey, addMessage],
+  );
 
-  return { messages, status, sendMessage, addMessage, sessionInfo, sessionKey, setSessionKey, refreshSessionInfo, loadHistory, activeRunId };
+  return {
+    messages,
+    status,
+    sendMessage,
+    addMessage,
+    sessionInfo,
+    sessionKey,
+    setSessionKey,
+    refreshSessionInfo,
+    loadHistory,
+    activeRunId,
+  };
 };

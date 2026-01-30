@@ -19,25 +19,27 @@ const ChatApp: React.FC<{ options: TuiOptions }> = ({ options }) => {
   const { exit } = useApp();
   const gateway = useGateway();
   const { showThinking, setShowThinking } = useSettings();
-  const [connectionStatus, setConnectionStatus] = useState<"connecting" | "connected" | "disconnected">("connecting");
+  const [connectionStatus, setConnectionStatus] = useState<
+    "connecting" | "connected" | "disconnected"
+  >("connecting");
   const [error, setError] = useState<string | null>(null);
   const [overlay, setOverlay] = useState<{ type: "model" | "agent"; items: any[] } | null>(null);
-  
-  const { 
-    messages, 
-    status, 
-    sendMessage, 
-    addMessage, 
-    sessionInfo, 
-    sessionKey, 
+
+  const {
+    messages,
+    status,
+    sendMessage,
+    addMessage,
+    sessionInfo,
+    sessionKey,
     refreshSessionInfo,
-    loadHistory
+    loadHistory,
   } = useChat(options.session || "main");
 
   const { handleLocalShell, handleSlashCommand } = useCommands(
-    sessionKey, 
-    addMessage, 
-    refreshSessionInfo
+    sessionKey,
+    addMessage,
+    refreshSessionInfo,
   );
 
   useEffect(() => {
@@ -65,9 +67,12 @@ const ChatApp: React.FC<{ options: TuiOptions }> = ({ options }) => {
     } else if (value.startsWith("/")) {
       if (value === "/model") {
         const models = await gateway.listModels();
-        setOverlay({ 
-          type: "model", 
-          items: models.map(m => ({ label: `${m.provider}/${m.id}`, value: `${m.provider}/${m.id}` })) 
+        setOverlay({
+          type: "model",
+          items: models.map((m) => ({
+            label: `${m.provider}/${m.id}`,
+            value: `${m.provider}/${m.id}`,
+          })),
         });
       } else {
         await handleSlashCommand(value);
@@ -93,31 +98,48 @@ const ChatApp: React.FC<{ options: TuiOptions }> = ({ options }) => {
     total: sessionInfo.totalTokens,
     context: sessionInfo.contextTokens,
     remaining: (sessionInfo.contextTokens ?? 0) - (sessionInfo.totalTokens ?? 0),
-    percent: sessionInfo.totalTokens && sessionInfo.contextTokens ? (sessionInfo.totalTokens / sessionInfo.contextTokens) * 100 : null
+    percent:
+      sessionInfo.totalTokens && sessionInfo.contextTokens
+        ? (sessionInfo.totalTokens / sessionInfo.contextTokens) * 100
+        : null,
   });
 
   return (
     <Box flexDirection="column" padding={1} minHeight={20}>
       <Box borderStyle="round" borderColor="cyan" paddingX={1} marginBottom={1}>
-        <Text bold color="white">Moltbot MTUI</Text>
+        <Text bold color="white">
+          Moltbot MTUI
+        </Text>
         <Box flexGrow={1} />
         <Box paddingX={2}>
           <Text dimColor>{sessionInfo.model || "no model"}</Text>
         </Box>
-        <Text color={connectionStatus === "connected" ? "green" : connectionStatus === "connecting" ? "yellow" : "red"}>
+        <Text
+          color={
+            connectionStatus === "connected"
+              ? "green"
+              : connectionStatus === "connecting"
+                ? "yellow"
+                : "red"
+          }
+        >
           {connectionStatus === "connecting" && <Spinner type="dots" />} {connectionStatus}
         </Text>
       </Box>
 
       {overlay ? (
         <Box flexGrow={1} justifyContent="center" alignItems="center">
-          <Selector 
+          <Selector
             title={`Select ${overlay.type}`}
             items={overlay.items}
             onSelect={async (item) => {
               if (overlay.type === "model") {
                 await gateway.patchSession({ key: sessionKey, model: item.value });
-                addMessage({ id: Math.random().toString(), role: "system", content: `Model set to ${item.value}` });
+                addMessage({
+                  id: Math.random().toString(),
+                  role: "system",
+                  content: `Model set to ${item.value}`,
+                });
                 await refreshSessionInfo();
               }
               setOverlay(null);
@@ -137,7 +159,9 @@ const ChatApp: React.FC<{ options: TuiOptions }> = ({ options }) => {
 
       {status === "running" && !overlay && (
         <Box paddingX={1} marginBottom={1}>
-          <Text color="yellow"><Spinner type="dots" /> Assistant is thinking...</Text>
+          <Text color="yellow">
+            <Spinner type="dots" /> Assistant is thinking...
+          </Text>
         </Box>
       )}
 
@@ -154,7 +178,7 @@ const ChatApp: React.FC<{ options: TuiOptions }> = ({ options }) => {
           </Box>
 
           <InputBar onSubmit={handleSubmit} status={status} />
-          
+
           <Box paddingX={1} marginTop={1}>
             <Text dimColor>Ctrl+C exit | Ctrl+T think | /model | /reset | !ls</Text>
           </Box>

@@ -19,7 +19,9 @@ export const InputBar: React.FC<InputBarProps> = ({ onSubmit, status }) => {
   return (
     <Box flexDirection="column">
       <Box paddingX={1} borderStyle="single" borderColor={status === "idle" ? "cyan" : "yellow"}>
-        <Text bold color="cyan">moltbot {">"} </Text>
+        <Text bold color="cyan">
+          moltbot {">"}{" "}
+        </Text>
         <TextInput
           value={value}
           onChange={setValue}
