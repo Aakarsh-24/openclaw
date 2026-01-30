@@ -261,7 +261,7 @@ export type FeishuEventPayload =
  */
 export interface FeishuMessageReceiveEvent {
   sender: {
-    sender_id: {
+    sender_id?: {
       union_id?: string;
       user_id?: string;
       open_id?: string;

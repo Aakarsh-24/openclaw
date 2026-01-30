@@ -57,12 +57,15 @@ export function createFeishuBot(opts: FeishuBotOptions): FeishuBot {
   const account = resolveFeishuAccount({
     cfg: {
       ...cfg,
-      feishu: {
-        ...cfg.feishu,
-        appId: opts.appId,
-        appSecret: opts.appSecret,
-        encryptKey: opts.encryptKey,
-        verificationToken: opts.verificationToken,
+      channels: {
+        ...cfg.channels,
+        feishu: {
+          ...cfg.channels?.feishu,
+          appId: opts.appId,
+          appSecret: opts.appSecret,
+          encryptKey: opts.encryptKey,
+          verificationToken: opts.verificationToken,
+        },
       },
     },
     accountId: opts.accountId,
@@ -98,7 +101,7 @@ export function createFeishuBot(opts: FeishuBotOptions): FeishuBot {
 
       await handleFeishuWebhookEvents(
         {
-          event: data,
+          event: data as any,
           eventType: "im.message.receive_v1",
         },
         {
@@ -127,11 +130,10 @@ export function createFeishuBot(opts: FeishuBotOptions): FeishuBot {
       const wsClient = new lark.WSClient({
         appId: account.appId,
         appSecret: account.appSecret,
-        eventDispatcher,
         loggerLevel: lark.LoggerLevel.info,
       });
 
-      await wsClient.start();
+      await wsClient.start({ eventDispatcher });
       logVerbose("feishu: long connection established");
     };
   }

@@ -5,7 +5,7 @@
 
 import type { Command } from "commander";
 import { loadConfig } from "../config/config.js";
-import { danger, success, warning } from "../globals.js";
+import { danger, success, warn } from "../globals.js";
 import { defaultRuntime } from "../runtime.js";
 import { theme } from "../terminal/theme.js";
 import { runCommandWithRuntime } from "./cli-utils.js";
@@ -39,7 +39,7 @@ export function registerFeishuCli(program: Command) {
         .option("--json", "Output JSON", false)
         .action(async (opts) => {
             await runFeishuCommand(async () => {
-                const cfg = loadConfig(defaultRuntime.runtime.cwd);
+                const cfg = loadConfig();
                 const accountIds = listFeishuAccountIds(cfg);
 
                 if (opts.json) {
@@ -62,23 +62,23 @@ export function registerFeishuCli(program: Command) {
                 }
 
                 if (accountIds.length === 0) {
-                    defaultRuntime.log(warning("No Feishu accounts configured."));
+                    defaultRuntime.log(warn("No Feishu accounts configured."));
                     return;
                 }
 
-                defaultRuntime.log(theme.bold("\n📱 Feishu Accounts\n"));
+                defaultRuntime.log(theme.heading("\n📱 Feishu Accounts\n"));
                 for (const id of accountIds) {
                     try {
                         const account = resolveFeishuAccount({ cfg, accountId: id });
                         const status = account.enabled ? success("✓ enabled") : danger("✗ disabled");
-                        defaultRuntime.log(`  ${theme.bold(account.accountId)} ${status}`);
+                        defaultRuntime.log(`  ${theme.accent(account.accountId)} ${status}`);
                         if (account.name) {
                             defaultRuntime.log(`    Name: ${account.name}`);
                         }
                         defaultRuntime.log(`    App ID: ${account.appId}`);
                         defaultRuntime.log(`    Token Source: ${account.tokenSource}`);
                     } catch (err) {
-                        defaultRuntime.log(`  ${theme.bold(id)} ${danger("✗ error")}`);
+                        defaultRuntime.log(`  ${theme.accent(id)} ${danger("✗ error")}`);
                         defaultRuntime.log(`    ${danger(String(err))}`);
                     }
                 }
@@ -94,14 +94,14 @@ export function registerFeishuCli(program: Command) {
         .option("--json", "Output JSON", false)
         .action(async (opts) => {
             await runFeishuCommand(async () => {
-                const cfg = loadConfig(defaultRuntime.runtime.cwd);
+                const cfg = loadConfig();
                 const accounts = listEnabledFeishuAccounts(cfg);
 
                 if (accounts.length === 0) {
                     if (opts.json) {
                         defaultRuntime.log(JSON.stringify({ status: "no_accounts" }));
                     } else {
-                        defaultRuntime.log(warning("No enabled Feishu accounts."));
+                        defaultRuntime.log(warn("No enabled Feishu accounts."));
                     }
                     return;
                 }
@@ -127,16 +127,16 @@ export function registerFeishuCli(program: Command) {
                         enabled: account.enabled,
                         appId: account.appId,
                         tokenSource: account.tokenSource,
-                        connectionMode: account.config.connectionMode ?? "long-connection",
+                        connectionMode: account.config.useLongConnection ? "long-connection" : "webhook",
                     });
                 }
 
                 if (opts.json) {
                     defaultRuntime.log(JSON.stringify(results, null, 2));
                 } else {
-                    defaultRuntime.log(theme.bold("\n📊 Feishu Status\n"));
+                    defaultRuntime.log(theme.heading("\n📊 Feishu Status\n"));
                     for (const r of results) {
-                        defaultRuntime.log(`  ${theme.bold(r.accountId)}`);
+                        defaultRuntime.log(`  ${theme.accent(r.accountId)}`);
                         defaultRuntime.log(`    Status: ${r.enabled ? success("enabled") : danger("disabled")}`);
                         defaultRuntime.log(`    App ID: ${r.appId}`);
                         defaultRuntime.log(`    Connection: ${r.connectionMode}`);
@@ -155,15 +155,16 @@ export function registerFeishuCli(program: Command) {
         .option("--json", "Output JSON", false)
         .action(async (opts) => {
             await runFeishuCommandWithDanger(async () => {
-                const cfg = loadConfig(defaultRuntime.runtime.cwd);
+                const cfg = loadConfig();
                 const accountId = opts.account;
-                const timeout = parseInt(opts.timeout, 10) || 10000;
+                // const timeout = parseInt(opts.timeout, 10) || 10000;
 
                 if (!opts.json) {
                     defaultRuntime.log(theme.muted("Probing Feishu bot..."));
                 }
 
-                const result = await probeFeishuBot({ cfg, accountId, timeout });
+                const account = resolveFeishuAccount({ cfg, accountId });
+                const result = await probeFeishuBot(account);
 
                 if (opts.json) {
                     defaultRuntime.log(JSON.stringify(result, null, 2));
@@ -172,11 +173,11 @@ export function registerFeishuCli(program: Command) {
 
                 if (result.ok) {
                     defaultRuntime.log(success("\n✓ Feishu bot connection successful!\n"));
-                    if (result.appName) {
-                        defaultRuntime.log(`  App Name: ${result.appName}`);
+                    if (result.bot?.appName) {
+                        defaultRuntime.log(`  App Name: ${result.bot.appName}`);
                     }
-                    if (result.botOpenId) {
-                        defaultRuntime.log(`  Bot Open ID: ${result.botOpenId}`);
+                    if (result.bot?.openId) {
+                        defaultRuntime.log(`  Bot Open ID: ${result.bot.openId}`);
                     }
                 } else {
                     defaultRuntime.log(danger("\n✗ Feishu bot connection failed!\n"));

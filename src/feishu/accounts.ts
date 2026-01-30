@@ -79,7 +79,7 @@ function resolveCredentials(config: FeishuConfig & FeishuAccountConfig): {
  * List all configured Feishu account IDs
  */
 export function listFeishuAccountIds(cfg: OpenClawConfig): string[] {
-  const feishuConfig = cfg.feishu;
+  const feishuConfig = cfg.channels?.feishu;
   if (!feishuConfig) {
     return [];
   }
@@ -152,8 +152,8 @@ export function resolveFeishuAccount(params: ResolveFeishuAccountParams): Resolv
   const { cfg, accountId: rawAccountId } = params;
   const accountId = normalizeAccountId(rawAccountId);
 
-  const feishuConfig = cfg.feishu ?? {};
-  const accountConfig = feishuConfig.accounts?.[accountId] ?? {};
+  const feishuConfig = cfg.channels?.feishu;
+  const accountConfig = feishuConfig?.accounts?.[accountId] ?? {};
 
   // Merge configs (account-specific overrides root-level)
   const mergedConfig: FeishuConfig & FeishuAccountConfig = {
@@ -161,7 +161,7 @@ export function resolveFeishuAccount(params: ResolveFeishuAccountParams): Resolv
     ...accountConfig,
     // Merge groups
     groups: {
-      ...feishuConfig.groups,
+      ...feishuConfig?.groups,
       ...accountConfig.groups,
     },
   };

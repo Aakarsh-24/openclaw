@@ -283,11 +283,11 @@ export async function uploadImage(
       },
     });
 
-    if (response.code !== 0) {
-      throw new Error(`Feishu API error: ${response.code} - ${response.msg}`);
+    // SDK returns data object directly for high-level APIs (or throws on error)
+    const imageKey = response?.image_key ?? "";
+    if (!imageKey) {
+      throw new Error("Feishu API returned no image_key");
     }
-
-    const imageKey = response.data?.image_key ?? "";
     logVerbose(`feishu: image uploaded: ${imageKey}`);
     return imageKey;
   } catch (error) {
@@ -316,11 +316,11 @@ export async function uploadFile(
       },
     });
 
-    if (response.code !== 0) {
-      throw new Error(`Feishu API error: ${response.code} - ${response.msg}`);
+    // SDK returns data object directly for high-level APIs
+    const fileKey = response?.file_key ?? "";
+    if (!fileKey) {
+      throw new Error("Feishu API returned no file_key");
     }
-
-    const fileKey = response.data?.file_key ?? "";
     logVerbose(`feishu: file uploaded: ${fileKey}`);
     return fileKey;
   } catch (error) {
