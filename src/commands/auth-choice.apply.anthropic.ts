@@ -55,6 +55,21 @@ export async function applyAuthChoiceAnthropic(
       provider,
       mode: "token",
     });
+
+    // setup-token only grants user:inference scope; usage tracking (/status)
+    // requires user:profile which is only available via the full OAuth flow.
+    // See: https://github.com/anthropics/claude-code/issues/16075
+    await params.prompter.note(
+      [
+        "Note: `claude setup-token` does not include the user:profile scope.",
+        "Usage tracking in /status will not be available with this token.",
+        "To enable usage tracking, run `claude login` (full browser OAuth)",
+        "on a machine with a browser, then use `openclaw models auth paste-token`",
+        "to import the resulting token.",
+      ].join("\n"),
+      "Usage tracking limitation",
+    );
+
     return { config: nextConfig };
   }
 

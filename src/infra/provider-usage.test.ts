@@ -387,4 +387,56 @@ describe("provider usage loading", () => {
       else process.env.CLAUDE_AI_SESSION_KEY = cookieSnapshot;
     }
   });
+
+  it("returns actionable error when scope is missing and no web session key", async () => {
+    const cookieSnapshot = process.env.CLAUDE_AI_SESSION_KEY;
+    const webCookieSnapshot = process.env.CLAUDE_WEB_SESSION_KEY;
+    const webCookie2Snapshot = process.env.CLAUDE_WEB_COOKIE;
+    delete process.env.CLAUDE_AI_SESSION_KEY;
+    delete process.env.CLAUDE_WEB_SESSION_KEY;
+    delete process.env.CLAUDE_WEB_COOKIE;
+    try {
+      const makeResponse = (status: number, body: unknown): Response => {
+        const payload = typeof body === "string" ? body : JSON.stringify(body);
+        const headers =
+          typeof body === "string" ? undefined : { "Content-Type": "application/json" };
+        return new Response(payload, { status, headers });
+      };
+
+      const mockFetch = vi.fn<Parameters<typeof fetch>, ReturnType<typeof fetch>>(async (input) => {
+        const url =
+          typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+        if (url.includes("api.anthropic.com/api/oauth/usage")) {
+          return makeResponse(403, {
+            type: "error",
+            error: {
+              type: "permission_error",
+              message: "OAuth token does not meet scope requirement user:profile",
+            },
+          });
+        }
+        return makeResponse(404, "not found");
+      });
+
+      const summary = await loadProviderUsageSummary({
+        now: Date.UTC(2026, 0, 7, 0, 0, 0),
+        auth: [{ provider: "anthropic", token: "sk-ant-oauth-1" }],
+        fetch: mockFetch,
+      });
+
+      expect(summary.providers).toHaveLength(1);
+      const claude = summary.providers[0];
+      expect(claude?.provider).toBe("anthropic");
+      expect(claude?.windows).toHaveLength(0);
+      expect(claude?.error).toContain("setup-token missing user:profile scope");
+      expect(claude?.error).toContain("claude login");
+    } finally {
+      if (cookieSnapshot === undefined) delete process.env.CLAUDE_AI_SESSION_KEY;
+      else process.env.CLAUDE_AI_SESSION_KEY = cookieSnapshot;
+      if (webCookieSnapshot === undefined) delete process.env.CLAUDE_WEB_SESSION_KEY;
+      else process.env.CLAUDE_WEB_SESSION_KEY = webCookieSnapshot;
+      if (webCookie2Snapshot === undefined) delete process.env.CLAUDE_WEB_COOKIE;
+      else process.env.CLAUDE_WEB_COOKIE = webCookie2Snapshot;
+    }
+  });
 });

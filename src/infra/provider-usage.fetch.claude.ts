@@ -135,6 +135,16 @@ export async function fetchClaudeUsage(
         const web = await fetchClaudeWebUsage(sessionKey, timeoutMs, fetchFn);
         if (web) return web;
       }
+
+      // No web session key fallback available — return an actionable error so users
+      // know how to fix usage tracking.
+      return {
+        provider: "anthropic",
+        displayName: PROVIDER_LABELS.anthropic,
+        windows: [],
+        error:
+          "setup-token missing user:profile scope — run `claude login` (full OAuth) to enable usage tracking",
+      };
     }
 
     const suffix = message ? `: ${message}` : "";
