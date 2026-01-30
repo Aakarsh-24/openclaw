@@ -124,7 +124,8 @@ function resolveSearchApiKey(search?: WebSearchConfig): string | undefined {
 }
 
 function resolveProxy(search?: WebSearchConfig): string | undefined {
-  const fromConfig = search && "proxy" in search && typeof search.proxy === "string" ? search.proxy.trim() : "";
+  const fromConfig =
+    search && "proxy" in search && typeof search.proxy === "string" ? search.proxy.trim() : "";
   return fromConfig || undefined;
 }
 
@@ -302,7 +303,7 @@ async function runPerplexitySearch(params: {
     }),
     signal: withTimeout(undefined, params.timeoutSeconds * 1000),
     dispatcher,
-  });
+  } as RequestInit);
 
   if (!res.ok) {
     const detail = await readResponseText(res);
@@ -393,7 +394,7 @@ async function runWebSearch(params: {
     },
     signal: withTimeout(undefined, params.timeoutSeconds * 1000),
     dispatcher,
-  });
+  } as RequestInit);
 
   if (!res.ok) {
     const detail = await readResponseText(res);
