@@ -6,7 +6,9 @@ describe("mezonPlugin", () => {
   describe("messaging", () => {
     it("keeps @username targets", () => {
       const normalize = mezonPlugin.messaging?.normalizeTarget;
-      if (!normalize) {return;}
+      if (!normalize) {
+        return;
+      }
 
       expect(normalize("@Alice")).toBe("@Alice");
       expect(normalize("@alice")).toBe("@alice");
@@ -14,14 +16,18 @@ describe("mezonPlugin", () => {
 
     it("normalizes mezon: prefix to user:", () => {
       const normalize = mezonPlugin.messaging?.normalizeTarget;
-      if (!normalize) {return;}
+      if (!normalize) {
+        return;
+      }
 
       expect(normalize("mezon:USER123")).toBe("user:USER123");
     });
 
     it("normalizes clan: prefix", () => {
       const normalize = mezonPlugin.messaging?.normalizeTarget;
-      if (!normalize) {return;}
+      if (!normalize) {
+        return;
+      }
 
       expect(normalize("clan:CLAN123")).toBe("clan:CLAN123");
     });
@@ -30,7 +36,9 @@ describe("mezonPlugin", () => {
   describe("pairing", () => {
     it("normalizes allowlist entries", () => {
       const normalize = mezonPlugin.pairing?.normalizeAllowEntry;
-      if (!normalize) {return;}
+      if (!normalize) {
+        return;
+      }
 
       expect(normalize("@Alice")).toBe("alice");
       expect(normalize("user:USER123")).toBe("user123");

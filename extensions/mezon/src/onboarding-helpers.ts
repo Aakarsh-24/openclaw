@@ -25,7 +25,9 @@ export async function promptAccountId(params: PromptAccountIdParams): Promise<st
     initialValue: initial,
   })) as string;
 
-  if (choice !== "__new__") {return normalizeAccountId(choice);}
+  if (choice !== "__new__") {
+    return normalizeAccountId(choice);
+  }
 
   const entered = await params.prompter.text({
     message: `New ${params.label} account id`,

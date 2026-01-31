@@ -7,6 +7,8 @@ export function resolveMezonGroupRequireMention(params: ChannelGroupContext): bo
     cfg: params.cfg,
     accountId: params.accountId,
   });
-  if (typeof account.requireMention === "boolean") {return account.requireMention;}
+  if (typeof account.requireMention === "boolean") {
+    return account.requireMention;
+  }
   return true;
 }

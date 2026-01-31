@@ -47,6 +47,8 @@ export async function probeMezon(
       elapsedMs: Date.now() - start,
     };
   } finally {
-    if (timer) {clearTimeout(timer);}
+    if (timer) {
+      clearTimeout(timer);
+    }
   }
 }

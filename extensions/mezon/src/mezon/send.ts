@@ -40,26 +40,36 @@ function isHttpUrl(value: string): boolean {
 
 function parseMezonTarget(raw: string): MezonTarget {
   const trimmed = raw.trim();
-  if (!trimmed) {throw new Error("Recipient is required for Mezon sends");}
+  if (!trimmed) {
+    throw new Error("Recipient is required for Mezon sends");
+  }
   const lower = trimmed.toLowerCase();
   if (lower.startsWith("channel:")) {
     const id = trimmed.slice("channel:".length).trim();
-    if (!id) {throw new Error("Channel id is required for Mezon sends");}
+    if (!id) {
+      throw new Error("Channel id is required for Mezon sends");
+    }
     return { kind: "channel", id };
   }
   if (lower.startsWith("user:")) {
     const id = trimmed.slice("user:".length).trim();
-    if (!id) {throw new Error("User id is required for Mezon sends");}
+    if (!id) {
+      throw new Error("User id is required for Mezon sends");
+    }
     return { kind: "user", id };
   }
   if (lower.startsWith("mezon:")) {
     const id = trimmed.slice("mezon:".length).trim();
-    if (!id) {throw new Error("User id is required for Mezon sends");}
+    if (!id) {
+      throw new Error("User id is required for Mezon sends");
+    }
     return { kind: "user", id };
   }
   if (trimmed.startsWith("@")) {
     const id = trimmed.slice(1).trim();
-    if (!id) {throw new Error("User id is required for Mezon sends");}
+    if (!id) {
+      throw new Error("User id is required for Mezon sends");
+    }
     return { kind: "user", id };
   }
   return { kind: "channel", id: trimmed };

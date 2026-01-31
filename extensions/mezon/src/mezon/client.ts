@@ -61,8 +61,12 @@ export type MezonReference = {
 };
 
 export function createMezonBotClient(token: string, botId: string): MezonBotClient {
-  if (!token.trim()) {throw new Error("Mezon bot token is required");}
-  if (!botId.trim()) {throw new Error("Mezon bot ID is required");}
+  if (!token.trim()) {
+    throw new Error("Mezon bot token is required");
+  }
+  if (!botId.trim()) {
+    throw new Error("Mezon bot ID is required");
+  }
 
   // The mezon-sdk MessageDatabase creates a "./mezon-cache/" directory relative
   // to process.cwd(). On Windows the gateway may start from C:\Windows\System32

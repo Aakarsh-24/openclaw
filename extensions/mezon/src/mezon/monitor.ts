@@ -71,28 +71,42 @@ function resolveRuntime(opts: MonitorMezonOpts): RuntimeEnv {
 }
 
 function normalizeMention(text: string, mention: string | undefined): string {
-  if (!mention) {return text.trim();}
+  if (!mention) {
+    return text.trim();
+  }
   const escaped = mention.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const re = new RegExp(`@${escaped}\\b`, "gi");
   return text.replace(re, " ").replace(/\s+/g, " ").trim();
 }
 
 function channelKind(isDm: boolean, clanId?: string): "dm" | "group" | "channel" {
-  if (isDm) {return "dm";}
-  if (clanId) {return "channel";}
+  if (isDm) {
+    return "dm";
+  }
+  if (clanId) {
+    return "channel";
+  }
   return "group";
 }
 
 function channelChatType(kind: "dm" | "group" | "channel"): "direct" | "group" | "channel" {
-  if (kind === "dm") {return "direct";}
-  if (kind === "group") {return "group";}
+  if (kind === "dm") {
+    return "direct";
+  }
+  if (kind === "group") {
+    return "group";
+  }
   return "channel";
 }
 
 function normalizeAllowEntry(entry: string): string {
   const trimmed = entry.trim();
-  if (!trimmed) {return "";}
-  if (trimmed === "*") {return "*";}
+  if (!trimmed) {
+    return "";
+  }
+  if (trimmed === "*") {
+    return "*";
+  }
   return trimmed
     .replace(/^(mezon|user):/i, "")
     .replace(/^@/, "")
@@ -110,8 +124,12 @@ function isSenderAllowed(params: {
   allowFrom: string[];
 }): boolean {
   const allowFrom = params.allowFrom;
-  if (allowFrom.length === 0) {return false;}
-  if (allowFrom.includes("*")) {return true;}
+  if (allowFrom.length === 0) {
+    return false;
+  }
+  if (allowFrom.includes("*")) {
+    return true;
+  }
   const normalizedSenderId = normalizeAllowEntry(params.senderId);
   const normalizedSenderName = params.senderName ? normalizeAllowEntry(params.senderName) : "";
   return allowFrom.some(
@@ -127,7 +145,9 @@ type MezonMediaInfo = {
 };
 
 function buildMezonAttachmentPlaceholder(mediaList: MezonMediaInfo[]): string {
-  if (mediaList.length === 0) {return "";}
+  if (mediaList.length === 0) {
+    return "";
+  }
   if (mediaList.length === 1) {
     const kind = mediaList[0].kind === "unknown" ? "document" : mediaList[0].kind;
     return `<media:${kind}>`;
@@ -201,7 +221,9 @@ export async function monitorMezonProvider(opts: MonitorMezonOpts = {}): Promise
 
   const logger = core.logging.getChildLogger({ module: "mezon" });
   const logVerboseMessage = (message: string) => {
-    if (!core.logging.shouldLogVerbose()) {return;}
+    if (!core.logging.shouldLogVerbose()) {
+      return;
+    }
     logger.debug?.(message);
   };
   const mediaMaxBytes =
@@ -220,10 +242,14 @@ export async function monitorMezonProvider(opts: MonitorMezonOpts = {}): Promise
     attachments?: MezonMessage["attachments"],
   ): Promise<MezonMediaInfo[]> => {
     const items = (attachments ?? []).filter((a) => a.url);
-    if (items.length === 0) {return [];}
+    if (items.length === 0) {
+      return [];
+    }
     const out: MezonMediaInfo[] = [];
     for (const attachment of items) {
-      if (!attachment.url) {continue;}
+      if (!attachment.url) {
+        continue;
+      }
       try {
         const fetched = await core.channel.media.fetchRemoteMedia({
           url: attachment.url,
@@ -251,11 +277,17 @@ export async function monitorMezonProvider(opts: MonitorMezonOpts = {}): Promise
 
   const handleMessage = async (msg: MezonMessage) => {
     const channelId = msg.channel_id;
-    if (!channelId) {return;}
+    if (!channelId) {
+      return;
+    }
 
     const messageId = msg.message_id;
-    if (!messageId) {return;}
-    if (recentInboundMessages.check(`${account.accountId}:${messageId}`)) {return;}
+    if (!messageId) {
+      return;
+    }
+    if (recentInboundMessages.check(`${account.accountId}:${messageId}`)) {
+      return;
+    }
 
     // Check if this is a message we sent (defensive filter against echo loops)
     if (recentSentMessages.check(`${account.accountId}:${messageId}`)) {
@@ -264,7 +296,9 @@ export async function monitorMezonProvider(opts: MonitorMezonOpts = {}): Promise
     }
 
     const senderId = msg.sender_id;
-    if (!senderId) {return;}
+    if (!senderId) {
+      return;
+    }
     if (senderId === botUserId) {
       logVerboseMessage(
         `[DEBUG] Ignoring own message: senderId="${senderId}" matches botUserId="${botUserId}"`,
@@ -493,7 +527,9 @@ export async function monitorMezonProvider(opts: MonitorMezonOpts = {}): Promise
     const mediaPlaceholder = buildMezonAttachmentPlaceholder(mediaList);
     const baseText = [rawText, mediaPlaceholder].filter(Boolean).join("\n").trim();
     const bodyText = normalizeMention(baseText, botUsername);
-    if (!bodyText) {return;}
+    if (!bodyText) {
+      return;
+    }
 
     core.channel.activity.record({
       channel: "mezon",
@@ -650,7 +686,9 @@ export async function monitorMezonProvider(opts: MonitorMezonOpts = {}): Promise
               `[DEBUG] About to send ${chunks.length > 0 ? chunks.length : 1} chunk(s) to ${to}`,
             );
             for (const chunk of chunks.length > 0 ? chunks : [text]) {
-              if (!chunk) {continue;}
+              if (!chunk) {
+                continue;
+              }
               runtime.log?.(`[DEBUG] Sending chunk (length=${chunk.length}) to ${to}`);
               const result = await sendMessageMezon(to, chunk, {
                 accountId: account.accountId,
@@ -717,26 +755,34 @@ export async function monitorMezonProvider(opts: MonitorMezonOpts = {}): Promise
     debounceMs: inboundDebounceMs,
     buildKey: (entry) => {
       const channelId = entry.msg.channel_id;
-      if (!channelId) {return null;}
+      if (!channelId) {
+        return null;
+      }
       const threadRef = entry.msg.references?.find((r) => r.message_ref_id);
       const threadId = threadRef?.message_ref_id?.trim();
       const threadKey = threadId ? `thread:${threadId}` : "channel";
       return `mezon:${account.accountId}:${channelId}:${threadKey}`;
     },
     shouldDebounce: (entry) => {
-      if (entry.msg.attachments && entry.msg.attachments.length > 0) {return false;}
+      if (entry.msg.attachments && entry.msg.attachments.length > 0) {
+        return false;
+      }
       const text =
         typeof entry.msg.content === "string"
           ? entry.msg.content.trim()
           : typeof entry.msg.content === "object" && entry.msg.content !== null
             ? (((entry.msg.content as Record<string, unknown>).t as string) ?? "").trim()
             : "";
-      if (!text) {return false;}
+      if (!text) {
+        return false;
+      }
       return !core.channel.text.hasControlCommand(text, cfg);
     },
     onFlush: async (entries) => {
       const last = entries.at(-1);
-      if (!last) {return;}
+      if (!last) {
+        return;
+      }
       if (entries.length === 1) {
         await handleMessage(last.msg);
         return;
@@ -774,7 +820,9 @@ export async function monitorMezonProvider(opts: MonitorMezonOpts = {}): Promise
     runtime.log?.(
       `[DEBUG] Received message: id=${msg?.message_id} from=${msg?.sender_id} content="${contentPreview}..."`,
     );
-    if (!msg || !msg.message_id) {return;}
+    if (!msg || !msg.message_id) {
+      return;
+    }
     debouncer.enqueue({ msg }).catch((err) => {
       runtime.error?.(`mezon handler failed: ${String(err)}`);
     });
