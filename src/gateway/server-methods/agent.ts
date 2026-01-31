@@ -10,6 +10,7 @@ import {
   updateSessionStore,
 } from "../../config/sessions.js";
 import { registerAgentRunContext } from "../../infra/agent-events.js";
+import { describeNetworkError } from "../../infra/errors.js";
 import {
   resolveAgentDeliveryPlan,
   resolveAgentOutboundTarget,
@@ -398,11 +399,12 @@ export const agentHandlers: GatewayRequestHandlers = {
         respond(true, payload, undefined, { runId });
       })
       .catch((err) => {
-        const error = errorShape(ErrorCodes.UNAVAILABLE, String(err));
+        const summary = describeNetworkError(err);
+        const error = errorShape(ErrorCodes.UNAVAILABLE, summary);
         const payload = {
           runId,
           status: "error" as const,
-          summary: String(err),
+          summary,
         };
         context.dedupe.set(`agent:${idem}`, {
           ts: Date.now(),
