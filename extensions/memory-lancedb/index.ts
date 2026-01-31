@@ -2,16 +2,16 @@
  * OpenClaw Memory (LanceDB) Plugin
  *
  * Long-term memory with vector search for AI conversations.
- * Uses LanceDB for storage and OpenAI for embeddings.
+ * Uses LanceDB for storage and OpenAI/Google Gemini for embeddings.
  * Provides seamless auto-recall and auto-capture via lifecycle hooks.
  */
 
-import type { OpenClawPluginApi } from "openclaw/plugin-sdk";
-import * as lancedb from "@lancedb/lancedb";
 import { Type } from "@sinclair/typebox";
+import * as lancedb from "@lancedb/lancedb";
 import { randomUUID } from "node:crypto";
-import OpenAI from "openai";
+import type { OpenClawPluginApi } from "openclaw/plugin-sdk";
 import { stringEnum } from "openclaw/plugin-sdk";
+
 import {
   MEMORY_CATEGORIES,
   type MemoryCategory,
@@ -144,7 +144,7 @@ class MemoryDB {
 // ============================================================================
 
 class Embeddings {
-   private client: OpenAI | null = null;
+   private client: unknown = null;
 
    constructor(
      private provider: "openai" | "google",
@@ -161,7 +161,16 @@ class Embeddings {
      }
 
      if (provider === "openai") {
-       this.client = new OpenAI({ apiKey });
+       // Dynamically import OpenAI only when needed
+       try {
+         // eslint-disable-next-line @typescript-eslint/no-require-imports
+         const OpenAI = require("openai").default;
+         this.client = new OpenAI({ apiKey });
+       } catch (err) {
+         throw new Error(
+           `Failed to load OpenAI client. Make sure 'openai' package is installed. Error: ${String(err)}`
+         );
+       }
      }
    }
 
