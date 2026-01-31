@@ -14,6 +14,7 @@ const log = createSubsystemLogger("agents/auth-profiles");
 const CLAUDE_CLI_CREDENTIALS_RELATIVE_PATH = ".claude/.credentials.json";
 const CODEX_CLI_AUTH_FILENAME = "auth.json";
 const QWEN_CLI_CREDENTIALS_RELATIVE_PATH = ".qwen/oauth_creds.json";
+const GEMINI_CLI_CREDENTIALS_RELATIVE_PATH = ".gemini-cli/credentials.json";
 
 const CLAUDE_CLI_KEYCHAIN_SERVICE = "Claude Code-credentials";
 const CLAUDE_CLI_KEYCHAIN_ACCOUNT = "Claude Code";
@@ -27,11 +28,13 @@ type CachedValue<T> = {
 let claudeCliCache: CachedValue<ClaudeCliCredential> | null = null;
 let codexCliCache: CachedValue<CodexCliCredential> | null = null;
 let qwenCliCache: CachedValue<QwenCliCredential> | null = null;
+let geminiCliCache: CachedValue<GeminiCliCredential> | null = null;
 
 export function resetCliCredentialCachesForTest(): void {
   claudeCliCache = null;
   codexCliCache = null;
   qwenCliCache = null;
+  geminiCliCache = null;
 }
 
 export type ClaudeCliCredential =
@@ -64,6 +67,16 @@ export type QwenCliCredential = {
   access: string;
   refresh: string;
   expires: number;
+};
+
+export type GeminiCliCredential = {
+  type: "oauth";
+  provider: "google-gemini-cli";
+  access: string;
+  refresh: string;
+  expires: number;
+  email?: string;
+  projectId: string;
 };
 
 type ClaudeCliFileOptions = {
@@ -100,6 +113,11 @@ function resolveCodexHomePath() {
 function resolveQwenCliCredentialsPath(homeDir?: string) {
   const baseDir = homeDir ?? resolveUserPath("~");
   return path.join(baseDir, QWEN_CLI_CREDENTIALS_RELATIVE_PATH);
+}
+
+function resolveGeminiCliCredentialsPath(homeDir?: string) {
+  const baseDir = homeDir ?? resolveUserPath("~");
+  return path.join(baseDir, GEMINI_CLI_CREDENTIALS_RELATIVE_PATH);
 }
 
 function computeCodexKeychainAccount(codexHome: string) {
@@ -183,6 +201,33 @@ function readQwenCliCredentials(options?: { homeDir?: string }): QwenCliCredenti
     access: accessToken,
     refresh: refreshToken,
     expires: expiresAt,
+  };
+}
+
+function readGeminiCliCredentials(options?: { homeDir?: string }): GeminiCliCredential | null {
+  const credPath = resolveGeminiCliCredentialsPath(options?.homeDir);
+  const raw = loadJsonFile(credPath);
+  if (!raw || typeof raw !== "object") return null;
+  const data = raw as Record<string, unknown>;
+  const accessToken = data.access_token;
+  const refreshToken = data.refresh_token;
+  const expiresAt = data.expiry_date;
+  const projectId = data.project_id;
+  const email = data.email;
+
+  if (typeof accessToken !== "string" || !accessToken) return null;
+  if (typeof refreshToken !== "string" || !refreshToken) return null;
+  if (typeof expiresAt !== "number" || !Number.isFinite(expiresAt)) return null;
+  if (typeof projectId !== "string" || !projectId) return null;
+
+  return {
+    type: "oauth",
+    provider: "google-gemini-cli",
+    access: accessToken,
+    refresh: refreshToken,
+    expires: expiresAt,
+    projectId,
+    email: typeof email === "string" ? email : undefined,
   };
 }
 
@@ -494,6 +539,28 @@ export function readQwenCliCredentialsCached(options?: {
   const value = readQwenCliCredentials({ homeDir: options?.homeDir });
   if (ttlMs > 0) {
     qwenCliCache = { value, readAt: now, cacheKey };
+  }
+  return value;
+}
+
+export function readGeminiCliCredentialsCached(options?: {
+  ttlMs?: number;
+  homeDir?: string;
+}): GeminiCliCredential | null {
+  const ttlMs = options?.ttlMs ?? 0;
+  const now = Date.now();
+  const cacheKey = resolveGeminiCliCredentialsPath(options?.homeDir);
+  if (
+    ttlMs > 0 &&
+    geminiCliCache &&
+    geminiCliCache.cacheKey === cacheKey &&
+    now - geminiCliCache.readAt < ttlMs
+  ) {
+    return geminiCliCache.value;
+  }
+  const value = readGeminiCliCredentials({ homeDir: options?.homeDir });
+  if (ttlMs > 0) {
+    geminiCliCache = { value, readAt: now, cacheKey };
   }
   return value;
 }

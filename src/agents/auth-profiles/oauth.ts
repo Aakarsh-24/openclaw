@@ -8,6 +8,7 @@ import { AUTH_STORE_LOCK_OPTIONS, log } from "./constants.js";
 import { formatAuthDoctorHint } from "./doctor.js";
 import { ensureAuthStoreFile, resolveAuthStorePath } from "./paths.js";
 import { suggestOAuthProfileIdForLegacyDefault } from "./repair.js";
+import { syncExternalCliCredentials } from "./external-cli-sync.js";
 import { ensureAuthProfileStore, saveAuthProfileStore } from "./store.js";
 import type { AuthProfileStore } from "./types.js";
 
@@ -35,6 +36,15 @@ async function refreshOAuthTokenWithLock(params: {
     });
 
     const store = ensureAuthProfileStore(params.agentDir);
+
+    // Try syncing from external CLI first if this is a Gemini CLI profile
+    if (params.profileId.startsWith("google-gemini-cli")) {
+      const mutated = syncExternalCliCredentials(store);
+      if (mutated) {
+        saveAuthProfileStore(store, params.agentDir);
+      }
+    }
+
     const cred = store.profiles[params.profileId];
     if (!cred || cred.type !== "oauth") return null;
 

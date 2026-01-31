@@ -1,7 +1,11 @@
-import { readQwenCliCredentialsCached } from "../cli-credentials.js";
+import {
+  readGeminiCliCredentialsCached,
+  readQwenCliCredentialsCached,
+} from "../cli-credentials.js";
 import {
   EXTERNAL_CLI_NEAR_EXPIRY_MS,
   EXTERNAL_CLI_SYNC_TTL_MS,
+  GEMINI_CLI_PROFILE_ID,
   QWEN_CLI_PROFILE_ID,
   log,
 } from "./constants.js";
@@ -25,7 +29,7 @@ function shallowEqualOAuthCredentials(a: OAuthCredential | undefined, b: OAuthCr
 function isExternalProfileFresh(cred: AuthProfileCredential | undefined, now: number): boolean {
   if (!cred) return false;
   if (cred.type !== "oauth" && cred.type !== "token") return false;
-  if (cred.provider !== "qwen-portal") {
+  if (cred.provider !== "qwen-portal" && cred.provider !== "google-gemini-cli") {
     return false;
   }
   if (typeof cred.expires !== "number") return true;
@@ -66,6 +70,35 @@ export function syncExternalCliCredentials(store: AuthProfileStore): boolean {
         profileId: QWEN_CLI_PROFILE_ID,
         expires: new Date(qwenCreds.expires).toISOString(),
       });
+    }
+  }
+
+  // Sync from Gemini CLI
+  const geminiCreds = readGeminiCliCredentialsCached({ ttlMs: EXTERNAL_CLI_SYNC_TTL_MS });
+  if (geminiCreds) {
+    // We sync to both the generic "google-gemini-cli" profile and the email-specific one
+    const profileIds = [GEMINI_CLI_PROFILE_ID];
+    if (geminiCreds.email) {
+      profileIds.push(`google-gemini-cli:${geminiCreds.email}`);
+    }
+
+    for (const profileId of profileIds) {
+      const existing = store.profiles[profileId];
+      const existingOAuth = existing?.type === "oauth" ? existing : undefined;
+      const shouldUpdate =
+        !existingOAuth ||
+        existingOAuth.provider !== "google-gemini-cli" ||
+        existingOAuth.expires <= now ||
+        geminiCreds.expires > existingOAuth.expires;
+
+      if (shouldUpdate && !shallowEqualOAuthCredentials(existingOAuth, geminiCreds)) {
+        store.profiles[profileId] = geminiCreds;
+        mutated = true;
+        log.info("synced gemini credentials from gemini cli", {
+          profileId,
+          expires: new Date(geminiCreds.expires).toISOString(),
+        });
+      }
     }
   }
 
