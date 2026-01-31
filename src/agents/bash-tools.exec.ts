@@ -54,6 +54,7 @@ import {
 import { callGatewayTool } from "./tools/gateway.js";
 import { listNodes, resolveNodeIdFromList } from "./tools/nodes-utils.js";
 import { getShellConfig, sanitizeBinaryOutput } from "./shell-utils.js";
+import { wrapPowerShellUtf8Command } from "../infra/windows-shell.js";
 import { buildCursorPositionResponse, stripDsrRequests } from "./pty-dsr.js";
 import { parseAgentSessionKey, resolveAgentIdFromSessionKey } from "../routing/session-key.js";
 
@@ -398,6 +399,8 @@ async function runExecProcess(opts: {
     stdin = child.stdin;
   } else if (opts.usePty) {
     const { shell, args: shellArgs } = getShellConfig();
+    const command =
+      process.platform === "win32" ? wrapPowerShellUtf8Command(opts.command) : opts.command;
     try {
       const ptyModule = (await import("@lydell/node-pty")) as unknown as {
         spawn?: PtySpawn;
@@ -407,7 +410,7 @@ async function runExecProcess(opts: {
       if (!spawnPty) {
         throw new Error("PTY support is unavailable (node-pty spawn not found).");
       }
-      pty = spawnPty(shell, [...shellArgs, opts.command], {
+      pty = spawnPty(shell, [...shellArgs, command], {
         cwd: opts.workdir,
         env: opts.env,
         name: process.env.TERM ?? "xterm-256color",
@@ -439,7 +442,7 @@ async function runExecProcess(opts: {
       logWarn(`exec: PTY spawn failed (${errText}); retrying without PTY for "${opts.command}".`);
       opts.warnings.push(warning);
       const { child: spawned } = await spawnWithFallback({
-        argv: [shell, ...shellArgs, opts.command],
+        argv: [shell, ...shellArgs, command],
         options: {
           cwd: opts.workdir,
           env: opts.env,
@@ -465,8 +468,10 @@ async function runExecProcess(opts: {
     }
   } else {
     const { shell, args: shellArgs } = getShellConfig();
+    const command =
+      process.platform === "win32" ? wrapPowerShellUtf8Command(opts.command) : opts.command;
     const { child: spawned } = await spawnWithFallback({
-      argv: [shell, ...shellArgs, opts.command],
+      argv: [shell, ...shellArgs, command],
       options: {
         cwd: opts.workdir,
         env: opts.env,
