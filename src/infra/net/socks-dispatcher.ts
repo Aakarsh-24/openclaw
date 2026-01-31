@@ -38,6 +38,11 @@ export function isSocksProxyUrl(url: string): boolean {
  * Parse a SOCKS proxy URL into a config object.
  * Accepts socks4://, socks4a://, socks5://, socks5h:// URLs.
  */
+/** Strip userinfo (credentials) from a URL string for safe error messages. */
+function redactUrl(url: string): string {
+  return url.replace(/\/\/[^@]*@/, "//***@");
+}
+
 export function parseSocksUrl(url: string): SocksProxyConfig {
   const trimmed = url.trim();
   // URL constructor doesn't understand socks5h:// etc., so we swap the scheme
@@ -59,7 +64,7 @@ export function parseSocksUrl(url: string): SocksProxyConfig {
     socksType = 5;
     schemeEnd = "socks5://".length;
   } else {
-    throw new Error(`Unsupported SOCKS URL: ${trimmed}`);
+    throw new Error(`Unsupported SOCKS URL: ${redactUrl(trimmed)}`);
   }
 
   const httpUrl = new URL(`http://${trimmed.slice(schemeEnd)}`);
@@ -67,7 +72,11 @@ export function parseSocksUrl(url: string): SocksProxyConfig {
   const port = httpUrl.port ? Number.parseInt(httpUrl.port, 10) : 1080;
 
   if (!host) {
-    throw new Error(`Missing host in SOCKS URL: ${trimmed}`);
+    throw new Error(`Missing host in SOCKS URL: ${redactUrl(trimmed)}`);
+  }
+
+  if (port < 1 || port > 65535) {
+    throw new Error(`Invalid port ${port} in SOCKS URL: ${redactUrl(trimmed)}`);
   }
 
   const config: SocksProxyConfig = { host, port, type: socksType };
@@ -109,10 +118,17 @@ export function createSocksConnector(config: SocksProxyConfig): Connector {
 
   return (options: ConnectOptions, callback: ConnectCallback) => {
     const targetPort = Number(options.port) || (options.protocol === "https:" ? 443 : 80);
+    let called = false;
+    const done: ConnectCallback = (...args) => {
+      if (called) return;
+      called = true;
+      callback(...args);
+    };
 
     SocksClient.createConnection({
       proxy,
       command: "connect",
+      timeout: 30_000,
       destination: { host: options.hostname, port: targetPort },
     })
       .then(({ socket }) => {
@@ -124,21 +140,22 @@ export function createSocksConnector(config: SocksProxyConfig): Connector {
             servername,
           });
 
-          tlsSocket.once("secureConnect", () => {
-            callback(null, tlsSocket);
+          // Attach error before success to guard against edge-case races.
+          tlsSocket.once("error", (err: Error) => {
+            done(err, null);
           });
 
-          tlsSocket.once("error", (err: Error) => {
-            callback(err, null);
+          tlsSocket.once("secureConnect", () => {
+            done(null, tlsSocket);
           });
 
           return;
         }
 
-        callback(null, socket);
+        done(null, socket);
       })
       .catch((err: unknown) => {
-        callback(err instanceof Error ? err : new Error(String(err)), null);
+        done(err instanceof Error ? err : new Error(String(err)), null);
       });
   };
 }

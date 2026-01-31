@@ -118,6 +118,27 @@ describe("parseSocksUrl", () => {
     expect(() => parseSocksUrl("socks5h://:1080")).toThrow();
   });
 
+  it("rejects port 0", () => {
+    expect(() => parseSocksUrl("socks5h://proxy.local:0")).toThrow("Invalid port");
+  });
+
+  it("rejects port above 65535", () => {
+    // URL constructor already rejects ports > 65535, so this throws too.
+    expect(() => parseSocksUrl("socks5h://proxy.local:70000")).toThrow();
+  });
+
+  it("redacts credentials in error messages", () => {
+    try {
+      parseSocksUrl("badscheme://user:secret@proxy.local:1080");
+    } catch (err) {
+      const message = (err as Error).message;
+      expect(message).not.toContain("secret");
+      expect(message).toContain("***@");
+      return;
+    }
+    expect.fail("expected parseSocksUrl to throw");
+  });
+
   it("handles uppercase scheme", () => {
     const config = parseSocksUrl("SOCKS5H://proxy.local:1080");
     expect(config.type).toBe(5);
