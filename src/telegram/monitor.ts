@@ -56,6 +56,9 @@ const TELEGRAM_POLL_RESTART_POLICY = {
   jitter: 0.25,
 };
 
+// Safety ceiling to prevent infinite restart loops
+const MAX_RESTART_ATTEMPTS = 50;
+
 const isGetUpdatesConflict = (err: unknown) => {
   if (!err || typeof err !== "object") return false;
   const typed = err as {
@@ -158,6 +161,14 @@ export async function monitorTelegramProvider(opts: MonitorTelegramOpts = {}) {
   let restartAttempts = 0;
 
   while (!opts.abortSignal?.aborted) {
+    // Safety: stop after max attempts to prevent infinite loops
+    if (restartAttempts >= MAX_RESTART_ATTEMPTS) {
+      (opts.runtime?.error ?? console.error)(
+        `Telegram polling: max restart attempts reached (${restartAttempts}). Stopping to prevent infinite loop.`,
+      );
+      return;
+    }
+
     const runner = run(bot, createTelegramRunnerOptions(cfg));
     const stopOnAbort = () => {
       if (opts.abortSignal?.aborted) {

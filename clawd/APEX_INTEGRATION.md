@@ -1,7 +1,7 @@
-# APEX v7.0 - Liam's Integration
-**Research-Backed | Evidence-Based | Load: `apex-vault/APEX_v7.md`**
+# APEX v7.1 - Liam's Integration
+**Research-Backed | Evidence-Based | Pattern Tracking | Load: `apex-vault/APEX_v7.md`**
 
-*Upgraded: 2026-01-30 from v6.3.3 → v7.0 (Fewer Rules, Actually Followed)*
+*Upgraded: 2026-01-31 from v7.0 → v7.1 (Added Pattern Tracking & Context Protection)*
 
 ---
 
@@ -90,5 +90,5 @@ Rollback available: `~/clawd/apex-vault/APEX_COMPACT_v6.3.3.md.backup`
 
 ---
 
-*APEX v7.0 (Liam Integration) - Research-backed design*
+*APEX v7.1 (Liam Integration) - Research-backed design, pattern tracking*
 *Based on: IFScale benchmark, 12 frustration patterns, $500-900 waste analysis*

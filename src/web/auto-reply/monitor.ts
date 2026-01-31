@@ -386,18 +386,23 @@ export async function monitorWebChannel(
       reconnectAttempts += 1;
       status.reconnectAttempts = reconnectAttempts;
       emitStatus();
-      if (reconnectPolicy.maxAttempts > 0 && reconnectAttempts >= reconnectPolicy.maxAttempts) {
+      // Safety: cap reconnection attempts even if maxAttempts is 0 ("unlimited")
+      // This prevents infinite loops if the service is permanently down
+      const HARD_RECONNECT_CEILING = 100;
+      const effectiveMax =
+        reconnectPolicy.maxAttempts > 0 ? reconnectPolicy.maxAttempts : HARD_RECONNECT_CEILING;
+      if (reconnectAttempts >= effectiveMax) {
         reconnectLogger.warn(
           {
             connectionId,
             status: statusCode,
             reconnectAttempts,
-            maxAttempts: reconnectPolicy.maxAttempts,
+            maxAttempts: effectiveMax,
           },
-          "web reconnect: max attempts reached; continuing in degraded mode",
+          "web reconnect: max attempts reached; stopping to prevent infinite loop",
         );
         runtime.error(
-          `WhatsApp Web reconnect: max attempts reached (${reconnectAttempts}/${reconnectPolicy.maxAttempts}). Stopping web monitoring.`,
+          `WhatsApp Web reconnect: max attempts reached (${reconnectAttempts}/${effectiveMax}). Stopping web monitoring.`,
         );
         await closeListener();
         break;

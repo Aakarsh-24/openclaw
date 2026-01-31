@@ -424,6 +424,12 @@ export async function monitorZalouserProvider(
   let proc: ChildProcess | null = null;
   let restartTimer: ReturnType<typeof setTimeout> | null = null;
   let resolveRunning: (() => void) | null = null;
+  
+  // Restart attempt tracking with exponential backoff
+  let restartAttempts = 0;
+  const MAX_RESTART_ATTEMPTS = 30;
+  const BASE_RESTART_DELAY_MS = 5000;
+  const MAX_RESTART_DELAY_MS = 60000;
 
   try {
     const profile = account.profile;
@@ -541,6 +547,7 @@ export async function monitorZalouserProvider(
       account.profile,
       (msg) => {
         logVerbose(core, runtime, `[${account.accountId}] inbound message`);
+        restartAttempts = 0; // Reset on successful message - connection is healthy
         statusSink?.({ lastInboundAt: Date.now() });
         processMessage(msg, account, config, core, runtime, statusSink).catch((err) => {
           runtime.error(`[${account.accountId}] Failed to process message: ${String(err)}`);
@@ -549,8 +556,28 @@ export async function monitorZalouserProvider(
       (err) => {
         runtime.error(`[${account.accountId}] zca listener error: ${String(err)}`);
         if (!stopped && !abortSignal.aborted) {
-          logVerbose(core, runtime, `[${account.accountId}] restarting listener in 5s...`);
-          restartTimer = setTimeout(startListener, 5000);
+          restartAttempts += 1;
+          
+          // Safety: stop after max attempts to prevent infinite loops
+          if (restartAttempts >= MAX_RESTART_ATTEMPTS) {
+            runtime.error(
+              `[${account.accountId}] zca listener: max restart attempts reached (${restartAttempts}). Stopping to prevent infinite loop.`,
+            );
+            resolveRunning?.();
+            return;
+          }
+          
+          // Exponential backoff with cap
+          const delayMs = Math.min(
+            BASE_RESTART_DELAY_MS * Math.pow(1.5, restartAttempts - 1),
+            MAX_RESTART_DELAY_MS,
+          );
+          logVerbose(
+            core,
+            runtime,
+            `[${account.accountId}] restarting listener in ${Math.round(delayMs / 1000)}s (attempt ${restartAttempts}/${MAX_RESTART_ATTEMPTS})...`,
+          );
+          restartTimer = setTimeout(startListener, delayMs);
         } else {
           resolveRunning?.();
         }

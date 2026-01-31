@@ -310,7 +310,7 @@ I can spawn subagents for:
 | `vision` | ollama/qwen3-vl:4b | Image analysis |
 | `ocr` | ollama/deepseek-ocr | Text extraction from images/PDFs |
 
-**Subagent Model Selection (APEX v7.0):**
+**Subagent Model Selection (APEX v7.1):**
 - **Coding tasks** → `dev` (Devstral-2): Fastest, no thinking - use explicit checkpoints
 - **Research tasks** → `kimi` (Kimi K2.5): Native swarm auto-orchestrates
 - **Quality reviews** → `deep` (GLM-4.7): Best reasoning, catches errors
@@ -362,6 +362,43 @@ gog gmail labels list --account simon@puenteworks.com
 ```
 
 **When unsure:** Run `gog gmail --help` or `gog gmail <subcommand> --help` BEFORE claiming a feature doesn't exist.
+
+### Batch Operation Limits (MANDATORY)
+
+**Context explosion prevention - these limits protect against gateway timeouts.**
+
+**NEVER exceed these limits:**
+
+| Operation | Max | Why |
+|-----------|-----|-----|
+| `--json` output | `--max 50` | JSON is verbose (~1KB per email) |
+| `--plain` output | `--max 100` | Plain text is smaller |
+| Batch processing | 25-50 items per turn | Prevents context overflow |
+| Pagination loops | Max 3 pages | Fetch more in separate turns |
+
+**Pagination strategy (CORRECT):**
+```bash
+# Turn 1: Fetch first batch
+gog gmail messages search "query" --max 50 --account simon@puenteworks.com
+
+# Process those 50...
+
+# Turn 2: Fetch next batch with page token
+gog gmail messages search "query" --max 50 --page <token> --account simon@puenteworks.com
+```
+
+**WRONG (causes timeout):**
+```bash
+# DO NOT: Fetch all at once
+gog gmail messages search "in:inbox" --max 1000 --json  # TIMEOUT!
+
+# DO NOT: Pagination loop in same turn
+while [ -n "$page_token" ]; do
+  gog gmail messages search ... --page "$page_token"  # Context explosion!
+done
+```
+
+**If you hit context ceiling:** System will refuse your request. This is intentional. Tell Simon and propose smaller batches.
 
 ### Testing Methodology (CRITICAL - Prevents False Positives)
 

@@ -57,17 +57,19 @@ import { getShellConfig, sanitizeBinaryOutput } from "./shell-utils.js";
 import { buildCursorPositionResponse, stripDsrRequests } from "./pty-dsr.js";
 import { parseAgentSessionKey, resolveAgentIdFromSessionKey } from "../routing/session-key.js";
 
+// Reduced from 200K to 50K to prevent context explosion from bulk operations
+// 50K chars ≈ 12.5K tokens - safer limit that won't overwhelm context window
 const DEFAULT_MAX_OUTPUT = clampNumber(
   readEnvInt("PI_BASH_MAX_OUTPUT_CHARS"),
-  200_000,
+  50_000,
   1_000,
-  200_000,
+  50_000,
 );
 const DEFAULT_PENDING_MAX_OUTPUT = clampNumber(
   readEnvInt("CLAWDBOT_BASH_PENDING_MAX_OUTPUT_CHARS"),
-  200_000,
+  50_000,
   1_000,
-  200_000,
+  50_000,
 );
 const DEFAULT_PATH =
   process.env.PATH ?? "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin";

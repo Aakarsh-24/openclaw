@@ -26,12 +26,20 @@ const plugin = {
     api.registerChannel({ plugin: discordPlugin });
 
     // Initialize voice integration (fire-and-forget, plugin system doesn't support async register)
+    // NOTE: Voice channel integration is DISABLED by default to prevent connection spam
+    // This feature was replaced by Phone Liam (Twilio) for real-time voice calls
     const config = api.config;
     const discordConfig = config.channels?.discord;
-    api.logger.info(`[discord-plugin] Voice enabled check: ${discordConfig?.voice?.enabled}`);
+    const voiceEnabled = discordConfig?.voice?.enabled === true; // Explicit check - must be exactly true
+    api.logger.info(`[discord-plugin] Voice channel integration: ${voiceEnabled ? "ENABLED" : "DISABLED"}`);
     
-    if (discordConfig?.voice?.enabled) {
-      api.logger.info("Initializing Discord voice support...");
+    if (!voiceEnabled) {
+      api.logger.info("[discord-plugin] Skipping voice channel init (voice.enabled !== true). DM voice messages via TTS still work.");
+      return; // Early return - don't initialize voice client, prevents connection spam
+    }
+    
+    // Voice is enabled - proceed with initialization
+    api.logger.info("Initializing Discord voice channel support...");
       
       // Get Discord token - use resolveDiscordToken from runtime config
       // We need to access the token that's being used by the Discord monitor
@@ -113,7 +121,6 @@ const plugin = {
       }).catch((error) => {
         console.error("Failed to initialize Discord voice integration:", error);
       });
-    }
   },
   unregister() {
     // Clear voice provider registry

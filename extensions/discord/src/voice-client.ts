@@ -15,11 +15,17 @@ export async function getVoiceClient(token: string): Promise<Client> {
 
   // Prevent multiple simultaneous initialization attempts
   if (isInitializing) {
-    await new Promise((resolve) => {
+    // Wait for initialization with timeout to prevent infinite polling
+    const INIT_TIMEOUT_MS = 30_000; // 30 seconds max wait
+    const startTime = Date.now();
+    await new Promise((resolve, reject) => {
       const interval = setInterval(() => {
         if (!isInitializing) {
           clearInterval(interval);
           resolve(undefined);
+        } else if (Date.now() - startTime > INIT_TIMEOUT_MS) {
+          clearInterval(interval);
+          reject(new Error("Discord voice client initialization timeout"));
         }
       }, 100);
     });

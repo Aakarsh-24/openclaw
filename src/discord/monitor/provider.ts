@@ -472,7 +472,9 @@ export async function monitorDiscordProvider(opts: MonitorDiscordOpts = {}) {
     [
       new GatewayPlugin({
         reconnect: {
-          maxAttempts: Number.POSITIVE_INFINITY,
+          // Limited reconnect attempts to prevent infinite loops with invalid tokens
+          // Previously was POSITIVE_INFINITY which could spam Discord if token is revoked
+          maxAttempts: 10,
         },
         intents: resolveDiscordGatewayIntents(discordCfg.intents),
         autoInteractions: true,

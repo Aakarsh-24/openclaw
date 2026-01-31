@@ -611,6 +611,44 @@ cd /home/liam && nohup pnpm moltbot gateway run --bind loopback --port 18789 --f
 
 ---
 
+### Pattern #16: Eager Network Initialization in Plugin Registration
+**Date:** 2026-01-31
+**Incident:** Discord token revocation due to 1000+ connection attempts
+**Frustration Level:** HIGH
+**User Quote:** (Discord email) "we had to revoke liams token because he was connecting 1000 times in very short time span"
+
+**What happened:**
+- Discord voice channel integration was initializing on every plugin `register()` call
+- Every CLI command loads plugins: `gateway stop`, `channels status`, etc.
+- Every gateway restart + CLI command = Discord login attempt
+- 3,200 voice init attempts in one day
+- Token was revoked due to connection spam
+
+**Root cause:**
+- Plugin `register()` made network connections instead of deferring
+- No circuit breaker — kept trying with failing token
+- All other plugins use lazy init (`gateway.startAccount`), Discord was unique
+- Feature was unused (replaced by Phone Liam) but still running
+
+**APEX Update Applied:**
+- Added guard: check `voice.enabled === true` before initializing
+- Added reconnect limit: 10 attempts max (was infinite)
+- Disabled unused voice channel feature
+
+**Prevention checklist (for plugin development):**
+1. NEVER make network connections in `register()` — use lazy initialization
+2. Add circuit breakers for all external service connections
+3. Check if features are actually used before leaving them enabled
+4. Use `gateway.startAccount` pattern for persistent connections
+5. Add exponential backoff on connection failures
+
+**Detection:**
+- Check for `login()`, `connect()`, or API calls in `register()` functions
+- Audit plugin registration for eager network calls
+- Monitor external service rate limit warnings
+
+---
+
 *This file is the source of truth for improving AI-human collaboration.*
 *Every frustration is data. Every pattern is an opportunity to improve APEX.*
 *Updated: 2026-01-31*

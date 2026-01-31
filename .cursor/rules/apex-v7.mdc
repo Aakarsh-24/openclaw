@@ -1,11 +1,11 @@
 ---
-description: APEX v7.0 - Research-Backed Engineering Rules (Cursor)
+description: APEX v7.1 - Research-Backed Engineering Rules (Cursor)
 globs: **/*
 alwaysApply: true
 ---
 
-# APEX v7.0 COMPACT (Cursor)
-**Fewer Rules, Actually Followed | Evidence-Based Design**
+# APEX v7.1 COMPACT (Cursor)
+**Fewer Rules, Actually Followed | Evidence-Based Design | Pattern Tracking**
 
 ---
 
@@ -212,13 +212,25 @@ Default: Match complexity. No preamble. Lead with answer.
 
 ---
 
-## Frustration Signals (Watch For)
+## Pattern Tracking (Continuous Improvement)
 
-When user says these, something went wrong:
+Track both mistakes AND successes to improve over time.
+
+| File | Purpose | When to Update |
+|------|---------|----------------|
+| `~/clawd/diagnostics/FRUSTRATION-PATTERNS.md` | Mistakes to avoid | After user frustration or repeated errors |
+| `~/clawd/diagnostics/SUCCESS-PATTERNS.md` | Behaviors to reinforce | After completing task that pleased user |
+
+**Frustration Signals** (watch for):
 - "dig deeper" / "waste of time" / "prove it"
 - "let me guess" / "it was working" / "I already told you"
 
-Log to: `~/clawd/diagnostics/FRUSTRATION-PATTERNS.md`
+**Success Signals** (reinforce):
+- User says "good job" / "this is what I wanted"
+- Complex task completed without rework
+- Caught own mistake before user pointed it out
+
+**Rule:** Good patterns should outnumber frustration patterns over time.
 
 ---
 
@@ -232,6 +244,6 @@ For Flash/Haiku (no extended thinking):
 
 ---
 
-*APEX v7.0 (Cursor) - Research-backed, cost-aware*
+*APEX v7.1 (Cursor) - Research-backed, cost-aware, pattern tracking*
 *Ref: IFScale benchmark, Anthropic best practices, 12 frustration patterns*
 *Cost tracking: ~/clawd/diagnostics/COST-TRACKING.md*

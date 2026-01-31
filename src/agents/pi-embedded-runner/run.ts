@@ -57,8 +57,14 @@ import { emitAgentEvent } from "../../infra/agent-events.js";
 type ApiKeyInfo = ResolvedProviderAuth;
 
 // Pre-flight context check constants
-const PREFLIGHT_CONTEXT_THRESHOLD_RATIO = 0.82; // Balanced: 82% triggers at 164k (less amnesia than 75%, safer than 85%)
+// Lowered from 0.82 to 0.70 to trigger compaction earlier and prevent context explosion
+// Evidence: Session grew from 227K to 248K despite multiple "successful" compactions at 82%
+const PREFLIGHT_CONTEXT_THRESHOLD_RATIO = 0.7; // 70% triggers earlier, gives more room for compaction
 const CHARS_PER_TOKEN_ESTIMATE = 4; // Conservative estimate
+
+// Hard ceiling: refuse new operations when context is critically full
+// This prevents the cascade where context explodes past limits despite compaction attempts
+const CRITICAL_CONTEXT_RATIO = 0.9; // Refuse at 90% - last line of defense
 
 /**
  * Estimate tokens in a session file by reading the file and counting characters.
@@ -393,6 +399,21 @@ export async function runEmbeddedPiAgent(
             `pre-flight compaction skipped: ${preflightCompactResult.reason ?? "nothing to compact"}`,
           );
         }
+      }
+
+      // Hard ceiling check: refuse to proceed if context is critically full (90%)
+      // This is the last line of defense against context explosion
+      const criticalContextThreshold = Math.floor(ctxInfo.tokens * CRITICAL_CONTEXT_RATIO);
+      const postCompactionTokens = await estimateSessionTokens(params.sessionFile);
+      if (postCompactionTokens > criticalContextThreshold) {
+        const percentFull = Math.round((postCompactionTokens / ctxInfo.tokens) * 100);
+        log.error(
+          `CRITICAL CONTEXT CEILING: session has ~${postCompactionTokens} tokens (${percentFull}% of ${ctxInfo.tokens} limit). Refusing to proceed. Use smaller batches or reset session.`,
+        );
+        throw new FailoverError(
+          `Context at ${percentFull}% of limit (${postCompactionTokens}/${ctxInfo.tokens} tokens). Session is too large even after compaction. Use smaller batches or reset session.`,
+          { reason: "timeout", provider, model: modelId }, // Use "timeout" - context overflow is treated as timeout for failover
+        );
       }
 
       try {
