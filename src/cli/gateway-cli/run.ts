@@ -13,13 +13,14 @@ import { startGatewayServer } from "../../gateway/server.js";
 import type { GatewayWsLogStyle } from "../../gateway/ws-logging.js";
 import { setGatewayWsLogStyle } from "../../gateway/ws-logging.js";
 import { setVerbose } from "../../globals.js";
+import { resolveGatewayLockPath } from "../../infra/gateway-lock.js";
 import { GatewayLockError } from "../../infra/gateway-lock.js";
 import { formatPortDiagnostics, inspectPortUsage } from "../../infra/ports.js";
 import { setConsoleSubsystemFilter, setConsoleTimestampPrefix } from "../../logging/console.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 import { defaultRuntime } from "../../runtime.js";
 import { formatCliCommand } from "../command-format.js";
-import { forceFreePortAndWait } from "../ports.js";
+import { forceFreePortAndWait, killProcess } from "../ports.js";
 import { ensureDevGatewayConfig } from "./dev.js";
 import { runGatewayLoop } from "./run-loop.js";
 import {
@@ -51,6 +52,50 @@ type GatewayRunOpts = {
 };
 
 const gatewayLog = createSubsystemLogger("gateway");
+
+type LockPayload = { pid: number; createdAt: string; configPath: string };
+
+async function readLockPayload(lockPath: string): Promise<LockPayload | null> {
+  try {
+    const fs = await import("node:fs/promises");
+    const raw = await fs.readFile(lockPath, "utf8");
+    const parsed = JSON.parse(raw) as Partial<LockPayload>;
+    if (typeof parsed.pid !== "number") return null;
+    if (typeof parsed.createdAt !== "string") return null;
+    if (typeof parsed.configPath !== "string") return null;
+    return {
+      pid: parsed.pid,
+      createdAt: parsed.createdAt,
+      configPath: parsed.configPath,
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function forceClearGatewayLock(): Promise<void> {
+  const { lockPath } = resolveGatewayLockPath();
+  const payload = await readLockPayload(lockPath);
+  if (!payload) return;
+
+  try {
+    await killProcess(payload.pid, "SIGTERM");
+    gatewayLog.info(`force: killed locked process pid ${payload.pid}`);
+    // Brief wait for process to exit
+    await new Promise((r) => setTimeout(r, 200));
+  } catch {
+    // Process might already be dead
+  }
+
+  // Remove lock file
+  try {
+    const fs = await import("node:fs/promises");
+    await fs.rm(lockPath, { force: true });
+    gatewayLog.info(`force: cleared gateway lock`);
+  } catch {
+    // Lock file might already be gone
+  }
+}
 
 async function runGatewayCommand(opts: GatewayRunOpts) {
   const isDevProfile = process.env.OPENCLAW_PROFILE?.trim().toLowerCase() === "dev";
@@ -105,6 +150,9 @@ async function runGatewayCommand(opts: GatewayRunOpts) {
     defaultRuntime.exit(1);
   }
   if (opts.force) {
+    // Clear gateway lock file first (if exists)
+    await forceClearGatewayLock();
+
     try {
       const { killed, waitedMs, escalatedToSigkill } = await forceFreePortAndWait(port, {
         timeoutMs: 2000,

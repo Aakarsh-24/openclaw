@@ -161,3 +161,13 @@
 - Publish: `npm publish --access public --otp="<otp>"` (run from the package dir).
 - Verify without local npmrc side effects: `npm view <pkg> version --userconfig "$(mktemp)"`.
 - Kill the tmux session after publish.
+
+## Windows Gateway Port Issues (Fixed)
+- **Problem**: On Windows, `moltbot gateway stop` may leave a lingering process occupying port 18789, preventing subsequent gateway starts.
+- **Root cause**: The `--force` flag only worked on Unix systems (used `lsof`), not Windows.
+- **Solution** (2026-01-30): Modified `src/cli/ports.ts` to support Windows port cleanup:
+  - Added `forceFreePortAsync()` using `inspectPortUsage()` (cross-platform)
+  - Added `killProcess()` wrapper that uses `taskkill` on Windows
+  - Now `--force` flag works on both Windows and Unix systems
+- **Usage**: `pnpm moltbot gateway run --bind loopback --port 18789 --force`
+- **Note**: The `start-gateway-clean.bat` script in the repo root is a workaround wrapper that pre-checks the port, but it should no longer be needed with the `--force` fix.
