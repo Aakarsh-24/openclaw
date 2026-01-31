@@ -119,12 +119,14 @@ export async function sendMessageIMessage(
   const client = opts.client ?? (await createIMessageRpcClient({ cliPath, dbPath }));
   const shouldClose = !opts.client;
   try {
-    const result = await client.request<Record<string, unknown>>("send", params, {
-      timeoutMs: opts.timeoutMs,
-    });
+    const result: Record<string, unknown> | null = await client.request<Record<string, unknown>>(
+      "send",
+      params,
+      { timeoutMs: opts.timeoutMs },
+    );
     const resolvedId = resolveMessageId(result);
     return {
-      messageId: resolvedId ?? (result?.ok ? "ok" : "unknown"),
+      messageId: resolvedId ?? (result?.["ok"] ? "ok" : "unknown"),
     };
   } finally {
     if (shouldClose) {

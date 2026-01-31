@@ -7,9 +7,13 @@ let _encryptionExplicitlyDisabled = false;
 
 async function getVault(): Promise<CredentialVault | null> {
   // If encryption was explicitly disabled, return null
-  if (_encryptionExplicitlyDisabled) return null;
+  if (_encryptionExplicitlyDisabled) {
+    return null;
+  }
 
-  if (_vault) return _vault;
+  if (_vault) {
+    return _vault;
+  }
 
   try {
     const keyProvider = await createKeyProvider();
@@ -26,7 +30,9 @@ async function getVault(): Promise<CredentialVault | null> {
  */
 export async function loadEncryptedJsonFile(pathname: string): Promise<unknown> {
   const data = loadJsonFile(pathname);
-  if (!data) return data;
+  if (!data) {
+    return data;
+  }
 
   const vault = await getVault();
   if (vault && (await vault.isEncrypted(data))) {

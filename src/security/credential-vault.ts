@@ -24,7 +24,7 @@ export class CredentialVault {
     let encrypted = cipher.update(jsonData, "utf8", "base64");
     encrypted += cipher.final("base64");
 
-    const authTag = (cipher as crypto.CipherGCM).getAuthTag();
+    const authTag = cipher.getAuthTag();
 
     return {
       version: 2,
