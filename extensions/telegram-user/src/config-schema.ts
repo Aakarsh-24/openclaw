@@ -23,7 +23,7 @@ const TelegramUserGroupSchema = z
   .object({
     requireMention: z.boolean().optional(),
     skills: z.array(z.string()).optional(),
-    tools: ToolPolicySchema,
+    tools: ToolPolicySchema.optional(),
     topics: z.record(z.string(), TelegramUserTopicSchema.optional()).optional(),
     enabled: z.boolean().optional(),
     allowFrom: z.array(allowFromEntry).optional(),
