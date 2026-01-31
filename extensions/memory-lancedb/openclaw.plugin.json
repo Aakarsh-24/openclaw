@@ -8,6 +8,10 @@
       "placeholder": "sk-proj-... (for OpenAI) or AIza... (for Google)",
       "help": "API key for embeddings provider (use ${OPENAI_API_KEY} or ${GOOGLE_API_KEY})"
     },
+    "embedding.provider": {
+      "label": "Provider",
+      "help": "Embedding provider (auto-detected from model if not specified)"
+    },
     "embedding.model": {
       "label": "Embedding Model",
       "placeholder": "text-embedding-3-small",
@@ -37,6 +41,14 @@
         "properties": {
           "apiKey": {
             "type": "string"
+          },
+          "provider": {
+            "type": "string",
+            "enum": [
+              "openai",
+              "google"
+            ],
+            "default": "openai"
           },
           "model": {
             "type": "string",
