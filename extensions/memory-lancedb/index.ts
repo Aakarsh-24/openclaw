@@ -66,7 +66,8 @@ class MemoryDB {
   }
 
   private async doInitialize(): Promise<void> {
-    this.db = await lancedb.connect(this.dbPath);
+    const { connect, makeArrowTable } = await import("@lancedb/lancedb");
+    this.db = await connect(this.dbPath);
     const tables = await this.db.tableNames();
 
     if (tables.includes(TABLE_NAME)) {
@@ -84,6 +85,7 @@ class MemoryDB {
       ]);
       await this.table.delete('id = "__schema__"');
     }
+  }
   }
 
   async store(entry: Omit<MemoryEntry, "id" | "createdAt">): Promise<MemoryEntry> {
@@ -143,25 +145,55 @@ class MemoryDB {
 }
 
 // ============================================================================
-// OpenAI Embeddings
+// Embeddings (OpenAI and Google Gemini)
 // ============================================================================
 
 class Embeddings {
-  private client: OpenAI;
+  private client: OpenAI | null = null;
 
   constructor(
+    private provider: "openai" | "google",
     apiKey: string,
     private model: string,
   ) {
-    this.client = new OpenAI({ apiKey });
+    if (provider === "openai") {
+      this.client = new OpenAI({ apiKey });
+    }
   }
 
   async embed(text: string): Promise<number[]> {
-    const response = await this.client.embeddings.create({
-      model: this.model,
-      input: text,
-    });
-    return response.data[0].embedding;
+    if (this.provider === "openai") {
+      const response = await this.client!.embeddings.create({
+        model: this.model,
+        input: text,
+      });
+      return response.data[0].embedding;
+    } else {
+      const baseUrl = "https://generativelanguage.googleapis.com/v1beta";
+      const modelPath = this.model.startsWith("models/") ? this.model : `models/${this.model}`;
+      const url = `${baseUrl}/${modelPath}:embedContent`;
+      
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": apiKey,
+        },
+        body: JSON.stringify({
+          content: { parts: [{ text }] },
+          taskType: "RETRIEVAL_QUERY",
+          outputDimensionality: 768,
+        }),
+      });
+
+      if (!res.ok) {
+        const payload = await res.text();
+        throw new Error(`gemini embeddings failed: ${res.status} ${payload}`);
+      }
+
+      const payload = (await res.json()) as { embedding?: { values?: number[] } };
+      return Array.from(payload.embedding?.values ?? []);
+    }
   }
 }
 
@@ -238,7 +270,7 @@ const memoryPlugin = {
     const resolvedDbPath = api.resolvePath(cfg.dbPath!);
     const vectorDim = vectorDimsForModel(cfg.embedding.model ?? "text-embedding-3-small");
     const db = new MemoryDB(resolvedDbPath, vectorDim);
-    const embeddings = new Embeddings(cfg.embedding.apiKey, cfg.embedding.model!);
+    const embeddings = new Embeddings(cfg.embedding.provider, cfg.embedding.apiKey, cfg.embedding.model!);
 
     api.logger.info(`memory-lancedb: plugin registered (db: ${resolvedDbPath}, lazy init)`);
 
