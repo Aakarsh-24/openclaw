@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { Type } from "@sinclair/typebox";
 
 export type MemoryConfig = {
   embedding: {
@@ -95,6 +96,33 @@ function resolveEmbeddingProvider(model: string, explicitProvider?: string): "op
   }
   return "openai";
 }
+
+// Typebox schema for config validation
+export const memoryConfigTypeboxSchema = Type.Object({
+  embedding: Type.Object({
+    apiKey: Type.String({
+      description: "API key for embeddings provider"
+    }),
+    provider: Type.Optional(Type.Union([
+      Type.Literal("openai"),
+      Type.Literal("google")
+    ], {
+      description: "Embedding provider (auto-detected from model if not specified)"
+    })),
+    model: Type.Optional(Type.String({
+      description: "Embedding model to use (OpenAI: text-embedding-3-small/3-large, Google: gemini-embedding-001)"
+    })),
+  }),
+  dbPath: Type.Optional(Type.String({
+    description: "Database path"
+  })),
+  autoCapture: Type.Optional(Type.Boolean({
+    description: "Automatically capture important information from conversations"
+  })),
+  autoRecall: Type.Optional(Type.Boolean({
+    description: "Automatically inject relevant memories into context"
+  })),
+});
 
 export const memoryConfigSchema = {
   parse(value: unknown): MemoryConfig {

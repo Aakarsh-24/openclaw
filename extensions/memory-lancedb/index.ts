@@ -16,6 +16,7 @@ import {
   MEMORY_CATEGORIES,
   type MemoryCategory,
   memoryConfigSchema,
+  memoryConfigTypeboxSchema,
   vectorDimsForModel,
 } from "./config.js";
 
@@ -307,6 +308,7 @@ const memoryPlugin = {
   name: "Memory (LanceDB)",
   description: "LanceDB-backed long-term memory with auto-recall/capture",
   kind: "memory" as const,
+  schema: memoryConfigTypeboxSchema,
   configSchema: memoryConfigSchema,
 
   register(api: OpenClawPluginApi) {
