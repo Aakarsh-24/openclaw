@@ -348,10 +348,12 @@ export async function runTui(opts: TuiOptions) {
           phrases: waitingPhrase ? [waitingPhrase] : undefined,
         }),
       );
+      tui.requestRender();
       return;
     }
 
     statusLoader.setMessage(`${activityStatus} • ${elapsed} | ${connectionStatus}`);
+    tui.requestRender();
   };
 
   const startStatusTimer = () => {
@@ -423,11 +425,13 @@ export async function runTui(opts: TuiOptions) {
   const setConnectionStatus = (text: string, ttlMs?: number) => {
     connectionStatus = text;
     renderStatus();
+    tui.requestRender();
     if (statusTimeout) clearTimeout(statusTimeout);
     if (ttlMs && ttlMs > 0) {
       statusTimeout = setTimeout(() => {
         connectionStatus = isConnected ? "connected" : "disconnected";
         renderStatus();
+        tui.requestRender();
       }, ttlMs);
     }
   };
@@ -435,6 +439,7 @@ export async function runTui(opts: TuiOptions) {
   const setActivityStatus = (text: string) => {
     activityStatus = text;
     renderStatus();
+    tui.requestRender();
   };
 
   const updateFooter = () => {
