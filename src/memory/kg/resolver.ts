@@ -5,10 +5,11 @@ import type { Entity } from "./schema.js";
  * Entity canonicalization and alias resolution.
  * Handles merging duplicate entities and maintaining canonical names.
  *
- * TODO (Agent 1 - Phase 2):
- * - Implement fuzzy matching for entity resolution
- * - Add LLM-based disambiguation for ambiguous entities
- * - Support manual entity merging via user tool
+ * Features:
+ * - Exact match resolution on name, canonical_name, and aliases
+ * - Fuzzy matching using Levenshtein distance for near-matches
+ * - Entity merging to consolidate duplicates
+ * - Duplicate detection for manual review
  */
 
 export interface ResolverOptions {
@@ -53,19 +54,54 @@ export function resolveEntity(
   }
 
   // Check aliases
-  const aliasMatch = db
+  const allEntities = db
     .prepare(
-      `SELECT id, canonical_name, aliases FROM entities
+      `SELECT id, name, canonical_name, aliases FROM entities
        WHERE entity_type = ?`,
     )
-    .all(entityType) as unknown as Array<{ id: string; canonical_name: string; aliases: string }>;
+    .all(entityType) as unknown as Array<{
+    id: string;
+    name: string;
+    canonical_name: string;
+    aliases: string;
+  }>;
 
-  for (const entity of aliasMatch) {
+  for (const entity of allEntities) {
     const aliases: string[] = JSON.parse(entity.aliases || "[]");
     if (aliases.some((alias) => alias.toLowerCase() === name.toLowerCase())) {
       return {
         canonicalId: entity.id,
         canonicalName: entity.canonical_name,
+        isNew: false,
+        merged: [],
+      };
+    }
+  }
+
+  // Fuzzy matching if enabled
+  const { fuzzyThreshold = 0.8 } = options;
+  if (fuzzyThreshold > 0 && fuzzyThreshold < 1) {
+    let bestMatch: { id: string; canonical_name: string; similarity: number } | null = null;
+
+    for (const entity of allEntities) {
+      // Check against name and all aliases
+      const candidates = [entity.name, ...JSON.parse(entity.aliases || "[]")];
+      for (const candidate of candidates) {
+        const sim = calculateSimilarity(name, candidate);
+        if (sim >= fuzzyThreshold && (!bestMatch || sim > bestMatch.similarity)) {
+          bestMatch = {
+            id: entity.id,
+            canonical_name: entity.canonical_name,
+            similarity: sim,
+          };
+        }
+      }
+    }
+
+    if (bestMatch) {
+      return {
+        canonicalId: bestMatch.id,
+        canonicalName: bestMatch.canonical_name,
         isNew: false,
         merged: [],
       };

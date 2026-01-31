@@ -5,10 +5,12 @@ import type { Entity, EntityMention, Relation, RelationType } from "./schema.js"
  * Knowledge Graph query interface.
  * Provides structured queries for entity and relation lookups.
  *
- * TODO (Agent 1 - Phase 2):
- * - Add graph traversal queries (N-hop neighbors)
- * - Implement path finding between entities
- * - Add aggregation queries (e.g., most connected entities)
+ * Features:
+ * - Entity lookup by name, type, and partial match
+ * - Relation queries between entities
+ * - Graph traversal (N-hop neighbors)
+ * - Path finding between entities
+ * - Aggregation queries
  */
 
 export interface EntityWithRelations extends Entity {
@@ -238,4 +240,196 @@ export function getEntityChunks(entityName: string, options: QueryOptions): stri
     .all(entity.id) as unknown as Array<{ chunk_id: string }>;
 
   return mentions.map((m) => m.chunk_id);
+}
+
+/**
+ * Graph traversal: finds all entities within N hops of the starting entity.
+ */
+export function findNeighbors(
+  entityName: string,
+  hops: number,
+  options: QueryOptions,
+): Map<number, Entity[]> {
+  const { db, minTrustScore = 0 } = options;
+  const result = new Map<number, Entity[]>();
+
+  const startEntity = findEntity(entityName, { db });
+  if (!startEntity) {
+    return result;
+  }
+
+  const visited = new Set<string>([startEntity.id]);
+  let currentLevel = [startEntity.id];
+
+  for (let hop = 1; hop <= hops; hop++) {
+    const nextLevel: string[] = [];
+
+    for (const entityId of currentLevel) {
+      // Get all connected entities
+      const outgoing = db
+        .prepare(
+          `SELECT target_entity_id FROM relations
+           WHERE source_entity_id = ? AND trust_score >= ?`,
+        )
+        .all(entityId, minTrustScore) as unknown as Array<{ target_entity_id: string }>;
+
+      const incoming = db
+        .prepare(
+          `SELECT source_entity_id FROM relations
+           WHERE target_entity_id = ? AND trust_score >= ?`,
+        )
+        .all(entityId, minTrustScore) as unknown as Array<{ source_entity_id: string }>;
+
+      for (const r of outgoing) {
+        if (!visited.has(r.target_entity_id)) {
+          visited.add(r.target_entity_id);
+          nextLevel.push(r.target_entity_id);
+        }
+      }
+
+      for (const r of incoming) {
+        if (!visited.has(r.source_entity_id)) {
+          visited.add(r.source_entity_id);
+          nextLevel.push(r.source_entity_id);
+        }
+      }
+    }
+
+    if (nextLevel.length > 0) {
+      const placeholders = nextLevel.map(() => "?").join(",");
+      const entities = db
+        .prepare(`SELECT * FROM entities WHERE id IN (${placeholders})`)
+        .all(...nextLevel) as unknown as Entity[];
+
+      result.set(
+        hop,
+        entities.map((e) => ({
+          ...e,
+          aliases: JSON.parse((e.aliases as unknown as string) || "[]"),
+        })),
+      );
+    }
+
+    currentLevel = nextLevel;
+  }
+
+  return result;
+}
+
+/**
+ * Finds a path between two entities using BFS.
+ * Returns the sequence of entities and relations, or null if no path exists.
+ */
+export interface PathStep {
+  entity: Entity;
+  relation?: Relation;
+}
+
+export function findPath(
+  fromEntity: string,
+  toEntity: string,
+  options: QueryOptions & { maxHops?: number },
+): PathStep[] | null {
+  const { db, minTrustScore = 0, maxHops = 5 } = options;
+
+  const from = findEntity(fromEntity, { db });
+  const to = findEntity(toEntity, { db });
+
+  if (!from || !to) {
+    return null;
+  }
+
+  if (from.id === to.id) {
+    return [{ entity: from }];
+  }
+
+  // BFS to find shortest path
+  const visited = new Set<string>([from.id]);
+  const queue: Array<{ entityId: string; path: PathStep[] }> = [
+    { entityId: from.id, path: [{ entity: from }] },
+  ];
+
+  while (queue.length > 0) {
+    const current = queue.shift();
+    if (!current || current.path.length > maxHops) {
+      continue;
+    }
+
+    // Get all relations from current entity
+    const relations = db
+      .prepare(
+        `SELECT * FROM relations
+         WHERE (source_entity_id = ? OR target_entity_id = ?)
+         AND trust_score >= ?`,
+      )
+      .all(current.entityId, current.entityId, minTrustScore) as unknown as Relation[];
+
+    for (const relation of relations) {
+      const nextId =
+        relation.source_entity_id === current.entityId
+          ? relation.target_entity_id
+          : relation.source_entity_id;
+
+      if (visited.has(nextId)) {
+        continue;
+      }
+
+      const nextEntity = db.prepare(`SELECT * FROM entities WHERE id = ?`).get(nextId) as
+        | Entity
+        | undefined;
+
+      if (!nextEntity) {
+        continue;
+      }
+
+      nextEntity.aliases = JSON.parse((nextEntity.aliases as unknown as string) || "[]");
+
+      const newPath: PathStep[] = [...current.path, { entity: nextEntity, relation }];
+
+      if (nextId === to.id) {
+        return newPath;
+      }
+
+      visited.add(nextId);
+      queue.push({ entityId: nextId, path: newPath });
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Gets the most connected entities (by relation count).
+ */
+export function getMostConnected(
+  options: QueryOptions & { limit?: number; entityType?: string },
+): Array<{ entity: Entity; connectionCount: number }> {
+  const { db, minTrustScore = 0, limit = 10, entityType } = options;
+
+  const typeFilter = entityType ? `AND e.entity_type = ?` : "";
+  const params = entityType
+    ? [minTrustScore, minTrustScore, entityType, limit]
+    : [minTrustScore, minTrustScore, limit];
+
+  const results = db
+    .prepare(
+      `SELECT e.*,
+              (SELECT COUNT(*) FROM relations r
+               WHERE (r.source_entity_id = e.id OR r.target_entity_id = e.id)
+               AND r.trust_score >= ?) as connection_count
+       FROM entities e
+       WHERE e.trust_score >= ?
+       ${typeFilter}
+       ORDER BY connection_count DESC
+       LIMIT ?`,
+    )
+    .all(...params) as unknown as Array<Entity & { connection_count: number }>;
+
+  return results.map((r) => ({
+    entity: {
+      ...r,
+      aliases: JSON.parse((r.aliases as unknown as string) || "[]"),
+    },
+    connectionCount: r.connection_count,
+  }));
 }

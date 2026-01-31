@@ -50,6 +50,10 @@ export {
   findRelatedEntities,
   searchEntities,
   getEntityChunks,
+  findNeighbors,
+  findPath,
+  getMostConnected,
   type EntityWithRelations,
   type QueryOptions,
+  type PathStep,
 } from "./query.js";
