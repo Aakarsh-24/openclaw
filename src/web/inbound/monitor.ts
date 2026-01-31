@@ -190,9 +190,10 @@ export async function monitorWebInbox(options: {
         sock: { sendMessage: (jid, content) => sock.sendMessage(jid, content) },
         remoteJid,
       });
-      if (!access.allowed) continue;
+      if (!access.allowed && !access.storeForContext) continue;
+      const contextOnly = !access.allowed && access.storeForContext;
 
-      if (id && !access.isSelfChat && options.sendReadReceipts !== false) {
+      if (id && !contextOnly && !access.isSelfChat && options.sendReadReceipts !== false) {
         const participant = msg.key?.participant;
         try {
           await sock.readMessages([{ remoteJid, id, participant, fromMe: false }]);
@@ -298,6 +299,7 @@ export async function monitorWebInbox(options: {
         sendMedia,
         mediaPath,
         mediaType,
+        contextOnly,
       };
       try {
         const task = Promise.resolve(debouncer.enqueue(inboundMessage));

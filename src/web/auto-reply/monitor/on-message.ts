@@ -94,6 +94,32 @@ export function createWebOnMessageHandler(params: {
       return;
     }
 
+    // Context-only messages: store for group history but never trigger a reply.
+    // This happens when a group message passes group allowlist checks for the group
+    // itself but the sender is not in groupAllowFrom.
+    if (msg.contextOnly && msg.chatType === "group") {
+      const sender =
+        msg.senderName && msg.senderE164
+          ? `${msg.senderName} (${msg.senderE164})`
+          : (msg.senderName ?? msg.senderE164 ?? "Unknown");
+      logVerbose(`Storing context-only group message from ${sender} in ${conversationId}`);
+      const { recordPendingHistoryEntryIfEnabled } =
+        await import("../../../auto-reply/reply/history.js");
+      recordPendingHistoryEntryIfEnabled({
+        historyMap: params.groupHistories,
+        historyKey: groupHistoryKey,
+        limit: params.groupHistoryLimit,
+        entry: {
+          sender,
+          body: msg.body,
+          timestamp: msg.timestamp,
+          id: msg.id,
+          senderJid: msg.senderJid,
+        },
+      });
+      return;
+    }
+
     if (msg.chatType === "group") {
       const metaCtx = {
         From: msg.from,
