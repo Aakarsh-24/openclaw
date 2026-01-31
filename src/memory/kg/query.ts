@@ -27,10 +27,7 @@ export interface QueryOptions {
 /**
  * Finds an entity by name, canonical name, or alias.
  */
-export function findEntity(
-  name: string,
-  options: QueryOptions,
-): EntityWithRelations | null {
+export function findEntity(name: string, options: QueryOptions): EntityWithRelations | null {
   const { db, includeRelations = false, includeMentions = false, minTrustScore = 0 } = options;
 
   // Try exact match first
@@ -46,7 +43,7 @@ export function findEntity(
   if (!entity) {
     const allEntities = db
       .prepare(`SELECT * FROM entities WHERE trust_score >= ?`)
-      .all(minTrustScore) as Entity[];
+      .all(minTrustScore) as unknown as Entity[];
 
     for (const e of allEntities) {
       const aliases: string[] = JSON.parse((e.aliases as unknown as string) || "[]");
@@ -57,7 +54,9 @@ export function findEntity(
     }
   }
 
-  if (!entity) return null;
+  if (!entity) {
+    return null;
+  }
 
   // Parse aliases from JSON string
   entity.aliases = JSON.parse((entity.aliases as unknown as string) || "[]");
@@ -72,17 +71,17 @@ export function findEntity(
   if (includeRelations) {
     result.outgoingRelations = db
       .prepare(`SELECT * FROM relations WHERE source_entity_id = ? AND trust_score >= ?`)
-      .all(entity.id, minTrustScore) as Relation[];
+      .all(entity.id, minTrustScore) as unknown as Relation[];
 
     result.incomingRelations = db
       .prepare(`SELECT * FROM relations WHERE target_entity_id = ? AND trust_score >= ?`)
-      .all(entity.id, minTrustScore) as Relation[];
+      .all(entity.id, minTrustScore) as unknown as Relation[];
   }
 
   if (includeMentions) {
     result.mentions = db
       .prepare(`SELECT * FROM entity_mentions WHERE entity_id = ?`)
-      .all(entity.id) as EntityMention[];
+      .all(entity.id) as unknown as EntityMention[];
   }
 
   return result;
@@ -91,15 +90,12 @@ export function findEntity(
 /**
  * Finds all entities of a given type.
  */
-export function findEntitiesByType(
-  entityType: string,
-  options: QueryOptions,
-): Entity[] {
+export function findEntitiesByType(entityType: string, options: QueryOptions): Entity[] {
   const { db, minTrustScore = 0 } = options;
 
   const entities = db
     .prepare(`SELECT * FROM entities WHERE entity_type = ? AND trust_score >= ? ORDER BY name`)
-    .all(entityType, minTrustScore) as Entity[];
+    .all(entityType, minTrustScore) as unknown as Entity[];
 
   // Parse aliases for each entity
   return entities.map((e) => ({
@@ -122,7 +118,9 @@ export function findRelationsBetween(
   const e1 = findEntity(entity1, { db });
   const e2 = findEntity(entity2, { db });
 
-  if (!e1 || !e2) return [];
+  if (!e1 || !e2) {
+    return [];
+  }
 
   return db
     .prepare(
@@ -131,7 +129,7 @@ export function findRelationsBetween(
           OR (source_entity_id = ? AND target_entity_id = ?))
        AND trust_score >= ?`,
     )
-    .all(e1.id, e2.id, e2.id, e1.id, minTrustScore) as Relation[];
+    .all(e1.id, e2.id, e2.id, e1.id, minTrustScore) as unknown as Relation[];
 }
 
 /**
@@ -146,7 +144,9 @@ export function findRelatedEntities(
   const { db, minTrustScore = 0 } = options;
 
   const entity = findEntity(entityName, { db });
-  if (!entity) return [];
+  if (!entity) {
+    return [];
+  }
 
   const relatedIds: Set<string> = new Set();
 
@@ -156,7 +156,9 @@ export function findRelatedEntities(
         `SELECT target_entity_id FROM relations
          WHERE source_entity_id = ? AND relation_type = ? AND trust_score >= ?`,
       )
-      .all(entity.id, relationType, minTrustScore) as Array<{ target_entity_id: string }>;
+      .all(entity.id, relationType, minTrustScore) as unknown as Array<{
+      target_entity_id: string;
+    }>;
 
     outgoing.forEach((r) => relatedIds.add(r.target_entity_id));
   }
@@ -167,18 +169,24 @@ export function findRelatedEntities(
         `SELECT source_entity_id FROM relations
          WHERE target_entity_id = ? AND relation_type = ? AND trust_score >= ?`,
       )
-      .all(entity.id, relationType, minTrustScore) as Array<{ source_entity_id: string }>;
+      .all(entity.id, relationType, minTrustScore) as unknown as Array<{
+      source_entity_id: string;
+    }>;
 
     incoming.forEach((r) => relatedIds.add(r.source_entity_id));
   }
 
-  if (relatedIds.size === 0) return [];
+  if (relatedIds.size === 0) {
+    return [];
+  }
 
   // Fetch full entity records
-  const placeholders = Array.from(relatedIds).map(() => "?").join(",");
+  const placeholders = Array.from(relatedIds)
+    .map(() => "?")
+    .join(",");
   const entities = db
     .prepare(`SELECT * FROM entities WHERE id IN (${placeholders}) AND trust_score >= ?`)
-    .all(...relatedIds, minTrustScore) as Entity[];
+    .all(...relatedIds, minTrustScore) as unknown as Entity[];
 
   return entities.map((e) => ({
     ...e,
@@ -205,7 +213,7 @@ export function searchEntities(
        ORDER BY trust_score DESC, name
        LIMIT ?`,
     )
-    .all(pattern, pattern, minTrustScore, limit) as Entity[];
+    .all(pattern, pattern, minTrustScore, limit) as unknown as Entity[];
 
   return entities.map((e) => ({
     ...e,
@@ -221,11 +229,13 @@ export function getEntityChunks(entityName: string, options: QueryOptions): stri
   const { db } = options;
 
   const entity = findEntity(entityName, { db });
-  if (!entity) return [];
+  if (!entity) {
+    return [];
+  }
 
   const mentions = db
     .prepare(`SELECT DISTINCT chunk_id FROM entity_mentions WHERE entity_id = ?`)
-    .all(entity.id) as Array<{ chunk_id: string }>;
+    .all(entity.id) as unknown as Array<{ chunk_id: string }>;
 
   return mentions.map((m) => m.chunk_id);
 }

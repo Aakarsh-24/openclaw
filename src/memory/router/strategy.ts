@@ -81,7 +81,9 @@ export async function executeStrategy(
   return {
     results: [],
     strategy,
-    expandedQueries: expandQueryWithAliases(query, classification.extractedEntities, { db: _options.db }),
+    expandedQueries: expandQueryWithAliases(query, classification.extractedEntities, {
+      db: _options.db,
+    }),
     kgContext: undefined,
   };
 }
@@ -149,7 +151,7 @@ export function mergeStrategyResults(
   }
 
   // Sort by combined score
-  return Array.from(resultMap.values()).sort((a, b) => b.score - a.score);
+  return Array.from(resultMap.values()).toSorted((a, b) => b.score - a.score);
 }
 
 /**

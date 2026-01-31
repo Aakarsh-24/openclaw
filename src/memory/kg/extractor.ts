@@ -1,5 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
-import type { Entity, EntityMention, EntityType, Relation, RelationType, SourceType } from "./schema.js";
+import type { Entity, EntityType, Relation, RelationType, SourceType } from "./schema.js";
 import { generateId } from "./schema.js";
 
 /**
@@ -164,11 +164,15 @@ export function persistRelations(
   for (const extracted of relations) {
     // Look up source and target entities by name
     const sourceEntity = db
-      .prepare(`SELECT id FROM entities WHERE LOWER(name) = LOWER(?) OR LOWER(canonical_name) = LOWER(?)`)
+      .prepare(
+        `SELECT id FROM entities WHERE LOWER(name) = LOWER(?) OR LOWER(canonical_name) = LOWER(?)`,
+      )
       .get(extracted.sourceEntityName, extracted.sourceEntityName) as { id: string } | undefined;
 
     const targetEntity = db
-      .prepare(`SELECT id FROM entities WHERE LOWER(name) = LOWER(?) OR LOWER(canonical_name) = LOWER(?)`)
+      .prepare(
+        `SELECT id FROM entities WHERE LOWER(name) = LOWER(?) OR LOWER(canonical_name) = LOWER(?)`,
+      )
       .get(extracted.targetEntityName, extracted.targetEntityName) as { id: string } | undefined;
 
     if (!sourceEntity || !targetEntity) {

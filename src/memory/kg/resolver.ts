@@ -58,7 +58,7 @@ export function resolveEntity(
       `SELECT id, canonical_name, aliases FROM entities
        WHERE entity_type = ?`,
     )
-    .all(entityType) as Array<{ id: string; canonical_name: string; aliases: string }>;
+    .all(entityType) as unknown as Array<{ id: string; canonical_name: string; aliases: string }>;
 
   for (const entity of aliasMatch) {
     const aliases: string[] = JSON.parse(entity.aliases || "[]");
@@ -80,13 +80,13 @@ export function resolveEntity(
  * Merges two entities, keeping the first as canonical.
  * Updates all relations and mentions to point to the canonical entity.
  */
-export function mergeEntities(
-  db: DatabaseSync,
-  canonicalId: string,
-  duplicateId: string,
-): boolean {
-  const canonical = db.prepare(`SELECT * FROM entities WHERE id = ?`).get(canonicalId) as Entity | undefined;
-  const duplicate = db.prepare(`SELECT * FROM entities WHERE id = ?`).get(duplicateId) as Entity | undefined;
+export function mergeEntities(db: DatabaseSync, canonicalId: string, duplicateId: string): boolean {
+  const canonical = db.prepare(`SELECT * FROM entities WHERE id = ?`).get(canonicalId) as
+    | Entity
+    | undefined;
+  const duplicate = db.prepare(`SELECT * FROM entities WHERE id = ?`).get(duplicateId) as
+    | Entity
+    | undefined;
 
   if (!canonical || !duplicate) {
     return false;
@@ -115,7 +115,10 @@ export function mergeEntities(
   );
 
   // Update all mentions pointing to duplicate
-  db.prepare(`UPDATE entity_mentions SET entity_id = ? WHERE entity_id = ?`).run(canonicalId, duplicateId);
+  db.prepare(`UPDATE entity_mentions SET entity_id = ? WHERE entity_id = ?`).run(
+    canonicalId,
+    duplicateId,
+  );
 
   // Delete duplicate entity
   db.prepare(`DELETE FROM entities WHERE id = ?`).run(duplicateId);
@@ -136,7 +139,9 @@ export function findPotentialDuplicates(
     ? `SELECT * FROM entities WHERE entity_type = ? ORDER BY name`
     : `SELECT * FROM entities ORDER BY name`;
 
-  const entities = (entityType ? db.prepare(query).all(entityType) : db.prepare(query).all()) as Entity[];
+  const entities = (entityType
+    ? db.prepare(query).all(entityType)
+    : db.prepare(query).all()) as unknown as Entity[];
 
   const duplicates: Array<{ entity1: Entity; entity2: Entity; similarity: number }> = [];
 
@@ -154,7 +159,7 @@ export function findPotentialDuplicates(
     }
   }
 
-  return duplicates.sort((a, b) => b.similarity - a.similarity);
+  return duplicates.toSorted((a, b) => b.similarity - a.similarity);
 }
 
 /**
@@ -165,12 +170,16 @@ function calculateSimilarity(str1: string, str2: string): number {
   const s1 = str1.toLowerCase();
   const s2 = str2.toLowerCase();
 
-  if (s1 === s2) return 1.0;
+  if (s1 === s2) {
+    return 1.0;
+  }
 
   const len1 = s1.length;
   const len2 = s2.length;
 
-  if (len1 === 0 || len2 === 0) return 0.0;
+  if (len1 === 0 || len2 === 0) {
+    return 0.0;
+  }
 
   // Levenshtein distance
   const matrix: number[][] = [];

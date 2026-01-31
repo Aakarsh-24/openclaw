@@ -96,7 +96,7 @@ export function trustWeightedRerank<T extends { chunkId: string; score: number }
       const combinedScore = result.score * relevanceWeight + trustScore * trustWeight;
       return { ...result, combinedScore, trustScore };
     })
-    .sort((a, b) => b.combinedScore - a.combinedScore);
+    .toSorted((a, b) => b.combinedScore - a.combinedScore);
 }
 
 /**
@@ -118,10 +118,15 @@ export function filterByTrust<T extends { chunkId: string }>(
  */
 export function updateTrustScore(db: DatabaseSync, chunkId: string, newScore: number): boolean {
   const provenance = getProvenance(db, chunkId);
-  if (!provenance) return false;
+  if (!provenance) {
+    return false;
+  }
 
   const clampedScore = Math.max(0, Math.min(1, newScore));
-  db.prepare(`UPDATE chunk_provenance SET trust_score = ? WHERE chunk_id = ?`).run(clampedScore, chunkId);
+  db.prepare(`UPDATE chunk_provenance SET trust_score = ? WHERE chunk_id = ?`).run(
+    clampedScore,
+    chunkId,
+  );
 
   return true;
 }

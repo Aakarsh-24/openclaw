@@ -39,7 +39,9 @@ export function ensureProvenanceSchema(db: DatabaseSync): void {
     );
   `);
 
-  db.exec(`CREATE INDEX IF NOT EXISTS idx_provenance_source_type ON chunk_provenance(source_type);`);
+  db.exec(
+    `CREATE INDEX IF NOT EXISTS idx_provenance_source_type ON chunk_provenance(source_type);`,
+  );
   db.exec(`CREATE INDEX IF NOT EXISTS idx_provenance_trust ON chunk_provenance(trust_score);`);
 }
 
@@ -82,7 +84,9 @@ export function getProvenance(db: DatabaseSync, chunkId: string): ChunkProvenanc
     | (Omit<ChunkProvenance, "verified_by_user"> & { verified_by_user: number })
     | undefined;
 
-  if (!row) return null;
+  if (!row) {
+    return null;
+  }
 
   return {
     ...row,
@@ -94,13 +98,11 @@ export function getProvenance(db: DatabaseSync, chunkId: string): ChunkProvenanc
  * Marks a chunk as verified by the user.
  * Increases trust score and records verification timestamp.
  */
-export function verifyChunk(
-  db: DatabaseSync,
-  chunkId: string,
-  trustBoost: number = 0.3,
-): boolean {
+export function verifyChunk(db: DatabaseSync, chunkId: string, trustBoost: number = 0.3): boolean {
   const existing = getProvenance(db, chunkId);
-  if (!existing) return false;
+  if (!existing) {
+    return false;
+  }
 
   const newScore = Math.min(1.0, existing.trust_score + trustBoost);
   const now = Date.now();

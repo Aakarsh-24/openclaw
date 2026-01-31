@@ -25,29 +25,65 @@ export interface ClassificationResult {
 export type RetrievalStrategy = "vector_first" | "kg_first" | "hybrid" | "kg_only";
 
 // Pattern-based intent classification rules
-const INTENT_PATTERNS: Array<{ pattern: RegExp; intent: QueryIntent; strategy: RetrievalStrategy }> = [
+const INTENT_PATTERNS: Array<{
+  pattern: RegExp;
+  intent: QueryIntent;
+  strategy: RetrievalStrategy;
+}> = [
   // Episodic - past discussions, events, context
-  { pattern: /what\s+did\s+we\s+(discuss|talk|say)/i, intent: "episodic", strategy: "vector_first" },
+  {
+    pattern: /what\s+did\s+we\s+(discuss|talk|say)/i,
+    intent: "episodic",
+    strategy: "vector_first",
+  },
   { pattern: /when\s+did\s+(we|I|you)/i, intent: "episodic", strategy: "vector_first" },
   { pattern: /last\s+time\s+we/i, intent: "episodic", strategy: "vector_first" },
   { pattern: /remember\s+when/i, intent: "episodic", strategy: "vector_first" },
   { pattern: /in\s+our\s+(previous|last|earlier)/i, intent: "episodic", strategy: "vector_first" },
 
   // Factual - preferences, properties, attributes
-  { pattern: /what\s+(does|do|is)\s+\w+\s+(use|prefer|like|want)/i, intent: "factual", strategy: "kg_first" },
-  { pattern: /what\s+is\s+\w+'?s?\s+(favorite|preferred)/i, intent: "factual", strategy: "kg_first" },
+  {
+    pattern: /what\s+(does|do|is)\s+\w+\s+(use|prefer|like|want)/i,
+    intent: "factual",
+    strategy: "kg_first",
+  },
+  {
+    pattern: /what\s+is\s+\w+'?s?\s+(favorite|preferred)/i,
+    intent: "factual",
+    strategy: "kg_first",
+  },
   { pattern: /how\s+does\s+\w+\s+(work|function)/i, intent: "factual", strategy: "hybrid" },
-  { pattern: /what\s+are\s+the\s+(features|properties|attributes)/i, intent: "factual", strategy: "kg_first" },
+  {
+    pattern: /what\s+are\s+the\s+(features|properties|attributes)/i,
+    intent: "factual",
+    strategy: "kg_first",
+  },
 
   // Relational - connections between entities
   { pattern: /who\s+(knows|works|collaborates)/i, intent: "relational", strategy: "kg_first" },
-  { pattern: /what\s+projects?\s+(involve|include|have)/i, intent: "relational", strategy: "kg_first" },
-  { pattern: /is\s+\w+\s+(related|connected|linked)\s+to/i, intent: "relational", strategy: "kg_only" },
+  {
+    pattern: /what\s+projects?\s+(involve|include|have)/i,
+    intent: "relational",
+    strategy: "kg_first",
+  },
+  {
+    pattern: /is\s+\w+\s+(related|connected|linked)\s+to/i,
+    intent: "relational",
+    strategy: "kg_only",
+  },
   { pattern: /relationship\s+between/i, intent: "relational", strategy: "kg_only" },
-  { pattern: /how\s+(are|is)\s+\w+\s+(and|with)\s+\w+\s+related/i, intent: "relational", strategy: "kg_only" },
+  {
+    pattern: /how\s+(are|is)\s+\w+\s+(and|with)\s+\w+\s+related/i,
+    intent: "relational",
+    strategy: "kg_only",
+  },
 
   // Planning - combining knowledge for decisions
-  { pattern: /how\s+should\s+(we|I)\s+(handle|approach|deal)/i, intent: "planning", strategy: "hybrid" },
+  {
+    pattern: /how\s+should\s+(we|I)\s+(handle|approach|deal)/i,
+    intent: "planning",
+    strategy: "hybrid",
+  },
   { pattern: /what\s+(approach|strategy)\s+should/i, intent: "planning", strategy: "hybrid" },
   { pattern: /given\s+.+,?\s+(how|what)/i, intent: "planning", strategy: "hybrid" },
   { pattern: /considering\s+.+,?\s+(should|could)/i, intent: "planning", strategy: "hybrid" },
