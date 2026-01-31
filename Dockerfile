@@ -36,4 +36,6 @@ ENV NODE_ENV=production
 # This reduces the attack surface by preventing container escape via root privileges
 USER node
 
-CMD ["node", "dist/index.js", "gateway", "--allow-unconfigured", "--port", "10000", "--bind", "lan"]
+# Use shell form to expand $PORT at runtime (Render sets PORT env var)
+# Default to 10000 if PORT is not set
+CMD node dist/index.js gateway --allow-unconfigured --port ${PORT:-10000} --bind lan
