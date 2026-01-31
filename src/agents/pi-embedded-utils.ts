@@ -199,16 +199,10 @@ export function stripThinkingTagsFromText(text: string): string {
 }
 
 export function extractAssistantText(msg: AssistantMessage): string {
-  const isTextBlock = (block: unknown): block is { type: "text"; text: string } => {
-    if (!block || typeof block !== "object") {
-      return false;
-    }
-    const rec = block as Record<string, unknown>;
-    return rec.type === "text" && typeof rec.text === "string";
-  };
-
   const extractTextFromBlock = (block: unknown): string | null => {
-    if (!block || typeof block !== "object") return null;
+    if (!block || typeof block !== "object") {
+      return null;
+    }
     const rec = block as Record<string, unknown>;
 
     // Standard format: { type: "text", text: "..." }
@@ -232,7 +226,9 @@ export function extractAssistantText(msg: AssistantMessage): string {
     ? msg.content
         .map((block) => {
           const text = extractTextFromBlock(block);
-          if (!text) return "";
+          if (!text) {
+            return "";
+          }
           return stripThinkingTagsFromText(
             stripDowngradedToolCallText(stripMinimaxToolCallXml(text)),
           ).trim();
