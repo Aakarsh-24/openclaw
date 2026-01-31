@@ -859,7 +859,9 @@ export class CallManager {
     // Only keep non-terminal calls that are verified active
     for (const [callId, call] of callMap) {
       // Skip terminal states
-      if (TerminalStates.has(call.state)) continue;
+      if (TerminalStates.has(call.state)) {
+        continue;
+      }
 
       // Skip calls older than max duration (definitely stale)
       const callAge = now - call.startedAt;
@@ -879,7 +881,9 @@ export class CallManager {
       verificationQueue.push([callId, call]);
     }
 
-    if (verificationQueue.length === 0) return;
+    if (verificationQueue.length === 0) {
+      return;
+    }
 
     const concurrency = Math.min(5, verificationQueue.length);
     let nextIndex = 0;

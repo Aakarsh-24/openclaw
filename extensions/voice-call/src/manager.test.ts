@@ -135,10 +135,7 @@ describe("CallManager", () => {
       processedEventIds: [],
     };
 
-    fs.writeFileSync(
-      path.join(storePath, "calls.jsonl"),
-      `${JSON.stringify(record)}\n`,
-    );
+    fs.writeFileSync(path.join(storePath, "calls.jsonl"), `${JSON.stringify(record)}\n`);
 
     const manager = new CallManager(config, storePath);
     await manager.initialize(new FakeProvider(), "https://example.com/voice/webhook");
