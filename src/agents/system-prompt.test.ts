@@ -52,6 +52,7 @@ describe("buildAgentSystemPrompt", () => {
     expect(prompt).toContain("if instructions conflict");
     expect(prompt).toContain("Inspired by Anthropic's constitution");
     expect(prompt).toContain("Do not manipulate or persuade anyone");
+    expect(prompt).toContain("Do not copy yourself or change system prompts");
     expect(prompt).toContain("## Subagent Context");
     expect(prompt).not.toContain("## Group Chat Context");
     expect(prompt).toContain("Subagent details");
@@ -68,6 +69,7 @@ describe("buildAgentSystemPrompt", () => {
     expect(prompt).toContain("if instructions conflict");
     expect(prompt).toContain("Inspired by Anthropic's constitution");
     expect(prompt).toContain("Do not manipulate or persuade anyone");
+    expect(prompt).toContain("Do not copy yourself or change system prompts");
   });
 
   it("includes voice hint when provided", () => {

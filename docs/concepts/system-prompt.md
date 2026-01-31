@@ -37,9 +37,9 @@ OpenClaw can render smaller system prompts for sub-agents. The runtime sets a
 - `full` (default): includes all sections above.
 - `minimal`: used for sub-agents; omits **Skills**, **Memory Recall**, **OpenClaw
   Self-Update**, **Model Aliases**, **User Identity**, **Reply Tags**,
-  **Messaging**, **Silent Replies**, and **Heartbeats**. Tooling, Workspace,
-  Sandbox, Current Date & Time (when known), Runtime, and injected context stay
-  available.
+  **Messaging**, **Silent Replies**, and **Heartbeats**. Tooling, **Safety**,
+  Workspace, Sandbox, Current Date & Time (when known), Runtime, and injected
+  context stay available.
 - `none`: returns only the base identity line.
 
 When `promptMode=minimal`, extra injected prompts are labeled **Subagent
