@@ -186,7 +186,11 @@ function normalizeSessionEntry(entry: SessionEntryLike): SessionEntry | null {
   if (!rawSessionId) {
     return null;
   }
-  const sessionId = path.basename(rawSessionId, ".jsonl");
+  // Only strip .jsonl extension if the rawSessionId is actually a file path (contains directory separators)
+  // Otherwise, preserve bare IDs unchanged to avoid breaking legacy stores that used bare IDs
+  const sessionId = rawSessionId.includes('/') || rawSessionId.includes('\\') 
+    ? path.basename(rawSessionId, ".jsonl")
+    : rawSessionId;
   const updatedAt =
     typeof entry.updatedAt === "number" && Number.isFinite(entry.updatedAt)
       ? entry.updatedAt
