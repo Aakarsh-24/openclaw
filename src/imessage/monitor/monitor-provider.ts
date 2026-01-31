@@ -210,6 +210,24 @@ export async function monitorIMessageProvider(opts: MonitorIMessageOpts = {}): P
       return;
     }
 
+    // Filter by destination phone number if myNumbers is configured.
+    // This is useful when the Mac receives messages for multiple iMessage numbers
+    // (e.g., dual-SIM setup) and you only want to respond to one of them.
+    const myNumbers = imessageCfg.myNumbers;
+    if (myNumbers && myNumbers.length > 0) {
+      const destinationCallerId = message.destination_caller_id;
+      if (destinationCallerId) {
+        const normalizedDest = normalizeIMessageHandle(destinationCallerId);
+        const normalizedMyNumbers = myNumbers.map((n) => normalizeIMessageHandle(n));
+        if (!normalizedMyNumbers.includes(normalizedDest)) {
+          logVerbose(
+            `imessage: skipping message to ${destinationCallerId} (not in myNumbers: ${myNumbers.join(", ")})`,
+          );
+          return;
+        }
+      }
+    }
+
     const chatId = message.chat_id ?? undefined;
     const chatGuid = message.chat_guid ?? undefined;
     const chatIdentifier = message.chat_identifier ?? undefined;
