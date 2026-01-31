@@ -70,7 +70,7 @@ export function createMultiEditTool(
       } catch (err) {
         const code = (err as { code?: string }).code;
         if (code === "ENOENT") {
-          throw new Error(`File not found: ${filePath}`);
+          throw new Error(`File not found: ${filePath}`, { cause: err });
         }
         throw err;
       }
