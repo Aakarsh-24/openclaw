@@ -1,10 +1,10 @@
 import type { WebhookRequestBody } from "@line/bot-sdk";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import crypto from "node:crypto";
-import type { ClawdbotConfig } from "../config/config.js";
+import type { OpenClawConfig } from "../config/config.js";
 import { danger, logVerbose } from "../globals.js";
 import type { RuntimeEnv } from "../runtime.js";
 import { createLineBot } from "./bot.js";
+import { validateLineSignature } from "./signature.js";
 import { normalizePluginHttpPath } from "../plugins/http-path.js";
 import { registerPluginHttpRoute } from "../plugins/http-registry.js";
 import {
@@ -33,7 +33,7 @@ export interface MonitorLineProviderOptions {
   channelAccessToken: string;
   channelSecret: string;
   accountId?: string;
-  config: ClawdbotConfig;
+  config: OpenClawConfig;
   runtime: RuntimeEnv;
   abortSignal?: AbortSignal;
   webhookUrl?: string;
@@ -85,11 +85,6 @@ export function getLineRuntimeState(accountId: string) {
   return runtimeState.get(`line:${accountId}`);
 }
 
-function validateLineSignature(body: string, signature: string, channelSecret: string): boolean {
-  const hash = crypto.createHmac("SHA256", channelSecret).update(body).digest("base64");
-  return hash === signature;
-}
-
 async function readRequestBody(req: IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
@@ -110,7 +105,9 @@ function startLineLoadingKeepalive(params: {
   let stopped = false;
 
   const trigger = () => {
-    if (stopped) return;
+    if (stopped) {
+      return;
+    }
     void showLoadingAnimation(params.userId, {
       accountId: params.accountId,
       loadingSeconds,
@@ -121,7 +118,9 @@ function startLineLoadingKeepalive(params: {
   const timer = setInterval(trigger, intervalMs);
 
   return () => {
-    if (stopped) return;
+    if (stopped) {
+      return;
+    }
     stopped = true;
     clearInterval(timer);
   };
@@ -159,7 +158,9 @@ export async function monitorLineProvider(
     runtime,
     config,
     onMessage: async (ctx) => {
-      if (!ctx) return;
+      if (!ctx) {
+        return;
+      }
 
       const { ctxPayload, replyToken, route } = ctx;
 
