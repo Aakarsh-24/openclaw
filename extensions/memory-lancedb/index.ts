@@ -54,12 +54,8 @@ class MemoryDB {
   ) {}
 
   private async ensureInitialized(): Promise<void> {
-    if (this.table) {
-      return;
-    }
-    if (this.initPromise) {
-      return this.initPromise;
-    }
+    if (this.table) return;
+    if (this.initPromise) return this.initPromise;
 
     this.initPromise = this.doInitialize();
     return this.initPromise;
@@ -86,6 +82,7 @@ class MemoryDB {
       await this.table.delete('id = "__schema__"');
     }
   }
+}
 
   async store(entry: Omit<MemoryEntry, "id" | "createdAt">): Promise<MemoryEntry> {
     await this.ensureInitialized();
