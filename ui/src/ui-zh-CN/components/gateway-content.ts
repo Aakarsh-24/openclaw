@@ -1,29 +1,14 @@
 /**
- * Gateway 设置配置内容组件
- * 右侧面板 - 网关端口和认证
+ * Gateway settings configuration content component
+ * Right panel - Gateway port and authentication
  */
 import { html } from "lit";
 import type { GatewayConfig } from "../views/model-config";
+import { t } from "../i18n";
 
-// SVG 图标
+// SVG icons
 const icons = {
   gateway: html`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>`,
-};
-
-// 中文标签
-const LABELS = {
-  gatewayTitle: "Gateway 设置",
-  gatewayDesc: "配置网关端口、认证和网络绑定",
-  port: "端口",
-  bindMode: "绑定模式",
-  authMode: "认证模式",
-  authToken: "认证令牌",
-  bindLoopback: "仅本机 (127.0.0.1)",
-  bindLan: "局域网 (0.0.0.0)",
-  bindAuto: "自动选择",
-  authToken_: "Token 认证",
-  authPassword: "密码认证",
-  authNone: "无认证",
 };
 
 export type GatewayContentProps = {
@@ -32,7 +17,7 @@ export type GatewayContentProps = {
 };
 
 /**
- * 渲染 Gateway 设置内容
+ * Render Gateway settings content
  */
 export function renderGatewayContent(props: GatewayContentProps) {
   const gateway = props.gatewayConfig;
@@ -42,8 +27,8 @@ export function renderGatewayContent(props: GatewayContentProps) {
       <div class="config-content__header">
         <div class="config-content__icon">${icons.gateway}</div>
         <div class="config-content__titles">
-          <h2 class="config-content__title">${LABELS.gatewayTitle}</h2>
-          <p class="config-content__desc">${LABELS.gatewayDesc}</p>
+          <h2 class="config-content__title">${t('gateway.title')}</h2>
+          <p class="config-content__desc">${t('gateway.desc')}</p>
         </div>
       </div>
       <div class="config-content__body">
@@ -51,7 +36,7 @@ export function renderGatewayContent(props: GatewayContentProps) {
           <div class="mc-card__content">
             <div class="mc-form-row mc-form-row--2col">
               <label class="mc-field">
-                <span class="mc-field__label">${LABELS.port}</span>
+                <span class="mc-field__label">${t('gateway.port')}</span>
                 <input
                   type="number"
                   class="mc-input"
@@ -63,35 +48,35 @@ export function renderGatewayContent(props: GatewayContentProps) {
                 />
               </label>
               <label class="mc-field">
-                <span class="mc-field__label">${LABELS.bindMode}</span>
+                <span class="mc-field__label">${t('gateway.bind')}</span>
                 <select
                   class="mc-select"
                   .value=${gateway.bind ?? "loopback"}
                   @change=${(e: Event) =>
                     props.onGatewayUpdate(["bind"], (e.target as HTMLSelectElement).value)}
                 >
-                  <option value="loopback">${LABELS.bindLoopback}</option>
-                  <option value="lan">${LABELS.bindLan}</option>
-                  <option value="auto">${LABELS.bindAuto}</option>
+                  <option value="loopback">${t('gateway.bind.loopback')}</option>
+                  <option value="lan">${t('gateway.bind.lan')}</option>
+                  <option value="auto">${t('gateway.bind.auto')}</option>
                 </select>
               </label>
             </div>
             <div class="mc-form-row mc-form-row--2col">
               <label class="mc-field">
-                <span class="mc-field__label">${LABELS.authMode}</span>
+                <span class="mc-field__label">${t('gateway.auth.mode')}</span>
                 <select
                   class="mc-select"
                   .value=${gateway.auth?.mode ?? "token"}
                   @change=${(e: Event) =>
                     props.onGatewayUpdate(["auth", "mode"], (e.target as HTMLSelectElement).value)}
                 >
-                  <option value="token">${LABELS.authToken_}</option>
-                  <option value="password">${LABELS.authPassword}</option>
-                  <option value="none">${LABELS.authNone}</option>
+                  <option value="token">${t('gateway.auth.token')}</option>
+                  <option value="password">${t('gateway.auth.password')}</option>
+                  <option value="none">${t('gateway.auth.none')}</option>
                 </select>
               </label>
               <label class="mc-field">
-                <span class="mc-field__label">${LABELS.authToken}</span>
+                <span class="mc-field__label">${t('gateway.auth.credential')}</span>
                 <input
                   type="password"
                   class="mc-input"

@@ -1,16 +1,14 @@
 /**
- * Agent 设置配置内容组件
  * Agent settings configuration content component
- *
- * 右侧面板 - Agent 默认参数 + 会话模型管理
  * Right panel - Agent default parameters + session model management
  */
 import { html, nothing } from "lit";
 import type { AgentDefaults } from "../views/model-config";
 import type { SessionRow, SessionsListResult } from "../controllers/model-config";
+import { t } from "../i18n";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SVG 图标 / SVG Icons
+// SVG Icons
 // ─────────────────────────────────────────────────────────────────────────────
 
 const icons = {
@@ -21,49 +19,13 @@ const icons = {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 中文标签 / Chinese Labels
-// ─────────────────────────────────────────────────────────────────────────────
-
-const LABELS = {
-  // Agent 设置标题 / Agent settings title
-  agentTitle: "Agent 设置",
-  agentDesc: "配置 Agent 的运行参数和会话管理",
-  // 默认参数 / Default parameters
-  defaultsTitle: "默认参数",
-  defaultsDesc: "设置 Agent 运行时的默认参数",
-  primaryModel: "主模型",
-  maxConcurrent: "最大并发",
-  subagentConcurrent: "子 Agent 并发",
-  workspace: "工作目录",
-  contextPruning: "上下文裁剪",
-  compactionMode: "压缩模式",
-  pruneCacheTtl: "缓存 TTL",
-  pruneTokenLimit: "Token 限制",
-  compactSafeguard: "保守模式",
-  compactAggressive: "激进模式",
-  // 会话相关 / Session related
-  sessionsTitle: "会话模型管理",
-  sessionsDesc: "为每个会话指定使用的模型 (per-session model override)",
-  sessionKey: "会话",
-  sessionModel: "模型",
-  sessionUpdated: "最后更新",
-  defaultModel: "默认模型",
-  inheritDefault: "继承默认",
-  noSessions: "暂无会话",
-  loading: "加载中...",
-  refresh: "刷新",
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 类型定义 / Type Definitions
+// Type Definitions
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type AgentContentProps = {
-  // Agent 默认设置 / Agent default settings
   agentDefaults: AgentDefaults;
   availableModels: Array<{ id: string; name: string; provider: string }>;
   onAgentDefaultsUpdate: (path: string[], value: unknown) => void;
-  // 会话管理 / Session management
   sessionsLoading: boolean;
   sessionsResult: SessionsListResult | null;
   sessionsError: string | null;
@@ -73,31 +35,29 @@ export type AgentContentProps = {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 辅助函数 / Helper Functions
+// Helper Functions
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * 格式化时间为相对时间
  * Format timestamp to relative time
  */
 function formatAgo(ts: number): string {
   const now = Date.now();
   const diff = now - ts;
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "刚刚";
-  if (mins < 60) return `${mins} 分钟前`;
+  if (mins < 1) return t('time.justNow');
+  if (mins < 60) return t('time.minutesAgo', { count: mins });
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours} 小时前`;
+  if (hours < 24) return t('time.hoursAgo', { count: hours });
   const days = Math.floor(hours / 24);
-  return `${days} 天前`;
+  return t('time.daysAgo', { count: days });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 渲染函数 / Render Functions
+// Render Functions
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * 渲染单个会话行
  * Render a single session row
  */
 function renderSessionRow(
@@ -138,7 +98,7 @@ function renderSessionRow(
             onModelChange(session.key, value || null);
           }}
         >
-          <option value="" ?selected=${!currentModel}>${LABELS.inheritDefault}${defaultModelId ? ` (${defaultModelId})` : ""}</option>
+          <option value="" ?selected=${!currentModel}>${t('agent.inheritDefault')}${defaultModelId ? ` (${defaultModelId})` : ""}</option>
           ${availableModels.map(
             (m) => html`<option value=${m.id} ?selected=${m.id === currentModel}>${m.name} (${m.provider})</option>`,
           )}
@@ -152,7 +112,6 @@ function renderSessionRow(
 }
 
 /**
- * 渲染会话列表
  * Render sessions list
  */
 function renderSessionsList(props: AgentContentProps) {
@@ -164,17 +123,17 @@ function renderSessionsList(props: AgentContentProps) {
       <div class="mc-section__header">
         <div class="mc-section__icon">${icons.sessions}</div>
         <div class="mc-section__titles">
-          <h3 class="mc-section__title">${LABELS.sessionsTitle}</h3>
-          <p class="mc-section__desc">${LABELS.sessionsDesc}</p>
+          <h3 class="mc-section__title">${t('agent.sessions.title')}</h3>
+          <p class="mc-section__desc">${t('agent.sessions.desc')}</p>
         </div>
         <button
           class="mc-btn mc-btn--sm"
           ?disabled=${props.sessionsLoading}
           @click=${props.onSessionsRefresh}
-          title=${LABELS.refresh}
+          title=${t('action.refresh')}
         >
           ${icons.refresh}
-          ${props.sessionsLoading ? LABELS.loading : LABELS.refresh}
+          ${props.sessionsLoading ? t('label.loading') : t('action.refresh')}
         </button>
       </div>
 
@@ -186,9 +145,9 @@ function renderSessionsList(props: AgentContentProps) {
         ${sessions.length > 0
           ? html`
               <div class="sessions-list__header">
-                <div class="sessions-list__col sessions-list__col--key">${LABELS.sessionKey}</div>
-                <div class="sessions-list__col sessions-list__col--model">${LABELS.sessionModel}</div>
-                <div class="sessions-list__col sessions-list__col--updated">${LABELS.sessionUpdated}</div>
+                <div class="sessions-list__col sessions-list__col--key">${t('agent.sessionKey')}</div>
+                <div class="sessions-list__col sessions-list__col--model">${t('agent.sessionModel')}</div>
+                <div class="sessions-list__col sessions-list__col--updated">${t('agent.lastUpdated')}</div>
               </div>
               <div class="sessions-list__body">
                 ${sessions.map((session) =>
@@ -196,14 +155,13 @@ function renderSessionsList(props: AgentContentProps) {
                 )}
               </div>
             `
-          : html`<div class="mc-empty">${props.sessionsLoading ? LABELS.loading : LABELS.noSessions}</div>`}
+          : html`<div class="mc-empty">${props.sessionsLoading ? t('label.loading') : t('agent.noSessions')}</div>`}
       </div>
     </div>
   `;
 }
 
 /**
- * 渲染默认参数设置
  * Render default parameters settings
  */
 function renderDefaultsSection(props: AgentContentProps) {
@@ -214,16 +172,16 @@ function renderDefaultsSection(props: AgentContentProps) {
       <div class="mc-section__header">
         <div class="mc-section__icon">${icons.settings}</div>
         <div class="mc-section__titles">
-          <h3 class="mc-section__title">${LABELS.defaultsTitle}</h3>
-          <p class="mc-section__desc">${LABELS.defaultsDesc}</p>
+          <h3 class="mc-section__title">${t('agent.defaults.title')}</h3>
+          <p class="mc-section__desc">${t('agent.defaults.desc')}</p>
         </div>
       </div>
       <div class="mc-card">
         <div class="mc-card__content">
-          <!-- 模型和工作目录 / Model and workspace -->
+          <!-- Model and workspace -->
           <div class="mc-form-row mc-form-row--2col">
             <label class="mc-field">
-              <span class="mc-field__label">${LABELS.primaryModel}</span>
+              <span class="mc-field__label">${t('agent.primaryModel')}</span>
               <select
                 class="mc-select"
                 @change=${(e: Event) =>
@@ -232,14 +190,14 @@ function renderDefaultsSection(props: AgentContentProps) {
                     (e.target as HTMLSelectElement).value,
                   )}
               >
-                <option value="" ?selected=${!defaults.model?.primary}>-- 选择模型 --</option>
+                <option value="" ?selected=${!defaults.model?.primary}>-- ${t('agent.selectModel')} --</option>
                 ${props.availableModels.map(
                   (m) => html`<option value=${m.id} ?selected=${m.id === defaults.model?.primary}>${m.name} (${m.provider})</option>`,
                 )}
               </select>
             </label>
             <label class="mc-field">
-              <span class="mc-field__label">${LABELS.workspace}</span>
+              <span class="mc-field__label">${t('agent.workspace')}</span>
               <input
                 type="text"
                 class="mc-input"
@@ -250,10 +208,10 @@ function renderDefaultsSection(props: AgentContentProps) {
               />
             </label>
           </div>
-          <!-- 并发设置 / Concurrency settings -->
+          <!-- Concurrency settings -->
           <div class="mc-form-row mc-form-row--2col">
             <label class="mc-field">
-              <span class="mc-field__label">${LABELS.maxConcurrent}</span>
+              <span class="mc-field__label">${t('agent.maxConcurrent')}</span>
               <input
                 type="number"
                 class="mc-input"
@@ -268,7 +226,7 @@ function renderDefaultsSection(props: AgentContentProps) {
               />
             </label>
             <label class="mc-field">
-              <span class="mc-field__label">${LABELS.subagentConcurrent}</span>
+              <span class="mc-field__label">${t('agent.subagentsConcurrent')}</span>
               <input
                 type="number"
                 class="mc-input"
@@ -283,10 +241,10 @@ function renderDefaultsSection(props: AgentContentProps) {
               />
             </label>
           </div>
-          <!-- 上下文管理 / Context management -->
+          <!-- Context management -->
           <div class="mc-form-row mc-form-row--2col">
             <label class="mc-field">
-              <span class="mc-field__label">${LABELS.contextPruning}</span>
+              <span class="mc-field__label">${t('agent.contextPruning')}</span>
               <select
                 class="mc-select"
                 .value=${defaults.contextPruning?.mode ?? "cache-ttl"}
@@ -296,12 +254,12 @@ function renderDefaultsSection(props: AgentContentProps) {
                     (e.target as HTMLSelectElement).value,
                   )}
               >
-                <option value="cache-ttl">${LABELS.pruneCacheTtl}</option>
-                <option value="token-limit">${LABELS.pruneTokenLimit}</option>
+                <option value="cache-ttl">${t('agent.pruneCacheTtl')}</option>
+                <option value="token-limit">${t('agent.pruneTokenLimit')}</option>
               </select>
             </label>
             <label class="mc-field">
-              <span class="mc-field__label">${LABELS.compactionMode}</span>
+              <span class="mc-field__label">${t('agent.compaction')}</span>
               <select
                 class="mc-select"
                 .value=${defaults.compaction?.mode ?? "safeguard"}
@@ -311,8 +269,8 @@ function renderDefaultsSection(props: AgentContentProps) {
                     (e.target as HTMLSelectElement).value,
                   )}
               >
-                <option value="safeguard">${LABELS.compactSafeguard}</option>
-                <option value="aggressive">${LABELS.compactAggressive}</option>
+                <option value="safeguard">${t('agent.compactSafeguard')}</option>
+                <option value="aggressive">${t('agent.compactAggressive')}</option>
               </select>
             </label>
           </div>
@@ -323,11 +281,10 @@ function renderDefaultsSection(props: AgentContentProps) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 主渲染函数 / Main Render Function
+// Main Render Function
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * 渲染 Agent 设置内容
  * Render Agent settings content
  */
 export function renderAgentContent(props: AgentContentProps) {
@@ -336,15 +293,15 @@ export function renderAgentContent(props: AgentContentProps) {
       <div class="config-content__header">
         <div class="config-content__icon">${icons.agent}</div>
         <div class="config-content__titles">
-          <h2 class="config-content__title">${LABELS.agentTitle}</h2>
-          <p class="config-content__desc">${LABELS.agentDesc}</p>
+          <h2 class="config-content__title">${t('agent.title')}</h2>
+          <p class="config-content__desc">${t('agent.desc')}</p>
         </div>
       </div>
       <div class="config-content__body">
-        <!-- 默认设置区块 / Default settings section -->
+        <!-- Default settings section -->
         ${renderDefaultsSection(props)}
 
-        <!-- 会话模型管理 / Session model management -->
+        <!-- Session model management -->
         ${renderSessionsList(props)}
       </div>
     </div>
