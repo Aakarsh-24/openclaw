@@ -92,6 +92,51 @@ export type SlackThreadStarter = {
 
 const THREAD_STARTER_CACHE = new Map<string, SlackThreadStarter>();
 
+type SlackThreadStarterMessage = {
+  text?: string;
+  user?: string;
+  ts?: string;
+  files?: SlackFile[];
+  blocks?: Array<{ text?: { text?: string }; fields?: Array<{ text?: string }>; elements?: unknown[] }>;
+  attachments?: Array<{ pretext?: string; title?: string; text?: string; fallback?: string }>;
+};
+
+function extractSlackThreadStarterText(message: SlackThreadStarterMessage): string {
+  const trimmedText = message.text?.trim();
+  if (trimmedText) return trimmedText;
+
+  const attachmentText = (message.attachments ?? [])
+    .flatMap((attachment) =>
+      [attachment.pretext, attachment.title, attachment.text, attachment.fallback].filter(
+        (value): value is string => Boolean(value && value.trim()),
+      ),
+    )
+    .map((value) => value.trim());
+  if (attachmentText.length) return attachmentText.join("\n");
+
+  const blockText = (message.blocks ?? [])
+    .flatMap((block) => {
+      const direct = block.text?.text ? [block.text.text] : [];
+      const fields = (block.fields ?? [])
+        .map((field) => field.text)
+        .filter((value): value is string => Boolean(value && value.trim()));
+      return [...direct, ...fields];
+    })
+    .map((value) => value.trim())
+    .filter(Boolean);
+  if (blockText.length) return blockText.join("\n");
+
+  const fileLabels = (message.files ?? [])
+    .map((file) => {
+      const fileAny = file as SlackFile & { title?: string };
+      return (fileAny.title ?? fileAny.name)?.trim();
+    })
+    .filter((value): value is string => Boolean(value && value.trim()));
+  if (fileLabels.length) return `Shared file: ${fileLabels.join(", ")}`;
+
+  return "";
+}
+
 export async function resolveSlackThreadStarter(params: {
   channelId: string;
   threadTs: string;
@@ -106,10 +151,11 @@ export async function resolveSlackThreadStarter(params: {
       ts: params.threadTs,
       limit: 1,
       inclusive: true,
-    })) as { messages?: Array<{ text?: string; user?: string; ts?: string; files?: SlackFile[] }> };
+    })) as { messages?: SlackThreadStarterMessage[] };
     const message = response?.messages?.[0];
-    const text = (message?.text ?? "").trim();
-    if (!message || !text) return null;
+    if (!message) return null;
+    const text = extractSlackThreadStarterText(message);
+    if (!text) return null;
     const starter: SlackThreadStarter = {
       text,
       userId: message.user,

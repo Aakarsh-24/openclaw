@@ -227,10 +227,27 @@ export async function runPreparedReply(
     prefixedBodyBase,
   });
   const threadStarterBody = ctx.ThreadStarterBody?.trim();
-  const threadStarterNote =
-    isNewSession && threadStarterBody
-      ? `[Thread starter - for context]\n${threadStarterBody}`
-      : undefined;
+  const threadStarterIdRaw =
+    ctx.MessageThreadId ?? ctx.ReplyToId ?? ctx.MessageSid ?? ctx.MessageSidFull;
+  const threadStarterId = threadStarterIdRaw != null ? String(threadStarterIdRaw) : undefined;
+  const shouldIncludeThreadStarter =
+    Boolean(threadStarterBody) &&
+    (isNewSession ||
+      (threadStarterId != null && sessionEntry?.lastThreadStarterId !== threadStarterId));
+  const threadStarterNote = shouldIncludeThreadStarter
+    ? `[Thread starter - for context]\n${threadStarterBody}`
+    : undefined;
+  if (shouldIncludeThreadStarter && threadStarterId && sessionEntry && sessionStore && sessionKey) {
+    sessionEntry.lastThreadStarterId = threadStarterId;
+    sessionEntry.updatedAt = Date.now();
+    sessionStore[sessionKey] = sessionEntry;
+    if (storePath) {
+      const entryToStore = sessionEntry;
+      await updateSessionStore(storePath, (store) => {
+        store[sessionKey] = entryToStore;
+      });
+    }
+  }
   const skillResult = await ensureSkillSnapshot({
     sessionEntry,
     sessionStore,
