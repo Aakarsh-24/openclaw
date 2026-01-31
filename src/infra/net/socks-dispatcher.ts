@@ -120,7 +120,9 @@ export function createSocksConnector(config: SocksProxyConfig): Connector {
     const targetPort = Number(options.port) || (options.protocol === "https:" ? 443 : 80);
     let called = false;
     const done: ConnectCallback = (...args) => {
-      if (called) return;
+      if (called) {
+        return;
+      }
       called = true;
       callback(...args);
     };
