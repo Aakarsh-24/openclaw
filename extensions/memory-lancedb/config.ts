@@ -4,7 +4,7 @@ import { join } from "node:path";
 
 export type MemoryConfig = {
   embedding: {
-    provider: "openai";
+    provider: "openai" | "google";
     model?: string;
     apiKey: string;
   };
@@ -84,6 +84,13 @@ function resolveEmbeddingModel(embedding: Record<string, unknown>): string {
   return model;
 }
 
+function resolveEmbeddingProvider(model: string): "openai" | "google" {
+  if (model.startsWith("gemini-")) {
+    return "google";
+  }
+  return "openai";
+}
+
 export const memoryConfigSchema = {
   parse(value: unknown): MemoryConfig {
     if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -99,10 +106,11 @@ export const memoryConfigSchema = {
     assertAllowedKeys(embedding, ["apiKey", "model"], "embedding config");
 
     const model = resolveEmbeddingModel(embedding);
+    const provider = resolveEmbeddingProvider(model);
 
     return {
       embedding: {
-        provider: "openai",
+        provider,
         model,
         apiKey: resolveEnvVars(embedding.apiKey),
       },
@@ -113,15 +121,15 @@ export const memoryConfigSchema = {
   },
   uiHints: {
     "embedding.apiKey": {
-      label: "OpenAI API Key",
+      label: "API Key",
       sensitive: true,
-      placeholder: "sk-proj-...",
-      help: "API key for OpenAI embeddings (or use ${OPENAI_API_KEY})",
+      placeholder: "sk-proj-... (for OpenAI) or AIza... (for Google)",
+      help: "API key for embeddings provider (use ${OPENAI_API_KEY} or ${GOOGLE_API_KEY})",
     },
     "embedding.model": {
       label: "Embedding Model",
       placeholder: DEFAULT_MODEL,
-      help: "OpenAI embedding model to use",
+      help: "Embedding model to use (OpenAI or Google Gemini)",
     },
     dbPath: {
       label: "Database Path",

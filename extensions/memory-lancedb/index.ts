@@ -148,7 +148,7 @@ class Embeddings {
 
   constructor(
     private provider: "openai" | "google",
-    apiKey: string,
+    private apiKey: string,
     private model: string,
   ) {
     if (provider === "openai") {
