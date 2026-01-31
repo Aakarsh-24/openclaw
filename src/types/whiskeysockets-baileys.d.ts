@@ -369,7 +369,7 @@ declare interface MakeWASocketReturn {
   user: Contact | undefined;
   generateMessageTag: () => string;
   query: (node: BinaryNode, timeoutMs?: number) => Promise<any>;
-  waitForMessage: <T>(msgId: string, timeoutMs?: number | undefined) => Promise<T | undefined>;
+  waitForMessage: <T>(msgId: string, timeoutMs?: number) => Promise<T | undefined>;
   waitForSocketOpen: () => Promise<void>;
   sendRawMessage: (data: Uint8Array | Buffer) => Promise<void>;
   sendNode: (frame: BinaryNode) => Promise<void>;
