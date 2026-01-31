@@ -35,9 +35,9 @@ sed -i '' 's/alt="OpenClaw"/alt="Phoenix"/g' \
 sed -i '' 's/<div class="brand-title">OPENCLAW<\/div>/<div class="brand-title">PHOENIX<\/div>/g' \
   ui/src/ui/app-render.ts
 
-# 6. Gateway client name (internal but visible in logs)
-sed -i '' 's/clientName: "openclaw-control-ui"/clientName: "phoenix-control-ui"/g' \
-  ui/src/ui/app-gateway.ts
+# 6. Gateway client name - DO NOT CHANGE
+# The client ID "openclaw-control-ui" is validated by the gateway protocol
+# and must remain unchanged for WebSocket connections to work
 
 # 7. Channels plugin helper - if there's a user-facing message
 if grep -q '"OpenClaw:' src/channels/plugins/helpers.ts 2>/dev/null; then
