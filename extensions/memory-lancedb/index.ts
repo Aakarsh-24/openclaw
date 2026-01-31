@@ -150,6 +150,7 @@ class Embeddings {
     private provider: "openai" | "google",
     private apiKey: string,
     private model: string,
+    private vectorDim: number,
   ) {
     if (provider === "openai") {
       this.client = new OpenAI({ apiKey });
@@ -174,20 +175,40 @@ class Embeddings {
            "Content-Type": "application/json",
            "x-goog-api-key": this.apiKey,
          },
-        body: JSON.stringify({
-          content: { parts: [{ text }] },
-          taskType: "RETRIEVAL_QUERY",
-          outputDimensionality: 768,
-        }),
-      });
+         body: JSON.stringify({
+           content: { parts: [{ text }] },
+           taskType: "RETRIEVAL_QUERY",
+           outputDimensionality: this.vectorDim,
+         }),
+       });
 
       if (!res.ok) {
         const payload = await res.text();
         throw new Error(`gemini embeddings failed: ${res.status} ${payload}`);
       }
 
-      const payload = (await res.json()) as { embedding?: { values?: number[] } };
-      return Array.from(payload.embedding?.values ?? []);
+      const payload = (await res.json()) as Record<string, unknown>;
+      
+      // Validate response structure
+      if (!payload.embedding || typeof payload.embedding !== 'object') {
+        throw new Error(`Invalid Google Gemini API response: missing embedding object. Got: ${JSON.stringify(payload)}`);
+      }
+      
+      const embedding = payload.embedding as Record<string, unknown>;
+      if (!Array.isArray(embedding.values)) {
+        throw new Error(`Invalid Google Gemini API response: embedding.values is not an array. Got: ${JSON.stringify(embedding)}`);
+      }
+      
+      if (embedding.values.length === 0) {
+        throw new Error(`Invalid Google Gemini API response: embedding.values is empty`);
+      }
+      
+      // Verify all values are numbers
+      if (!embedding.values.every((v) => typeof v === 'number')) {
+        throw new Error(`Invalid Google Gemini API response: embedding.values contains non-numeric values`);
+      }
+      
+      return embedding.values;
     }
   }
 }
@@ -265,7 +286,7 @@ const memoryPlugin = {
     const resolvedDbPath = api.resolvePath(cfg.dbPath!);
     const vectorDim = vectorDimsForModel(cfg.embedding.model ?? "text-embedding-3-small");
     const db = new MemoryDB(resolvedDbPath, vectorDim);
-    const embeddings = new Embeddings(cfg.embedding.provider, cfg.embedding.apiKey, cfg.embedding.model!);
+    const embeddings = new Embeddings(cfg.embedding.provider, cfg.embedding.apiKey, cfg.embedding.model!, vectorDim);
 
     api.logger.info(`memory-lancedb: plugin registered (db: ${resolvedDbPath}, lazy init)`);
 
