@@ -41,7 +41,10 @@ export const mergeMissing = (target: Record<string, unknown>, source: Record<str
   }
 };
 
-const AUDIO_TRANSCRIPTION_CLI_ALLOWLIST = new Set(["whisper"]);
+const AUDIO_TRANSCRIPTION_CLI_PATTERNS = [/^whisper/i];
+
+const isAllowedTranscriptionCli = (name: string): boolean =>
+  AUDIO_TRANSCRIPTION_CLI_PATTERNS.some((p) => p.test(name));
 
 export const mapLegacyAudioTranscription = (value: unknown): Record<string, unknown> | null => {
   const transcriber = getRecord(value);
@@ -50,7 +53,7 @@ export const mapLegacyAudioTranscription = (value: unknown): Record<string, unkn
   const rawExecutable = String(command[0] ?? "").trim();
   if (!rawExecutable) return null;
   const executableName = rawExecutable.split(/[\\/]/).pop() ?? rawExecutable;
-  if (!AUDIO_TRANSCRIPTION_CLI_ALLOWLIST.has(executableName)) return null;
+  if (!isAllowedTranscriptionCli(executableName)) return null;
 
   const args = command.slice(1).map((part) => String(part));
   const timeoutSeconds =
