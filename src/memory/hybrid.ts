@@ -34,8 +34,12 @@ export function buildFtsQuery(raw: string): string | null {
 }
 
 export function bm25RankToScore(rank: number): number {
-  const normalized = Number.isFinite(rank) ? Math.max(0, rank) : 999;
-  return 1 / (1 + normalized);
+  if (!Number.isFinite(rank)) {
+    return 0;
+  }
+  // FTS5 bm25() returns negative values; more negative = more relevant
+  const absRank = Math.abs(rank);
+  return absRank / (1 + absRank);
 }
 
 export function mergeHybridResults(params: {
