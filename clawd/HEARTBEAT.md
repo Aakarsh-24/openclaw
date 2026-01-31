@@ -115,16 +115,21 @@ Before using timestamps from `memory/*-heartbeat-state.json`:
 
 ---
 
-## Email (clawdbot@puenteworks.com ONLY)
+## Email
 
-**VERIFY FIRST:** You are checking clawdbot@puenteworks.com, NOT simon@puenteworks.com
+**Two accounts, two purposes:**
 
-- Check inbox: `gog gmail messages search "in:inbox is:unread" --account clawdbot@puenteworks.com --max 10`
-- If urgent/important emails found, summarize and alert Simon via Slack
-- Reply to acknowledge receipt and explain your plan
+| Account | Check For | Command |
+|---------|-----------|---------|
+| `clawdbot@puenteworks.com` | Notifications TO you | `gog gmail messages search "in:inbox is:unread" --account clawdbot@puenteworks.com --max 10` |
+| `simon@puenteworks.com` | Simon's inbox (you triage it) | `gog gmail messages search "in:inbox" --account simon@puenteworks.com --max 10` |
+
+**On clawdbot@:** Check for notifications, send all outbound emails
+**On simon@:** Triage, archive, label, organize (but don't send FROM it)
+
+- If urgent/important emails found in either inbox, summarize and alert Simon
+- Reply to emails FROM clawdbot@ only
 - Mark as read after processing
-
-**NEVER check simon@puenteworks.com** - that is Simon's personal email, not yours.
 
 ## Calendar (clawdbot@puenteworks.com)
 

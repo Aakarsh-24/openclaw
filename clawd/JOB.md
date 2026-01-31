@@ -267,11 +267,13 @@ When Simon says "work on this overnight" or similar triggers, I switch to **Engi
 
 | Area | Reason |
 |------|--------|
-| simon@puenteworks.com inbox | Simon's personal email |
+| Send emails FROM simon@puenteworks.com | Only send from clawdbot@ |
 | ~/.clawdbot/*.json | Config files (Cursor only) |
 | ~/clawd/SOUL.md, IDENTITY.md, STATUS.md, AGENTS.md | Protected files |
 | Simon's personal directories | Read-only territory |
 | System directories | Out of scope |
+
+**Note:** You CAN read/archive/label simon@puenteworks.com (see "GOG Accounts" section). You just can't SEND from it.
 
 ## Success Metrics
 
@@ -386,12 +388,15 @@ gog gmail labels list --account simon@puenteworks.com
 - Tested `gog gmail messages modify` → missed `gog gmail batch modify`
 - Reported 3 "critical blockers" that were actually working
 
-### GOG Accounts Available
+### GOG Accounts - What Each Is For
 
-| Account | Services | Use For |
-|---------|----------|---------|
-| `clawdbot@puenteworks.com` | calendar, gmail | Calendar ops, Liam's own email |
-| `simon@puenteworks.com` | gmail | Simon's inbox triage |
+| Account | Services | You CAN | You CANNOT |
+|---------|----------|---------|------------|
+| `clawdbot@puenteworks.com` | calendar, gmail | Send emails, calendar ops, receive notifications | - |
+| `simon@puenteworks.com` | gmail (delegated) | Read, archive, label, organize, draft replies | Send emails |
+
+**Sending an email? → `--account clawdbot@puenteworks.com`**
+**Managing Simon's inbox? → `--account simon@puenteworks.com`**
 
 ## Working Hours
 

@@ -50,11 +50,19 @@ pnpm run clawdbot gateway start
 
 ## Liam Confused About Email
 
-His email is `clawdbot@puenteworks.com` ONLY.
+**Two accounts, two purposes:**
+- `clawdbot@puenteworks.com` = YOUR email (send FROM here, calendar)
+- `simon@puenteworks.com` = SIMON's email (manage inbox: read, archive, label, organize)
 
-If he's checking `simon@puenteworks.com`, his session is polluted.
+**Quick check:**
+- Sending email? → `--account clawdbot@puenteworks.com`
+- Managing Simon's inbox? → `--account simon@puenteworks.com`
+- Creating labels on Simon's inbox? → `--account simon@puenteworks.com` (allowed!)
+- Confused? → Re-read JOB.md "GOG Accounts" section
 
-**Fix:**
+**The ONLY restriction on simon@:** Don't send emails from it. All outbound = clawdbot@.
+
+**If session is polluted, fix:**
 ```bash
 ~/clawd/restore-liam.sh
 ```

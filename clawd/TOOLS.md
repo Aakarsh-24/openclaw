@@ -7,8 +7,14 @@
 
 ## gog (Google Workspace)
 
-- **YOUR account:** clawdbot@puenteworks.com
-- **NEVER use:** simon@puenteworks.com (Simon's personal email)
+| Account | Purpose | You CAN | You CANNOT |
+|---------|---------|---------|------------|
+| `clawdbot@puenteworks.com` | YOUR email | Send emails, calendar ops | - |
+| `simon@puenteworks.com` | Simon's inbox (delegated) | Read, archive, label, organize | Send emails |
+
+**Sending email? → `--account clawdbot@puenteworks.com`**
+**Managing Simon's inbox? → `--account simon@puenteworks.com`**
+
 - Gmail, Calendar access configured
 - **Installation (WSL2):** Installed via Linux binary in `~/.local/bin/gog`.
 - **Keyring:** Uses encrypted file backend with `GOG_KEYRING_PASSWORD` in `~/.profile`.
