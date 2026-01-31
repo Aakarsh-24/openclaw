@@ -239,4 +239,80 @@ describe("config-pending", () => {
       });
     });
   });
+
+  describe("dist rollback marker integration", () => {
+    it("writePendingMarker includes distBackupPath when backup dir exists", async () => {
+      await withTempHome(async (home) => {
+        const stateDir = path.join(home, ".openclaw");
+        const configPath = path.join(stateDir, "openclaw.json");
+        const markerPath = path.join(stateDir, "config-pending.json");
+        const distBackupDir = path.join(stateDir, "dist.bak");
+
+        await fs.writeFile(configPath, JSON.stringify({ version: "test" }), "utf-8");
+        await fs.mkdir(distBackupDir, { recursive: true });
+        await fs.writeFile(path.join(distBackupDir, "marker.txt"), "backup exists", "utf-8");
+
+        const { writePendingMarker } = await import("./config-pending.js");
+        await writePendingMarker({ includeDistRollback: true });
+
+        const marker = JSON.parse(await fs.readFile(markerPath, "utf-8"));
+        expect(marker.distBackupPath).toBe(distBackupDir);
+      });
+    });
+
+    it("writePendingMarker omits distBackupPath when no backup exists", async () => {
+      await withTempHome(async (home) => {
+        const stateDir = path.join(home, ".openclaw");
+        const configPath = path.join(stateDir, "openclaw.json");
+        const markerPath = path.join(stateDir, "config-pending.json");
+
+        await fs.writeFile(configPath, JSON.stringify({ version: "test" }), "utf-8");
+
+        const { writePendingMarker } = await import("./config-pending.js");
+        await writePendingMarker({ includeDistRollback: true });
+
+        const marker = JSON.parse(await fs.readFile(markerPath, "utf-8"));
+        expect(marker.distBackupPath).toBeUndefined();
+      });
+    });
+
+    it("rollback history includes distRolledBack flag when dist backup specified", async () => {
+      await withTempHome(async (home) => {
+        const stateDir = path.join(home, ".openclaw");
+        const configPath = path.join(stateDir, "openclaw.json");
+        const markerPath = path.join(stateDir, "config-pending.json");
+        const verifiedPath = path.join(stateDir, "openclaw.json.verified");
+        const historyPath = path.join(stateDir, "config-rollback-history.json");
+        const distBackupDir = path.join(stateDir, "dist.bak");
+
+        await fs.writeFile(configPath, JSON.stringify({ version: "crashed" }), "utf-8");
+        await fs.writeFile(verifiedPath, JSON.stringify({ version: "good" }), "utf-8");
+        await fs.mkdir(distBackupDir, { recursive: true });
+
+        const recentTime = new Date(Date.now() - 500).toISOString();
+        await fs.writeFile(
+          markerPath,
+          JSON.stringify({
+            appliedAt: recentTime,
+            rollbackTo: verifiedPath,
+            distBackupPath: distBackupDir,
+            timeoutMs: 30000,
+          }),
+          "utf-8",
+        );
+
+        const { checkPendingOnStartup } = await import("./config-pending.js");
+        const result = await checkPendingOnStartup();
+
+        expect(result.rolledBack).toBe(true);
+        expect(result).toHaveProperty("distRolledBack");
+
+        const history = JSON.parse(await fs.readFile(historyPath, "utf-8"));
+        expect(history[0]).toHaveProperty("distRolledBack");
+      });
+    });
+  });
+
+  // NOTE: backupDist/restoreDist not tested directly - restoreDist deletes target dir first,
+  // which would destroy actual source code if DIST_DIR points to real clawdbot-source.
 });
