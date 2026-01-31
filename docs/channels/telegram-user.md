@@ -1,4 +1,7 @@
+---
 summary: "Connect a Telegram user account via MTProto (DMs + groups)"
+read_when:
+  - Working on telegram user plugin
 ---
 # Telegram User (MTProto)
 
