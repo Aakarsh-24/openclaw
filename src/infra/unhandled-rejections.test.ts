@@ -87,6 +87,18 @@ describe("isTransientNetworkError", () => {
     expect(isTransientNetworkError(error)).toBe(true);
   });
 
+  it("returns true for fetch failed with unknown cause (Regression Test for #3974)", () => {
+    // Simulate Cause with NO code
+    const causeNoCode = new Error("Some obscure network error");
+    const errorNoCode = Object.assign(new TypeError("fetch failed"), { cause: causeNoCode });
+    expect(isTransientNetworkError(errorNoCode)).toBe(true);
+
+    // Simulate Cause with UNKNOWN code
+    const causeUnknown = Object.assign(new Error("Unknown"), { code: "UNKNOWN_123" });
+    const errorUnknown = Object.assign(new TypeError("fetch failed"), { cause: causeUnknown });
+    expect(isTransientNetworkError(errorUnknown)).toBe(true);
+  });
+
   it("returns true for nested cause chain with network error", () => {
     const innerCause = Object.assign(new Error("connection reset"), { code: "ECONNRESET" });
     const outerCause = Object.assign(new Error("wrapper"), { cause: innerCause });

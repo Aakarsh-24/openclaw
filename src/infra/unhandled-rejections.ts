@@ -83,8 +83,14 @@ export function isTransientNetworkError(err: unknown): boolean {
 
   // "fetch failed" TypeError from undici (Node's native fetch)
   if (err instanceof TypeError && err.message === "fetch failed") {
+    // Almost all cases of "fetch failed" are network related (DNS, timeout, connection refuse).
+    // If we can't determine otherwise, assume transient to prevent crashing the gateway.
     const cause = getErrorCause(err);
-    if (cause) return isTransientNetworkError(cause);
+    if (cause) {
+      if (isTransientNetworkError(cause)) return true;
+      // If cause exists but isn't explicitly fatal, treat "fetch failed" as transient
+      if (!isFatalError(cause) && !isConfigError(cause)) return true;
+    }
     return true;
   }
 
