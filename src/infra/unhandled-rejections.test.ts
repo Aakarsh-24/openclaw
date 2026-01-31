@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import { isAbortError, isTransientNetworkError } from "./unhandled-rejections.js";
+import { isAllModelsFailedError } from "../agents/model-fallback-error.js";
+import { AllModelsFailedError } from "../agents/model-fallback-error.js";
 
 describe("isAbortError", () => {
   it("returns true for error with name AbortError", () => {
@@ -125,5 +127,25 @@ describe("isTransientNetworkError", () => {
   it("returns false for AggregateError with only non-network errors", () => {
     const error = new AggregateError([new Error("regular error")], "Multiple errors");
     expect(isTransientNetworkError(error)).toBe(false);
+  });
+});
+
+describe("isAllModelsFailedError handling", () => {
+  it("returns true for AllModelsFailedError instances", () => {
+    const error = new AllModelsFailedError("All models failed", {
+      attempts: [{ provider: "anthropic", model: "c", error: "c", reason: "rate_limit" }],
+      allInCooldown: true,
+      retryAfterMs: 300000,
+    });
+    expect(isAllModelsFailedError(error)).toBe(true);
+  });
+
+  it("returns false for regular errors", () => {
+    expect(isAllModelsFailedError(new Error("regular"))).toBe(false);
+  });
+
+  it("returns false for null and undefined", () => {
+    expect(isAllModelsFailedError(null)).toBe(false);
+    expect(isAllModelsFailedError(undefined)).toBe(false);
   });
 });

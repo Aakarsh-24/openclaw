@@ -73,10 +73,32 @@ Disable Advanced Security or add `docs.openclaw.ai` to the allowlist, then retry
 - [Gateway troubleshooting](/gateway/troubleshooting)
 - [Background process / service](/gateway/background-process)
 
-### Model/auth failures (rate limit, billing, “all models failed”)
+### Model/auth failures (rate limit, billing, "all models failed")
 
 - [Models](/cli/models)
 - [OAuth / auth concepts](/concepts/oauth)
+
+### `LLM request rejected: invalid params, tool result's tool id(...) not found`
+
+**Error:** `LLM request rejected: invalid params, tool result's tool id(call_function_xxx) not found (2013)`
+
+**Root causes:**
+1. `agents.defaults.model.primary` set to a model not configured in `models.providers` (e.g., `openrouter/auto` without OpenRouter provider)
+2. API key authentication failures (check `moltbot logs` for `authentication_error`)
+
+**Fix:**
+```bash
+# Check current model config
+moltbot config get agents.defaults.model
+
+# Set primary to a configured provider (e.g., deepseek)
+moltbot config set agents.defaults.model.primary "deepseek/DeepSeek-V3.2"
+
+# Set fallbacks to valid providers only
+moltbot config set agents.defaults.model.fallbacks '["deepseek/DeepSeek-V3.2", "opencode/claude-opus-4-5"]'
+```
+
+Then restart gateway or send SIGUSR1 to reload config.
 
 ### `/model` says `model not allowed`
 
