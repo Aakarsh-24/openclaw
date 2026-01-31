@@ -82,7 +82,6 @@ class MemoryDB {
       await this.table.delete('id = "__schema__"');
     }
   }
-}
 
   async store(entry: Omit<MemoryEntry, "id" | "createdAt">): Promise<MemoryEntry> {
     await this.ensureInitialized();
