@@ -33,6 +33,7 @@ services:
     runtime: docker
     plan: starter
     healthCheckPath: /health
+    dockerCommand: node dist/index.js gateway --bind 0.0.0.0 --port 8080 --allow-unconfigured
     envVars:
       - key: PORT
         value: "8080"
@@ -55,6 +56,7 @@ Key Blueprint features used:
 | Feature | Purpose |
 |---------|---------|
 | `runtime: docker` | Builds from the repo's Dockerfile |
+| `dockerCommand` | Starts the gateway with cloud-friendly defaults |
 | `healthCheckPath` | Render monitors `/health` and restarts unhealthy instances |
 | `sync: false` | Prompts for value during deploy (secrets) |
 | `generateValue: true` | Auto-generates a cryptographically secure value |
