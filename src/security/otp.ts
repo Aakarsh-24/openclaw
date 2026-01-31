@@ -5,7 +5,7 @@
  * state transitions for the OTP verification system.
  */
 
-import type { MoltbotConfig } from "../config/config.js";
+import type { OpenClawConfig } from "../config/config.js";
 import {
   VerificationExpiredError,
   StrictModeViolationError,
@@ -38,7 +38,7 @@ export class OtpVerificationManager {
   private verificationStates = new Map<string, VerificationState>();
   private config: OtpConfig;
 
-  constructor(config: MoltbotConfig) {
+  constructor(config: OpenClawConfig) {
     this.config = this.resolveOtpConfig(config);
   }
 
@@ -175,7 +175,7 @@ export class OtpVerificationManager {
   /**
    * Resolve OTP configuration from moltbot config with defaults
    */
-  private resolveOtpConfig(config: MoltbotConfig): OtpConfig {
+  private resolveOtpConfig(config: OpenClawConfig): OtpConfig {
     const otpConfig = config.security?.otpVerification;
 
     if (!otpConfig) {

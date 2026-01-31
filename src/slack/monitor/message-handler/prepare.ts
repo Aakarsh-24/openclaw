@@ -33,6 +33,8 @@ import { logInboundDrop } from "../../../channels/logging.js";
 import { formatAllowlistMatchMeta } from "../../../channels/allowlist-match.js";
 import { recordInboundSession } from "../../../channels/session.js";
 import { readSessionUpdatedAt, resolveStorePath } from "../../../config/sessions.js";
+import { checkOtpVerification } from "../../../security/otp-middleware.js";
+import { isOtpCommand, parseOtpCommand, handleOtpCommand } from "../../../security/otp-command.js";
 
 import type { ResolvedSlackAccount } from "../../accounts.js";
 import { reactSlackMessage } from "../../actions.js";
@@ -288,6 +290,46 @@ export async function prepareSlackMessage(params: {
     return null;
   }
 
+  // Handle /otp command before OTP verification check
+  const messageText = message.text ?? "";
+  if (isOtpCommand(messageText)) {
+    const args = parseOtpCommand(messageText);
+    const result = handleOtpCommand(cfg, senderId, args);
+
+    // Send reply via Slack
+    await sendMessageSlack(message.channel, result.message, {
+      threadTs: message.thread_ts,
+    });
+
+    // Don't process further - command handled
+    return null;
+  }
+
+  // Check OTP verification if enabled
+  const otpCheck = checkOtpVerification(cfg, {
+    userId: senderId,
+    channel: "slack",
+    channelType:
+      resolvedChannelType === "im" ? "dm" : resolvedChannelType === "channel" ? "channel" : "group",
+    isCommand: hasControlCommandInMessage,
+  });
+
+  if (!otpCheck.allowed) {
+    // Send OTP verification prompt
+    await sendMessageSlack(message.channel, otpCheck.message, {
+      threadTs: message.thread_ts,
+    });
+
+    logInboundDrop({
+      log: logVerbose,
+      channel: "slack",
+      reason: `otp verification (${otpCheck.reason})`,
+      target: senderId,
+    });
+
+    return null;
+  }
+
   const shouldRequireMention = isRoom
     ? (channelConfig?.requireMention ?? ctx.defaultRequireMention)
     : false;
@@ -337,8 +379,9 @@ export async function prepareSlackMessage(params: {
     maxBytes: ctx.mediaMaxBytes,
   });
   const rawBody = (message.text ?? "").trim() || media?.placeholder || "";
-  if (!rawBody) return null;
 
+  // Handle ack reactions BEFORE checking for message content
+  // This ensures reactions work even for messages with no text body
   const ackReaction = resolveAckReaction(cfg, route.agentId);
   const ackReactionValue = ackReaction ?? "";
 
@@ -371,6 +414,8 @@ export async function prepareSlackMessage(params: {
           },
         )
       : null;
+
+  if (!rawBody) return null;
 
   const roomLabel = channelName ? `#${channelName}` : `#${message.channel}`;
   const preview = rawBody.replace(/\s+/g, " ").slice(0, 160);

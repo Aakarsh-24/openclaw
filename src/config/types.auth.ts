@@ -26,4 +26,33 @@ export type AuthConfig = {
      */
     failureWindowHours?: number;
   };
+  otpVerification?: {
+    enabled?: boolean;
+    /** Base32-encoded TOTP secret */
+    secret?: string;
+    /** User's account identifier (for authenticator app display) */
+    accountName?: string;
+    /** Service name (e.g., "OpenClaw") */
+    issuer?: string;
+    /** Verification interval in hours (1-168). Default: 24. */
+    intervalHours?: number;
+    /** If true, block all access when verification expires. Default: false. */
+    strictMode?: boolean;
+    /** Grace period in minutes after expiration (5-60). Default: 15. */
+    gracePeriodMinutes?: number;
+    /** Optional per-channel configuration */
+    channels?: {
+      slack?: boolean;
+      discord?: boolean;
+      telegram?: boolean;
+      whatsapp?: boolean;
+    };
+    /** Optional settings for advanced use cases */
+    settings?: {
+      vaultPath?: string;
+      itemReference?: string;
+      verifyBeforeCommands?: string[];
+      timeWindow?: number;
+    };
+  };
 };
