@@ -20,7 +20,7 @@ function resolveEntryPath(params: {
   const root = path.resolve(params.destDir);
   const resolved = path.resolve(root, params.entryPath);
   const relative = path.relative(root, resolved);
-  if (relative.startsWith("..") || path.isAbsolute(relative)) {
+  if (relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
     throw new Error(`${params.archiveLabel} entry escapes destination: ${params.entryPath}`);
   }
   return resolved;
