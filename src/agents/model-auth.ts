@@ -188,7 +188,7 @@ export async function resolveApiKeyForProvider(params: {
           mode: mode === "oauth" ? "oauth" : mode === "token" ? "token" : "api-key",
         };
       }
-    } catch { }
+    } catch {}
   }
 
   const envResolved = resolveEnvApiKey(provider);

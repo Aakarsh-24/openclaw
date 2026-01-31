@@ -453,17 +453,18 @@ export async function resolveImplicitProviders(params: {
     providers.ollama = { ...(await buildOllamaProvider()), apiKey: ollamaKey };
   }
 
-  // OpenCode Server provider - add if OPENCODE_SERVER_URL or OPENCODE_SERVER_PASSWORD is set
-  const opencodeServerUrl = process.env.OPENCODE_SERVER_URL;
+  // OpenCode Server provider - add if OPENCODE_SERVER_PASSWORD is set
+  // (URL alone is not enough, as auth is required for reliable access)
   const opencodeServerPassword = process.env.OPENCODE_SERVER_PASSWORD;
-  if (opencodeServerUrl || opencodeServerPassword) {
+  if (opencodeServerPassword) {
+    const opencodeServerUrl = process.env.OPENCODE_SERVER_URL;
     const auth: OpencodeServerAuth = {
       username: process.env.OPENCODE_SERVER_USERNAME,
       password: opencodeServerPassword,
     };
     providers["opencode-server"] = {
       ...(await buildOpencodeServerProvider({ baseUrl: opencodeServerUrl, auth })),
-      apiKey: opencodeServerPassword ?? "opencode-server", // Placeholder for providers with auth
+      apiKey: "${OPENCODE_SERVER_PASSWORD}",
     };
   }
 
