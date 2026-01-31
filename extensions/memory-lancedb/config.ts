@@ -84,7 +84,12 @@ function resolveEmbeddingModel(embedding: Record<string, unknown>): string {
   return model;
 }
 
-function resolveEmbeddingProvider(model: string): "openai" | "google" {
+function resolveEmbeddingProvider(model: string, explicitProvider?: string): "openai" | "google" {
+  // If provider is explicitly specified, use it
+  if (explicitProvider === "google" || explicitProvider === "openai") {
+    return explicitProvider;
+  }
+  // Otherwise, auto-detect based on model name
   if (model.startsWith("gemini-")) {
     return "google";
   }
@@ -103,10 +108,11 @@ export const memoryConfigSchema = {
     if (!embedding || typeof embedding.apiKey !== "string") {
       throw new Error("embedding.apiKey is required");
     }
-    assertAllowedKeys(embedding, ["apiKey", "model"], "embedding config");
+    assertAllowedKeys(embedding, ["apiKey", "model", "provider"], "embedding config");
 
     const model = resolveEmbeddingModel(embedding);
-    const provider = resolveEmbeddingProvider(model);
+    const explicitProvider = typeof embedding.provider === "string" ? embedding.provider : undefined;
+    const provider = resolveEmbeddingProvider(model, explicitProvider);
 
     return {
       embedding: {
@@ -125,6 +131,10 @@ export const memoryConfigSchema = {
       sensitive: true,
       placeholder: "sk-proj-... (for OpenAI) or AIza... (for Google)",
       help: "API key for embeddings provider (use ${OPENAI_API_KEY} or ${GOOGLE_API_KEY})",
+    },
+    "embedding.provider": {
+      label: "Provider",
+      help: "Embedding provider (auto-detected from model if not specified)",
     },
     "embedding.model": {
       label: "Embedding Model",
