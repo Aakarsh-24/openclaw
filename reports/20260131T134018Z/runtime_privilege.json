@@ -1,0 +1,158 @@
+[
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\docs\\install\\installer.md",
+    "LineNumber": 20,
+    "Pattern": "curl .* bash",
+    "Line": "curl -fsSL https://openclaw.bot/install.sh | bash -s -- --help"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\docs\\install\\installer.md",
+    "LineNumber": 48,
+    "Pattern": "curl .* bash",
+    "Line": "SHARP_IGNORE_GLOBAL_LIBVIPS=0 curl -fsSL https://openclaw.bot/install.sh | bash"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\docs\\install\\installer.md",
+    "LineNumber": 81,
+    "Pattern": "curl .* bash",
+    "Line": "curl -fsSL https://openclaw.bot/install-cli.sh | bash -s -- --help"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\scripts\\docker\\install-sh-e2e\\run.sh",
+    "LineNumber": 63,
+    "Pattern": "curl .* bash",
+    "Line": "  OPENCLAW_BETA=1 CLAWDBOT_BETA=1 curl -fsSL \"$INSTALL_URL\" | bash"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\scripts\\docker\\install-sh-e2e\\run.sh",
+    "LineNumber": 65,
+    "Pattern": "curl .* bash",
+    "Line": "  OPENCLAW_VERSION=\"$INSTALL_TAG\" CLAWDBOT_VERSION=\"$INSTALL_TAG\" curl -fsSL \"$INSTALL_URL\" | bash"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\scripts\\docker\\install-sh-e2e\\run.sh",
+    "LineNumber": 67,
+    "Pattern": "curl .* bash",
+    "Line": "  curl -fsSL \"$INSTALL_URL\" | bash"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\scripts\\docker\\install-sh-nonroot\\run.sh",
+    "LineNumber": 15,
+    "Pattern": "curl .* bash",
+    "Line": "curl -fsSL \"$INSTALL_URL\" | bash"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\scripts\\docker\\install-sh-smoke\\run.sh",
+    "LineNumber": 51,
+    "Pattern": "curl .* bash",
+    "Line": "curl -fsSL \"$INSTALL_URL\" | bash"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\scripts\\clawlog.sh",
+    "LineNumber": 19,
+    "Pattern": "sudo",
+    "Line": "# Function to handle sudo password errors"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\scripts\\clawlog.sh",
+    "LineNumber": 20,
+    "Pattern": "sudo",
+    "Line": "handle_sudo_error() {"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\scripts\\clawlog.sh",
+    "LineNumber": 24,
+    "Pattern": "sudo",
+    "Line": "    echo -e \"clawlog needs to use sudo to show complete log data (Apple hides sensitive info by default).\""
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\scripts\\clawlog.sh",
+    "LineNumber": 25,
+    "Pattern": "sudo",
+    "Line": "    echo -e \"\\nTo avoid password prompts, configure passwordless sudo for the log command:\""
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\scripts\\clawlog.sh",
+    "LineNumber": 28,
+    "Pattern": "sudo",
+    "Line": "    echo -e \"  1. Run: ${GREEN}sudo visudo${NC}\""
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\scripts\\clawlog.sh",
+    "LineNumber": 58,
+    "Pattern": "sudo",
+    "Line": "    Requires sudo access configured for /usr/bin/log command."
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\scripts\\clawlog.sh",
+    "LineNumber": 229,
+    "Pattern": "sudo",
+    "Line": "# Build the command - always use sudo with --info to show private data"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\scripts\\clawlog.sh",
+    "LineNumber": 232,
+    "Pattern": "sudo",
+    "Line": "    CMD=\"sudo log stream --predicate '$PREDICATE' --level $LOG_LEVEL --info\""
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\scripts\\clawlog.sh",
+    "LineNumber": 238,
+    "Pattern": "sudo",
+    "Line": "    CMD=\"sudo log show --predicate '$PREDICATE'\""
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\scripts\\clawlog.sh",
+    "LineNumber": 276,
+    "Pattern": "sudo",
+    "Line": "    # First check if sudo works without password for the log command"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\scripts\\clawlog.sh",
+    "LineNumber": 277,
+    "Pattern": "sudo",
+    "Line": "    if sudo -n /usr/bin/log show --last 1s 2>&1 | grep -q \"password\"; then"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\scripts\\clawlog.sh",
+    "LineNumber": 278,
+    "Pattern": "sudo",
+    "Line": "        handle_sudo_error"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\scripts\\clawlog.sh",
+    "LineNumber": 297,
+    "Pattern": "sudo",
+    "Line": "    # First check if sudo works without password for the log command"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\scripts\\clawlog.sh",
+    "LineNumber": 298,
+    "Pattern": "sudo",
+    "Line": "    if sudo -n /usr/bin/log show --last 1s 2>&1 | grep -q \"password\"; then"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\scripts\\clawlog.sh",
+    "LineNumber": 299,
+    "Pattern": "sudo",
+    "Line": "        handle_sudo_error"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\scripts\\sandbox-common-setup.sh",
+    "LineNumber": 46,
+    "Pattern": "curl .* bash",
+    "Line": "  curl -fsSL https://bun.sh/install | bash; \\\\"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\scripts\\sandbox-common-setup.sh",
+    "LineNumber": 53,
+    "Pattern": "su ",
+    "Line": "  su - linuxbrew -c \"NONINTERACTIVE=1 CI=1 /bin/bash -c '\\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)'\"; \\\\"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\scripts\\test-install-sh-docker.sh",
+    "LineNumber": 70,
+    "Pattern": "curl .* bash",
+    "Line": "  \"$NONROOT_IMAGE\" -lc \"curl -fsSL \\\"$CLI_INSTALL_URL\\\" | bash -s -- --set-npm-prefix --no-onboard\""
+  }
+]

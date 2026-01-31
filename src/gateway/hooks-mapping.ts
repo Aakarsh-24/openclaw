@@ -38,24 +38,24 @@ export type HookMappingContext = {
 
 export type HookAction =
   | {
-      kind: "wake";
-      text: string;
-      mode: "now" | "next-heartbeat";
-    }
+    kind: "wake";
+    text: string;
+    mode: "now" | "next-heartbeat";
+  }
   | {
-      kind: "agent";
-      message: string;
-      name?: string;
-      wakeMode: "now" | "next-heartbeat";
-      sessionKey?: string;
-      deliver?: boolean;
-      allowUnsafeExternalContent?: boolean;
-      channel?: HookMessageChannel;
-      to?: string;
-      model?: string;
-      thinking?: string;
-      timeoutSeconds?: number;
-    };
+    kind: "agent";
+    message: string;
+    name?: string;
+    wakeMode: "now" | "next-heartbeat";
+    sessionKey?: string;
+    deliver?: boolean;
+    allowUnsafeExternalContent?: boolean;
+    channel?: HookMessageChannel;
+    to?: string;
+    model?: string;
+    thinking?: string;
+    timeoutSeconds?: number;
+  };
 
 export type HookMappingResult =
   | { ok: true; action: HookAction }
@@ -185,9 +185,9 @@ function normalizeHookMapping(
   const wakeMode = mapping.wakeMode ?? "now";
   const transform = mapping.transform
     ? {
-        modulePath: resolvePath(transformsDir, mapping.transform.module),
-        exportName: mapping.transform.export?.trim() || undefined,
-      }
+      modulePath: resolvePath(transformsDir, mapping.transform.module),
+      exportName: mapping.transform.export?.trim() || undefined,
+    }
     : undefined;
 
   return {
@@ -313,11 +313,20 @@ function validateAction(action: HookAction): HookMappingResult {
   return { ok: true, action };
 }
 
+const SAFE_PLUGIN_EXTENSIONS = new Set([".js", ".mjs", ".cjs", ".ts", ".mts", ".cts"]);
+
 async function loadTransform(transform: HookMappingTransformResolved): Promise<HookTransformFn> {
   const cached = transformCache.get(transform.modulePath);
   if (cached) {
     return cached;
   }
+
+  // Security: Prevent loading arbitrary file types
+  const ext = path.extname(transform.modulePath).toLowerCase();
+  if (!SAFE_PLUGIN_EXTENSIONS.has(ext)) {
+    throw new Error(`Security: Plugin path has unsafe extension (${ext}). Allowed: ${Array.from(SAFE_PLUGIN_EXTENSIONS).join(", ")}`);
+  }
+
   const url = pathToFileURL(transform.modulePath).href;
   const mod = (await import(url)) as Record<string, unknown>;
   const fn = resolveTransformFn(mod, transform.exportName);

@@ -1,0 +1,475 @@
+{
+  "actions": [
+    {
+      "action": "update",
+      "resolves": [
+        {
+          "id": 1112644,
+          "path": ".>@buape/carbon>@hono/node-server>hono",
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        },
+        {
+          "id": 1112676,
+          "path": ".>@buape/carbon>@hono/node-server>hono",
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        },
+        {
+          "id": 1112677,
+          "path": ".>@buape/carbon>@hono/node-server>hono",
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        },
+        {
+          "id": 1112678,
+          "path": ".>@buape/carbon>@hono/node-server>hono",
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "module": null,
+      "target": null,
+      "depth": 3
+    },
+    {
+      "action": "review",
+      "module": "request",
+      "resolves": [
+        {
+          "id": 1096727,
+          "path": "extensions__matrix>@vector-im/matrix-bot-sdk>request",
+          "dev": false,
+          "bundled": false,
+          "optional": false
+        }
+      ]
+    },
+    {
+      "action": "review",
+      "module": "tough-cookie",
+      "resolves": [
+        {
+          "id": 1097682,
+          "path": "extensions__matrix>@vector-im/matrix-bot-sdk>request>tough-cookie",
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ]
+    },
+    {
+      "action": "review",
+      "module": "form-data",
+      "resolves": [
+        {
+          "id": 1109540,
+          "path": "extensions__matrix>@vector-im/matrix-bot-sdk>request>form-data",
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ]
+    },
+    {
+      "action": "review",
+      "module": "qs",
+      "resolves": [
+        {
+          "id": 1111755,
+          "path": "extensions__matrix>@vector-im/matrix-bot-sdk>request>qs",
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ]
+    },
+    {
+      "action": "review",
+      "module": "fast-xml-parser",
+      "resolves": [
+        {
+          "id": 1112708,
+          "path": ".>@aws-sdk/client-bedrock>@aws-sdk/core>@aws-sdk/xml-builder>fast-xml-parser",
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ]
+    }
+  ],
+  "advisories": {
+    "1096727": {
+      "findings": [
+        {
+          "version": "2.88.2",
+          "paths": [
+            "extensions__matrix>@vector-im/matrix-bot-sdk>request"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://nvd.nist.gov/vuln/detail/CVE-2023-28155\n- https://github.com/request/request/issues/3442\n- https://github.com/request/request/pull/3444\n- https://doyensec.com/resources/Doyensec_Advisory_RequestSSRF_Q12023.pdf\n- https://github.com/github/advisory-database/pull/2500\n- https://github.com/cypress-io/request/blob/master/lib/redirect.js#L116\n- https://github.com/request/request/blob/master/lib/redirect.js#L111\n- https://github.com/cypress-io/request/pull/28\n- https://github.com/cypress-io/request/commit/c5bcf21d40fb61feaff21a0e5a2b3934a440024f\n- https://github.com/cypress-io/request/releases/tag/v3.0.0\n- https://security.netapp.com/advisory/ntap-20230413-0007\n- https://github.com/advisories/GHSA-p8p7-x288-28g6",
+      "created": "2023-03-16T15:30:19.000Z",
+      "id": 1096727,
+      "npm_advisory_id": null,
+      "overview": "The `request` package through 2.88.2 for Node.js and the `@cypress/request` package prior to 3.0.0 allow a bypass of SSRF mitigations via an attacker-controller server that does a cross-protocol redirect (HTTP to HTTPS, or HTTPS to HTTP).\n\nNOTE: The `request` package is no longer supported by the maintainer.",
+      "reported_by": null,
+      "title": "Server-Side Request Forgery in Request",
+      "metadata": null,
+      "cves": [
+        "CVE-2023-28155"
+      ],
+      "access": "public",
+      "severity": "moderate",
+      "module_name": "request",
+      "vulnerable_versions": "<=2.88.2",
+      "github_advisory_id": "GHSA-p8p7-x288-28g6",
+      "recommendation": "None",
+      "patched_versions": "<0.0.0",
+      "updated": "2024-03-21T17:47:21.000Z",
+      "cvss": {
+        "score": 6.1,
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N"
+      },
+      "cwe": [
+        "CWE-918"
+      ],
+      "url": "https://github.com/advisories/GHSA-p8p7-x288-28g6"
+    },
+    "1097682": {
+      "findings": [
+        {
+          "version": "2.5.0",
+          "paths": [
+            "extensions__matrix>@vector-im/matrix-bot-sdk>request>tough-cookie"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://nvd.nist.gov/vuln/detail/CVE-2023-26136\n- https://github.com/salesforce/tough-cookie/issues/282\n- https://github.com/salesforce/tough-cookie/commit/12d474791bb856004e858fdb1c47b7608d09cf6e\n- https://github.com/salesforce/tough-cookie/releases/tag/v4.1.3\n- https://security.snyk.io/vuln/SNYK-JS-TOUGHCOOKIE-5672873\n- https://lists.debian.org/debian-lts-announce/2023/07/msg00010.html\n- https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/3HUE6ZR5SL73KHL7XUPAOEL6SB7HUDT2\n- https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/6PVVPNSAGSDS63HQ74PJ7MZ3MU5IYNVZ\n- https://security.netapp.com/advisory/ntap-20240621-0006\n- https://github.com/advisories/GHSA-72xf-g2v4-qvf3",
+      "created": "2023-07-01T06:30:16.000Z",
+      "id": 1097682,
+      "npm_advisory_id": null,
+      "overview": "Versions of the package tough-cookie before 4.1.3 are vulnerable to Prototype Pollution due to improper handling of Cookies when using CookieJar in `rejectPublicSuffixes=false` mode. This issue arises from the manner in which the objects are initialized.",
+      "reported_by": null,
+      "title": "tough-cookie Prototype Pollution vulnerability",
+      "metadata": null,
+      "cves": [
+        "CVE-2023-26136"
+      ],
+      "access": "public",
+      "severity": "moderate",
+      "module_name": "tough-cookie",
+      "vulnerable_versions": "<4.1.3",
+      "github_advisory_id": "GHSA-72xf-g2v4-qvf3",
+      "recommendation": "Upgrade to version 4.1.3 or later",
+      "patched_versions": ">=4.1.3",
+      "updated": "2024-06-21T21:33:53.000Z",
+      "cvss": {
+        "score": 6.5,
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N"
+      },
+      "cwe": [
+        "CWE-1321"
+      ],
+      "url": "https://github.com/advisories/GHSA-72xf-g2v4-qvf3"
+    },
+    "1109540": {
+      "findings": [
+        {
+          "version": "2.3.3",
+          "paths": [
+            "extensions__matrix>@vector-im/matrix-bot-sdk>request>form-data"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/form-data/form-data/security/advisories/GHSA-fjxv-7rqg-78g4\n- https://nvd.nist.gov/vuln/detail/CVE-2025-7783\n- https://github.com/form-data/form-data/commit/3d1723080e6577a66f17f163ecd345a21d8d0fd0\n- https://github.com/benweissmann/CVE-2025-7783-poc\n- https://lists.debian.org/debian-lts-announce/2025/07/msg00023.html\n- https://github.com/advisories/GHSA-fjxv-7rqg-78g4",
+      "created": "2025-07-21T19:04:54.000Z",
+      "id": 1109540,
+      "npm_advisory_id": null,
+      "overview": "### Summary\n\nform-data uses `Math.random()` to select a boundary value for multipart form-encoded data. This can lead to a security issue if an attacker:\n1. can observe other values produced by Math.random in the target application, and\n2. can control one field of a request made using form-data\n\nBecause the values of Math.random() are pseudo-random and predictable (see: https://blog.securityevaluators.com/hacking-the-javascript-lottery-80cc437e3b7f), an attacker who can observe a few sequential values can determine the state of the PRNG and predict future values, includes those used to generate form-data's boundary value. The allows the attacker to craft a value that contains a boundary value, allowing them to inject additional parameters into the request.\n\nThis is largely the same vulnerability as was [recently found in `undici`](https://hackerone.com/reports/2913312) by [`parrot409`](https://hackerone.com/parrot409?type=user) -- I'm not affiliated with that researcher but want to give credit where credit is due! My PoC is largely based on their work.\n\n### Details\n\nThe culprit is this line here: https://github.com/form-data/form-data/blob/426ba9ac440f95d1998dac9a5cd8d738043b048f/lib/form_data.js#L347\n\nAn attacker who is able to predict the output of Math.random() can predict this boundary value, and craft a payload that contains the boundary value, followed by another, fully attacker-controlled field. This is roughly equivalent to any sort of improper escaping vulnerability, with the caveat that the attacker must find a way to observe other Math.random() values generated by the application to solve for the state of the PRNG. However, Math.random() is used in all sorts of places that might be visible to an attacker (including by form-data itself, if the attacker can arrange for the vulnerable application to make a request to an attacker-controlled server using form-data, such as a user-controlled webhook -- the attacker could observe the boundary values from those requests to observe the Math.random() outputs). A common example would be a `x-request-id` header added by the server. These sorts of headers are often used for distributed tracing, to correlate errors across the frontend and backend. `Math.random()` is a fine place to get these sorts of IDs (in fact, [opentelemetry uses Math.random for this purpose](https://github.com/open-telemetry/opentelemetry-js/blob/2053f0d3a44631ade77ea04f656056a2c8a2ae76/packages/opentelemetry-sdk-trace-base/src/platform/node/RandomIdGenerator.ts#L22))\n\n### PoC\n\nPoC here: https://github.com/benweissmann/CVE-2025-7783-poc\n\nInstructions are in that repo. It's based on the PoC from https://hackerone.com/reports/2913312 but simplified somewhat; the vulnerable application has a more direct side-channel from which to observe Math.random() values (a separate endpoint that happens to include a randomly-generated request ID). \n\n### Impact\n\nFor an application to be vulnerable, it must:\n- Use `form-data` to send data including user-controlled data to some other system. The attacker must be able to do something malicious by adding extra parameters (that were not intended to be user-controlled) to this request. Depending on the target system's handling of repeated parameters, the attacker might be able to overwrite values in addition to appending values (some multipart form handlers deal with repeats by overwriting values instead of representing them as an array)\n- Reveal values of Math.random(). It's easiest if the attacker can observe multiple sequential values, but more complex math could recover the PRNG state to some degree of confidence with non-sequential values. \n\nIf an application is vulnerable, this allows an attacker to make arbitrary requests to internal systems.",
+      "reported_by": null,
+      "title": "form-data uses unsafe random function in form-data for choosing boundary",
+      "metadata": null,
+      "cves": [
+        "CVE-2025-7783"
+      ],
+      "access": "public",
+      "severity": "critical",
+      "module_name": "form-data",
+      "vulnerable_versions": "<2.5.4",
+      "github_advisory_id": "GHSA-fjxv-7rqg-78g4",
+      "recommendation": "Upgrade to version 2.5.4 or later",
+      "patched_versions": ">=2.5.4",
+      "updated": "2025-11-03T21:34:09.000Z",
+      "cvss": {
+        "score": 0,
+        "vectorString": null
+      },
+      "cwe": [
+        "CWE-330"
+      ],
+      "url": "https://github.com/advisories/GHSA-fjxv-7rqg-78g4"
+    },
+    "1111755": {
+      "findings": [
+        {
+          "version": "6.5.3",
+          "paths": [
+            "extensions__matrix>@vector-im/matrix-bot-sdk>request>qs"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/ljharb/qs/security/advisories/GHSA-6rw7-vpxm-498p\n- https://nvd.nist.gov/vuln/detail/CVE-2025-15284\n- https://github.com/ljharb/qs/commit/3086902ecf7f088d0d1803887643ac6c03d415b9\n- https://github.com/advisories/GHSA-6rw7-vpxm-498p",
+      "created": "2025-12-30T21:02:54.000Z",
+      "id": 1111755,
+      "npm_advisory_id": null,
+      "overview": "### Summary\n\nThe `arrayLimit` option in qs does not enforce limits for bracket notation (`a[]=1&a[]=2`), allowing attackers to cause denial-of-service via memory exhaustion. Applications using `arrayLimit` for DoS protection are vulnerable.\n\n### Details\n\nThe `arrayLimit` option only checks limits for indexed notation (`a[0]=1&a[1]=2`) but completely bypasses it for bracket notation (`a[]=1&a[]=2`).\n\n**Vulnerable code** (`lib/parse.js:159-162`):\n```javascript\nif (root === '[]' && options.parseArrays) {\n    obj = utils.combine([], leaf);  // No arrayLimit check\n}\n```\n\n**Working code** (`lib/parse.js:175`):\n```javascript\nelse if (index <= options.arrayLimit) {  // Limit checked here\n    obj = [];\n    obj[index] = leaf;\n}\n```\n\nThe bracket notation handler at line 159 uses `utils.combine([], leaf)` without validating against `options.arrayLimit`, while indexed notation at line 175 checks `index <= options.arrayLimit` before creating arrays.\n\n### PoC\n\n**Test 1 - Basic bypass:**\n```bash\nnpm install qs\n```\n\n```javascript\nconst qs = require('qs');\nconst result = qs.parse('a[]=1&a[]=2&a[]=3&a[]=4&a[]=5&a[]=6', { arrayLimit: 5 });\nconsole.log(result.a.length);  // Output: 6 (should be max 5)\n```\n\n**Test 2 - DoS demonstration:**\n```javascript\nconst qs = require('qs');\nconst attack = 'a[]=' + Array(10000).fill('x').join('&a[]=');\nconst result = qs.parse(attack, { arrayLimit: 100 });\nconsole.log(result.a.length);  // Output: 10000 (should be max 100)\n```\n\n**Configuration:**\n- `arrayLimit: 5` (test 1) or `arrayLimit: 100` (test 2)\n- Use bracket notation: `a[]=value` (not indexed `a[0]=value`)\n\n### Impact\n\nDenial of Service via memory exhaustion. Affects applications using `qs.parse()` with user-controlled input and `arrayLimit` for protection.\n\n**Attack scenario:**\n1. Attacker sends HTTP request: `GET /api/search?filters[]=x&filters[]=x&...&filters[]=x` (100,000+ times)\n2. Application parses with `qs.parse(query, { arrayLimit: 100 })`\n3. qs ignores limit, parses all 100,000 elements into array\n4. Server memory exhausted → application crashes or becomes unresponsive\n5. Service unavailable for all users\n\n**Real-world impact:**\n- Single malicious request can crash server\n- No authentication required\n- Easy to automate and scale\n- Affects any endpoint parsing query strings with bracket notation\n\n### Suggested Fix\n\nAdd `arrayLimit` validation to the bracket notation handler. The code already calculates `currentArrayLength` at line 147-151, but it's not used in the bracket notation handler at line 159.\n\n**Current code** (`lib/parse.js:159-162`):\n```javascript\nif (root === '[]' && options.parseArrays) {\n    obj = options.allowEmptyArrays && (leaf === '' || (options.strictNullHandling && leaf === null))\n        ? []\n        : utils.combine([], leaf);  // No arrayLimit check\n}\n```\n\n**Fixed code**:\n```javascript\nif (root === '[]' && options.parseArrays) {\n    // Use currentArrayLength already calculated at line 147-151\n    if (options.throwOnLimitExceeded && currentArrayLength >= options.arrayLimit) {\n        throw new RangeError('Array limit exceeded. Only ' + options.arrayLimit + ' element' + (options.arrayLimit === 1 ? '' : 's') + ' allowed in an array.');\n    }\n    \n    // If limit exceeded and not throwing, convert to object (consistent with indexed notation behavior)\n    if (currentArrayLength >= options.arrayLimit) {\n        obj = options.plainObjects ? { __proto__: null } : {};\n        obj[currentArrayLength] = leaf;\n    } else {\n        obj = options.allowEmptyArrays && (leaf === '' || (options.strictNullHandling && leaf === null))\n            ? []\n            : utils.combine([], leaf);\n    }\n}\n```\n\nThis makes bracket notation behaviour consistent with indexed notation, enforcing `arrayLimit` and converting to object when limit is exceeded (per README documentation).",
+      "reported_by": null,
+      "title": "qs's arrayLimit bypass in its bracket notation allows DoS via memory exhaustion",
+      "metadata": null,
+      "cves": [
+        "CVE-2025-15284"
+      ],
+      "access": "public",
+      "severity": "high",
+      "module_name": "qs",
+      "vulnerable_versions": "<6.14.1",
+      "github_advisory_id": "GHSA-6rw7-vpxm-498p",
+      "recommendation": "Upgrade to version 6.14.1 or later",
+      "patched_versions": ">=6.14.1",
+      "updated": "2025-12-30T21:02:55.000Z",
+      "cvss": {
+        "score": 7.5,
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+      },
+      "cwe": [
+        "CWE-20"
+      ],
+      "url": "https://github.com/advisories/GHSA-6rw7-vpxm-498p"
+    },
+    "1112644": {
+      "findings": [
+        {
+          "version": "4.11.4",
+          "paths": [
+            ".>@buape/carbon>@hono/node-server>hono"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/honojs/hono/security/advisories/GHSA-9r54-q6cx-xmh5\n- https://nvd.nist.gov/vuln/detail/CVE-2026-24771\n- https://github.com/honojs/hono/commit/2cf60046d730df9fd0aba85178f3ecfe8212d990\n- https://github.com/advisories/GHSA-9r54-q6cx-xmh5",
+      "created": "2026-01-28T16:10:22.000Z",
+      "id": 1112644,
+      "npm_advisory_id": null,
+      "overview": "## Summary\n\nA Cross-Site Scripting (XSS) vulnerability exists in the `ErrorBoundary` component of the hono/jsx library. Under certain usage patterns, untrusted user-controlled strings may be rendered as raw HTML, allowing arbitrary script execution in the victim's browser.\n\n## Details\n\nThe issue is in the `ErrorBoundary` component (`src/jsx/components.ts`). `ErrorBoundary` previously forced certain rendered output paths to be treated as raw HTML, bypassing the library's default escaping behavior. This could result in unescaped rendering when developers pass user-controlled strings directly as children, or when fallbackRender returns user-controlled strings (for example, reflecting error messages that contain attacker input).\n\nThis vulnerability is only exploitable when an application renders untrusted user input within `ErrorBoundary` without appropriate escaping or sanitization.\n\n## Impact\n\nSuccessful exploitation may allow attackers to execute arbitrary JavaScript in the victim’s browser (reflected XSS). Depending on the application context, this can lead to actions such as session compromise, data exfiltration, or performing unauthorized actions as the victim.\n\n## Affected Components\n\n* hono/jsx: `ErrorBoundary` component",
+      "reported_by": null,
+      "title": "Hono vulnerable to XSS through ErrorBoundary component ",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-24771"
+      ],
+      "access": "public",
+      "severity": "moderate",
+      "module_name": "hono",
+      "vulnerable_versions": "<4.11.7",
+      "github_advisory_id": "GHSA-9r54-q6cx-xmh5",
+      "recommendation": "Upgrade to version 4.11.7 or later",
+      "patched_versions": ">=4.11.7",
+      "updated": "2026-01-28T16:10:24.000Z",
+      "cvss": {
+        "score": 4.7,
+        "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:C/C:L/I:L/A:N"
+      },
+      "cwe": [
+        "CWE-79"
+      ],
+      "url": "https://github.com/advisories/GHSA-9r54-q6cx-xmh5"
+    },
+    "1112676": {
+      "findings": [
+        {
+          "version": "4.11.4",
+          "paths": [
+            ".>@buape/carbon>@hono/node-server>hono"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/honojs/hono/security/advisories/GHSA-w332-q679-j88p\n- https://github.com/honojs/hono/commit/cf9a78db4d0a19b117aee399cbe9d3a6d9bfd817\n- https://github.com/honojs/hono/releases/tag/v4.11.7\n- https://nvd.nist.gov/vuln/detail/CVE-2026-24473\n- https://github.com/advisories/GHSA-w332-q679-j88p",
+      "created": "2026-01-27T19:09:01.000Z",
+      "id": 1112676,
+      "npm_advisory_id": null,
+      "overview": "## Summary\n\nServe static Middleware for the Cloudflare Workers adapter contains an information disclosure vulnerability that may allow attackers to read arbitrary keys from the Workers environment. Improper validation of user-controlled paths can result in unintended access to internal asset keys.\n\n## Details\n\nThe vulnerability exists in the serve-static middleware used with the Cloudflare Workers adapter. When serving static assets, the middleware does not sufficiently validate or restrict user-supplied paths before resolving them against the Workers asset storage.\n\nAs a result, an attacker may craft requests that access arbitrary keys beyond the intended static asset scope. This issue only affects applications running on Cloudflare Workers that use Serve static Middleware with user-controllable request paths.\n\n## Impact\n\nThis vulnerability may lead to information disclosure by allowing unauthorized access to internal assets or data stored in the Workers environment. The exposed data is limited to readable asset keys and does not allow modification of stored data or execution of arbitrary code.\n\nThe impact is limited to applications that use Serve static Middleware in the Cloudflare Workers adapter and rely on it to safely handle untrusted request paths.\n\n## Affected Components\n\n* Serve static Middleware (Cloudflare Workers adapter)",
+      "reported_by": null,
+      "title": "Hono has an Arbitrary Key Read in Serve static Middleware (Cloudflare Workers Adapter)",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-24473"
+      ],
+      "access": "public",
+      "severity": "moderate",
+      "module_name": "hono",
+      "vulnerable_versions": "<4.11.7",
+      "github_advisory_id": "GHSA-w332-q679-j88p",
+      "recommendation": "Upgrade to version 4.11.7 or later",
+      "patched_versions": ">=4.11.7",
+      "updated": "2026-01-29T03:39:13.000Z",
+      "cvss": {
+        "score": 0,
+        "vectorString": null
+      },
+      "cwe": [
+        "CWE-200",
+        "CWE-284",
+        "CWE-668"
+      ],
+      "url": "https://github.com/advisories/GHSA-w332-q679-j88p"
+    },
+    "1112677": {
+      "findings": [
+        {
+          "version": "4.11.4",
+          "paths": [
+            ".>@buape/carbon>@hono/node-server>hono"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/honojs/hono/security/advisories/GHSA-6wqw-2p9w-4vw4\n- https://github.com/honojs/hono/commit/12c511745b3f1e7a3f863a23ce5f921c7fa805d1\n- https://github.com/honojs/hono/releases/tag/v4.11.7\n- https://nvd.nist.gov/vuln/detail/CVE-2026-24472\n- https://github.com/advisories/GHSA-6wqw-2p9w-4vw4",
+      "created": "2026-01-27T19:04:17.000Z",
+      "id": 1112677,
+      "npm_advisory_id": null,
+      "overview": "## Summary\n\nCache Middleware contains an information disclosure vulnerability caused by improper handling of HTTP cache control directives. The middleware does not respect standard cache control headers such as `Cache-Control: private` or `Cache-Control: no-store`, which may result in private or authenticated responses being cached and subsequently exposed to unauthorized users.\n\n## Details\n\nThe vulnerability exists in the cache decision logic of Cache Middleware. When determining whether a response should be cached, the middleware does not take HTTP cache control semantics into account and may cache responses that are explicitly marked as private by the application. While some runtimes, such as Cloudflare Workers, enforce cache control restrictions at the platform level, other runtimes including Deno, Bun, and Node.js rely on the middleware’s behavior. As a result, applications running on these runtimes may unintentionally cache sensitive responses.\n\n## Impact\n\nThis issue can lead to Web Cache Deception and information disclosure. If an authenticated user accesses an endpoint that returns user-specific or sensitive data and the response is cached despite being marked as private, subsequent unauthenticated requests may receive the cached response. This may result in the exposure of personally identifiable information or session-related data. The impact is limited to applications that use the hono/cache middleware and rely on it to correctly honor HTTP cache control directives.\n\n## Affected Components\n\n* Cache Middleware",
+      "reported_by": null,
+      "title": "Hono cache middleware ignores \"Cache-Control: private\" leading to Web Cache Deception",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-24472"
+      ],
+      "access": "public",
+      "severity": "moderate",
+      "module_name": "hono",
+      "vulnerable_versions": "<4.11.7",
+      "github_advisory_id": "GHSA-6wqw-2p9w-4vw4",
+      "recommendation": "Upgrade to version 4.11.7 or later",
+      "patched_versions": ">=4.11.7",
+      "updated": "2026-01-29T03:39:38.000Z",
+      "cvss": {
+        "score": 5.3,
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N"
+      },
+      "cwe": [
+        "CWE-524",
+        "CWE-613"
+      ],
+      "url": "https://github.com/advisories/GHSA-6wqw-2p9w-4vw4"
+    },
+    "1112678": {
+      "findings": [
+        {
+          "version": "4.11.4",
+          "paths": [
+            ".>@buape/carbon>@hono/node-server>hono"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/honojs/hono/security/advisories/GHSA-r354-f388-2fhh\n- https://github.com/honojs/hono/commit/edbf6eea8e6c26a3937518d4ed91d8666edeec37\n- https://github.com/honojs/hono/releases/tag/v4.11.7\n- https://nvd.nist.gov/vuln/detail/CVE-2026-24398\n- https://github.com/advisories/GHSA-r354-f388-2fhh",
+      "created": "2026-01-27T19:01:43.000Z",
+      "id": 1112678,
+      "npm_advisory_id": null,
+      "overview": "## Summary\n\nIP Restriction Middleware in Hono is vulnerable to an IP address validation bypass. The `IPV4_REGEX` pattern and `convertIPv4ToBinary` function in `src/utils/ipaddr.ts` do not properly validate that IPv4 octet values are within the valid range of 0-255, allowing attackers to craft malformed IP addresses that bypass IP-based access controls.\n\n## Details\n\nThe vulnerability exists in two components:\n\n1. **Permissive regex pattern:** The `IPV4_REGEX (/^[0-9]{0,3}\\.[0-9]{0,3}\\.[0-9]{0,3}\\.[0-9]{0,3}$/)` accepts octet values greater than 255 (e.g., `999`).\n2. **Unsafe binary conversion:** The `convertIPv4ToBinary` function does not validate octet ranges before performing bitwise operations. When an octet exceeds 255, it overflows into adjacent octets during the bit-shift calculation.\n\nFor example, the IP address `1.2.2.355` is accepted and converts to the same binary value as 1.2.3.99:\n\n* `355` = `256 + 99` = `0x163`\n* After bit-shifting: `(1 << 24) + (2 << 16) + (2 << 8) + 355` = `0x01020363` = `1.2.3.99`\n\n## Impact\n\nAn attacker can bypass IP-based restrictions by crafting malformed IP addresses:\n\n* **Blocklist bypass:** If `1.2.3.0/24` is blocked, an attacker can use `1.2.2.355` (or similar) to bypass the restriction.\n* **Allowlist bypass:** Requests from unauthorized IP ranges may be incorrectly permitted.\n\nThis is exploitable when the application relies on client-provided IP addresses (e.g., `X-Forwarded-For header`) for access control decisions.\n\n## Affected Components\n\n* IP Restriction Middleware\n* `src/utils/ipaddr.ts`: `IPV4_REGEX`, `convertIPv4ToBinary`, `distinctRemoteAddr`",
+      "reported_by": null,
+      "title": "Hono IPv4 address validation bypass in IP Restriction Middleware allows IP spoofing",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-24398"
+      ],
+      "access": "public",
+      "severity": "moderate",
+      "module_name": "hono",
+      "vulnerable_versions": "<4.11.7",
+      "github_advisory_id": "GHSA-r354-f388-2fhh",
+      "recommendation": "Upgrade to version 4.11.7 or later",
+      "patched_versions": ">=4.11.7",
+      "updated": "2026-01-29T03:39:03.000Z",
+      "cvss": {
+        "score": 4.8,
+        "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:L/A:N"
+      },
+      "cwe": [
+        "CWE-185"
+      ],
+      "url": "https://github.com/advisories/GHSA-r354-f388-2fhh"
+    },
+    "1112708": {
+      "findings": [
+        {
+          "version": "5.2.5",
+          "paths": [
+            ".>@aws-sdk/client-bedrock>@aws-sdk/core>@aws-sdk/xml-builder>fast-xml-parser"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/NaturalIntelligence/fast-xml-parser/security/advisories/GHSA-37qj-frw5-hhjh\n- https://nvd.nist.gov/vuln/detail/CVE-2026-25128\n- https://github.com/NaturalIntelligence/fast-xml-parser/commit/4e387f61c4a5cef792f6a2f42467013290bf95dc\n- https://github.com/NaturalIntelligence/fast-xml-parser/releases/tag/v5.3.4\n- https://github.com/advisories/GHSA-37qj-frw5-hhjh",
+      "created": "2026-01-30T20:10:14.000Z",
+      "id": 1112708,
+      "npm_advisory_id": null,
+      "overview": "### Summary\nA RangeError vulnerability exists in the numeric entity processing of fast-xml-parser when parsing XML with out-of-range entity code points (e.g., `&#9999999;` or `&#xFFFFFF;`). This causes the parser to throw an uncaught exception, crashing any application that processes untrusted XML input.\n\n### Details\nThe vulnerability exists in `/src/xmlparser/OrderedObjParser.js` at lines 44-45:\n\n```javascript\n\"num_dec\": { regex: /&#([0-9]{1,7});/g, val : (_, str) => String.fromCodePoint(Number.parseInt(str, 10)) },\n\"num_hex\": { regex: /&#x([0-9a-fA-F]{1,6});/g, val : (_, str) => String.fromCodePoint(Number.parseInt(str, 16)) },\n```\n\nThe `String.fromCodePoint()` method throws a `RangeError` when the code point exceeds the valid Unicode range (0 to 0x10FFFF / 1114111). The regex patterns can capture values far exceeding this:\n- `[0-9]{1,7}` matches up to 9,999,999\n- `[0-9a-fA-F]{1,6}` matches up to 0xFFFFFF (16,777,215)\n\nThe entity replacement in `replaceEntitiesValue()` (line 452) has no try-catch:\n\n```javascript\nval = val.replace(entity.regex, entity.val);\n```\n\nThis causes the RangeError to propagate uncaught, crashing the parser and any application using it.\n### PoC\n#### Setup\n\nCreate a directory with these files:\n\n```\npoc/\n├── package.json\n├── server.js\n```\n\n**package.json**\n```json\n{ \"dependencies\": { \"fast-xml-parser\": \"^5.3.3\" } }\n```\n\n**server.js**\n```javascript\nconst http = require('http');\nconst { XMLParser } = require('fast-xml-parser');\n\nconst parser = new XMLParser({ processEntities: true, htmlEntities: true });\n\nhttp.createServer((req, res) => {\n  if (req.method === 'POST' && req.url === '/parse') {\n    let body = '';\n    req.on('data', c => body += c);\n    req.on('end', () => {\n      const result = parser.parse(body);  // No try-catch - will crash!\n      res.end(JSON.stringify(result));\n    });\n  } else {\n    res.end('POST /parse with XML body');\n  }\n}).listen(3000, () => console.log('http://localhost:3000'));\n```\n\n#### Run\n\n```bash\n# Setup\nnpm install\n\n# Terminal 1: Start server\nnode server.js\n\n# Terminal 2: Send malicious payload (server will crash)\ncurl -X POST -H \"Content-Type: application/xml\" -d '<?xml version=\"1.0\"?><root>&#9999999;</root>' http://localhost:3000/parse\n``` \n#### Result\n\nServer crashes with:\n```\nRangeError: Invalid code point 9999999\n```\n\n#### Alternative Payloads\n\n```xml\n<!-- Hex variant -->\n<?xml version=\"1.0\"?><root>&#xFFFFFF;</root>\n\n<!-- In attribute -->\n<?xml version=\"1.0\"?><root attr=\"&#9999999;\"/>\n```\n\n### Impact\n*Denial of Service (DoS):** Any application using fast-xml-parser to process untrusted XML input will crash when encountering malformed numeric entities. This affects:\n\n- **API servers** accepting XML payloads\n- **File processors** parsing uploaded XML files\n- **Message queues** consuming XML messages\n- **RSS/Atom feed parsers**\n- **SOAP/XML-RPC services**\n\nA single malicious request is sufficient to crash the entire Node.js process, causing service disruption until manual restart.",
+      "reported_by": null,
+      "title": "fast-xml-parser has RangeError DoS Numeric Entities Bug",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-25128"
+      ],
+      "access": "public",
+      "severity": "high",
+      "module_name": "fast-xml-parser",
+      "vulnerable_versions": ">=4.3.6 <=5.3.3",
+      "github_advisory_id": "GHSA-37qj-frw5-hhjh",
+      "recommendation": "Upgrade to version 5.3.4 or later",
+      "patched_versions": ">=5.3.4",
+      "updated": "2026-01-30T20:10:15.000Z",
+      "cvss": {
+        "score": 7.5,
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+      },
+      "cwe": [
+        "CWE-248"
+      ],
+      "url": "https://github.com/advisories/GHSA-37qj-frw5-hhjh"
+    }
+  },
+  "muted": [],
+  "metadata": {
+    "vulnerabilities": {
+      "info": 0,
+      "low": 0,
+      "moderate": 6,
+      "high": 2,
+      "critical": 1
+    },
+    "dependencies": 1037,
+    "devDependencies": 0,
+    "optionalDependencies": 0,
+    "totalDependencies": 1037
+  }
+}

@@ -5,6 +5,7 @@ import path from "node:path";
 import { resolveSessionTranscriptPath } from "../config/sessions.js";
 import { stripEnvelope } from "./chat-sanitize.js";
 import type { SessionPreviewItem } from "./session-utils.types.js";
+import { isPathSafe } from "../utils.js";
 
 export function readSessionMessages(
   sessionId: string,
@@ -44,7 +45,10 @@ export function resolveSessionTranscriptCandidates(
 ): string[] {
   const candidates: string[] = [];
   if (sessionFile) {
-    candidates.push(sessionFile);
+    const home = os.homedir();
+    if (isPathSafe(sessionFile, [home, process.cwd()])) {
+      candidates.push(sessionFile);
+    }
   }
   if (storePath) {
     const dir = path.dirname(storePath);

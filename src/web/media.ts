@@ -213,7 +213,14 @@ async function loadWebMediaInternal(
   }
 
   // Local path
-  const data = await fs.readFile(mediaUrl);
+  const resolvedPath = path.resolve(mediaUrl);
+  // Security Fix: Prevent LFI by blocking access to hidden files/directories
+  const parts = resolvedPath.split(path.sep);
+  if (parts.some((p) => p.startsWith(".") && p !== "." && p !== "..")) {
+    throw new Error(`Access to hidden files is denied: ${mediaUrl}`);
+  }
+
+  const data = await fs.readFile(resolvedPath);
   const mime = await detectMime({ buffer: data, filePath: mediaUrl });
   const kind = mediaKindFromMime(mime);
   let fileName = path.basename(mediaUrl) || undefined;

@@ -1,0 +1,5 @@
+ M src/hooks/soul-evil.ts
+ M src/infra/exec-approvals.ts
+ M src/web/media.ts
+?? reports/
+?? src/security/fixes.test.ts

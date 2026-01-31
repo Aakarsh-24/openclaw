@@ -19,5 +19,9 @@ export function saveJsonFile(pathname: string, data: unknown) {
     fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
   }
   fs.writeFileSync(pathname, `${JSON.stringify(data, null, 2)}\n`, "utf8");
-  fs.chmodSync(pathname, 0o600);
+  try {
+    fs.chmodSync(pathname, 0o600);
+  } catch {
+    // Ignore chmod errors (e.g. on Windows filesystems that don't support it or if file is locked)
+  }
 }

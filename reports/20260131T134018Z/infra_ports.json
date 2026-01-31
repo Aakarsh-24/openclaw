@@ -1,0 +1,326 @@
+[
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\agents\\auth-health.test.ts",
+    "LineNumber": 6,
+    "Pattern": "0.0.0.0",
+    "Line": "  const now = 1_700_000_000_000;"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\agents\\chutes-oauth.test.ts",
+    "LineNumber": 40,
+    "Pattern": "0.0.0.0",
+    "Line": "    const now = 1_000_000;"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\agents\\date-time.ts",
+    "LineNumber": 44,
+    "Pattern": "0.0.0.0",
+    "Line": "    timestampMs = raw < 1_000_000_000_000 ? Math.round(raw * 1000) : Math.round(raw);"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\agents\\model-scan.test.ts",
+    "LineNumber": 25,
+    "Pattern": "0.0.0.0",
+    "Line": "          created_at: 1_700_000_000,"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\agents\\sandbox-create-args.test.ts",
+    "LineNumber": 36,
+    "Pattern": "0.0.0.0",
+    "Line": "      createdAtMs: 1700000000000,"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\agents\\subagent-announce.ts",
+    "LineNumber": 46,
+    "Pattern": "0.0.0.0",
+    "Line": "  if (value >= 1_000_000) {"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\browser\\cdp.helpers.ts",
+    "LineNumber": 23,
+    "Pattern": "0.0.0.0",
+    "Line": "    h === \"0.0.0.0\" ||"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\browser\\cdp.ts",
+    "LineNumber": 356,
+    "Pattern": "0.0.0.0",
+    "Line": "  const maxChars = Math.max(0, Math.min(5_000_000, Math.floor(opts.maxChars ?? 200_000)));"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\browser\\chrome.profile-decoration.ts",
+    "LineNumber": 54,
+    "Pattern": "0.0.0.0",
+    "Line": "  return argbUnsigned > 0x7fffffff ? argbUnsigned - 0x1_0000_0000 : argbUnsigned;"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\browser\\config.ts",
+    "LineNumber": 50,
+    "Pattern": "0.0.0.0",
+    "Line": "    h === \"0.0.0.0\" ||"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\browser\\extension-relay.ts",
+    "LineNumber": 93,
+    "Pattern": "0.0.0.0",
+    "Line": "    h === \"0.0.0.0\" ||"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\browser\\pw-tools-core.interactions.ts",
+    "LineNumber": 483,
+    "Pattern": "0.0.0.0",
+    "Line": "          tag.style.boxShadow = \"0 1px 2px rgba(0,0,0,0.35)\";"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\browser\\pw-tools-core.responses.ts",
+    "LineNumber": 40,
+    "Pattern": "0.0.0.0",
+    "Line": "      ? Math.max(1, Math.min(5_000_000, Math.floor(opts.maxChars)))"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\browser\\target-id.test.ts",
+    "LineNumber": 24,
+    "Pattern": "0.0.0.0",
+    "Line": "      { targetId: \"57A0BEEF000000000000000000000000\" },"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\canvas-host\\server.ts",
+    "LineNumber": 76,
+    "Pattern": "0.0.0.0",
+    "Line": "  .log { margin-top: 14px; opacity: 0.85; font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", monospace; white-space: pre-wrap; background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.08); padding: 10px; border-radius: 12px; }"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\cli\\wait.test.ts",
+    "LineNumber": 9,
+    "Pattern": "0.0.0.0",
+    "Line": "    expect(setIntervalSpy).toHaveBeenCalledWith(expect.any(Function), 1_000_000);"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\cli\\wait.ts",
+    "LineNumber": 3,
+    "Pattern": "0.0.0.0",
+    "Line": "  const interval = setInterval(() => {}, 1_000_000);"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\cli\\webhooks-cli.ts",
+    "LineNumber": 47,
+    "Pattern": "--bind",
+    "Line": "    .option(\"--bind <host>\", \"gog watch serve bind host\", DEFAULT_GMAIL_SERVE_BIND)"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\commands\\agents.commands.list.ts",
+    "LineNumber": 129,
+    "Pattern": "--bind",
+    "Line": "  lines.push(\"Routing rules map channel/account/peer to an agent. Use --bindings for full rules.\");"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\commands\\configure.gateway.ts",
+    "LineNumber": 52,
+    "Pattern": "0.0.0.0",
+    "Line": "          hint: \"Bind to 0.0.0.0 - accessible from anywhere on your network\","
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\commands\\doctor-security.ts",
+    "LineNumber": 29,
+    "Pattern": "0.0.0.0",
+    "Line": "    : \"0.0.0.0\";"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\commands\\sandbox-formatters.test.ts",
+    "LineNumber": 64,
+    "Pattern": "0.0.0.0",
+    "Line": "      expect(formatAge(90000000)).toBe(\"1d 1h\");"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\config\\types.gateway.ts",
+    "LineNumber": 220,
+    "Pattern": "0.0.0.0",
+    "Line": "   * - auto: Loopback (127.0.0.1) if available, else 0.0.0.0 (fallback to all interfaces)"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\cron\\run-log.ts",
+    "LineNumber": 54,
+    "Pattern": "0.0.0.0",
+    "Line": "        maxBytes: opts?.maxBytes ?? 2_000_000,"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\gateway\\chat-attachments.test.ts",
+    "LineNumber": 48,
+    "Pattern": "0.0.0.0",
+    "Line": "    const big = Buffer.alloc(6_000_000, 0).toString(\"base64\");"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\gateway\\chat-attachments.ts",
+    "LineNumber": 67,
+    "Pattern": "0.0.0.0",
+    "Line": "  const maxBytes = opts?.maxBytes ?? 5_000_000; // 5 MB"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\gateway\\live-image-probe.ts",
+    "LineNumber": 90,
+    "Pattern": "0.0.0.0",
+    "Line": "  \"2\": [0b01110, 0b10001, 0b00001, 0b00010, 0b00100, 0b01000, 0b11111],"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\gateway\\net.test.ts",
+    "LineNumber": 7,
+    "Pattern": "0.0.0.0",
+    "Line": "    const hosts = await resolveGatewayListenHosts(\"0.0.0.0\", {"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\gateway\\net.ts",
+    "LineNumber": 123,
+    "Pattern": "0.0.0.0",
+    "Line": " * - lan: always 0.0.0.0 (no fallback)"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\gateway\\server.impl.ts",
+    "LineNumber": 100,
+    "Pattern": "0.0.0.0",
+    "Line": "   * - lan: 0.0.0.0"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\gateway\\server.models-voicewake-misc.e2e.test.ts",
+    "LineNumber": 361,
+    "Pattern": "0.0.0.0",
+    "Line": "            params: { to: \"+15550000000\", message: \"hi\", idempotencyKey: idem },"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\gateway\\server.reload.e2e.test.ts",
+    "LineNumber": 214,
+    "Pattern": "0.0.0.0",
+    "Line": "        signal: { account: \"+15550000000\" },"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\hooks\\gmail.ts",
+    "LineNumber": 232,
+    "Pattern": "--bind",
+    "Line": "    \"--bind\","
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\infra\\canvas-host-url.ts",
+    "LineNumber": 23,
+    "Pattern": "0.0.0.0",
+    "Line": "  if (normalized === \"0.0.0.0\" || normalized === \"::\") {"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\infra\\channel-activity.test.ts",
+    "LineNumber": 25,
+    "Pattern": "0.0.0.0",
+    "Line": "    expect(res.inboundAt).toBe(1767830400000);"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\infra\\ports-inspect.ts",
+    "LineNumber": 255,
+    "Pattern": "0.0.0.0",
+    "Line": "  const hosts = [\"127.0.0.1\", \"0.0.0.0\", \"::1\", \"::\"];"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\macos\\gateway-daemon.ts",
+    "LineNumber": 89,
+    "Pattern": "--bind",
+    "Line": "    argValue(args, \"--bind\") ??"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\media\\input-files.ts",
+    "LineNumber": 112,
+    "Pattern": "0.0.0.0",
+    "Line": "export const DEFAULT_INPUT_PDF_MAX_PIXELS = 4_000_000;"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\providers\\github-copilot-token.ts",
+    "LineNumber": 42,
+    "Pattern": "0.0.0.0",
+    "Line": "    expiresAtMs = expiresAt > 10_000_000_000 ? expiresAt : expiresAt * 1000;"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\signal\\monitor.event-handler.sender-prefix.test.ts",
+    "LineNumber": 74,
+    "Pattern": "0.0.0.0",
+    "Line": "        timestamp: 1700000000000,"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\signal\\monitor.event-handler.typing-read-receipts.test.ts",
+    "LineNumber": 80,
+    "Pattern": "0.0.0.0",
+    "Line": "          timestamp: 1700000000000,"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\signal\\monitor.tool-result.pairs-uuid-only-senders-uuid-allowlist-entry.test.ts",
+    "LineNumber": 116,
+    "Pattern": ":80",
+    "Line": "      baseUrl: \"http://127.0.0.1:8080\","
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\signal\\monitor.tool-result.sends-tool-summaries-responseprefix.test.ts",
+    "LineNumber": 111,
+    "Pattern": ":80",
+    "Line": "      baseUrl: \"http://127.0.0.1:8080\","
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\signal\\probe.test.ts",
+    "LineNumber": 26,
+    "Pattern": ":80",
+    "Line": "    const res = await probeSignal(\"http://127.0.0.1:8080\", 1000);"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\telegram\\bot-message-context.dm-threads.test.ts",
+    "LineNumber": 48,
+    "Pattern": "0.0.0.0",
+    "Line": "      date: 1700000000,"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\telegram\\bot-message-context.sender-prefix.test.ts",
+    "LineNumber": 12,
+    "Pattern": "0.0.0.0",
+    "Line": "          date: 1700000000,"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\telegram\\proxy.test.ts",
+    "LineNumber": 33,
+    "Pattern": ":80",
+    "Line": "    const proxyUrl = \"http://proxy.test:8080\";"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\telegram\\send.proxy.test.ts",
+    "LineNumber": 57,
+    "Pattern": ":80",
+    "Line": "  const proxyUrl = \"http://proxy.test:8080\";"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\telegram\\webhook.ts",
+    "LineNumber": 37,
+    "Pattern": "0.0.0.0",
+    "Line": "  const host = opts.host ?? \"0.0.0.0\";"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\utils\\usage-format.ts",
+    "LineNumber": 24,
+    "Pattern": "0.0.0.0",
+    "Line": "  if (safe >= 1_000_000) {"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\web\\inbound.media.test.ts",
+    "LineNumber": 122,
+    "Pattern": "0.0.0.0",
+    "Line": "          messageTimestamp: 1_700_000_001,"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\web\\monitor-inbox.captures-media-path-image-messages.test.ts",
+    "LineNumber": 186,
+    "Pattern": "0.0.0.0",
+    "Line": "          messageTimestamp: 1_700_000_000,"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\web\\monitor-inbox.streams-inbound-messages.test.ts",
+    "LineNumber": 120,
+    "Pattern": "0.0.0.0",
+    "Line": "          messageTimestamp: 1_700_000_000,"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\src\\wizard\\onboarding.gateway-config.ts",
+    "LineNumber": 55,
+    "Pattern": "0.0.0.0",
+    "Line": "            { value: \"lan\", label: \"LAN (0.0.0.0)\" },"
+  }
+]

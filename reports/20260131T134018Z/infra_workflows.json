@@ -1,0 +1,32 @@
+[
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\.github\\workflows\\auto-response.yml",
+    "LineNumber": 6,
+    "Pattern": "pull_request_target",
+    "Line": "  pull_request_target:"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\.github\\workflows\\docker-release.yml",
+    "LineNumber": 36,
+    "Pattern": "GITHUB_TOKEN",
+    "Line": "          password: ${{ secrets.GITHUB_TOKEN }}"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\.github\\workflows\\docker-release.yml",
+    "LineNumber": 85,
+    "Pattern": "GITHUB_TOKEN",
+    "Line": "          password: ${{ secrets.GITHUB_TOKEN }}"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\.github\\workflows\\docker-release.yml",
+    "LineNumber": 126,
+    "Pattern": "GITHUB_TOKEN",
+    "Line": "          password: ${{ secrets.GITHUB_TOKEN }}"
+  },
+  {
+    "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\.github\\workflows\\labeler.yml",
+    "LineNumber": 4,
+    "Pattern": "pull_request_target",
+    "Line": "  pull_request_target:"
+  }
+]

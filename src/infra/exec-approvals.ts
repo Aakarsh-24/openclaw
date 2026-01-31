@@ -63,7 +63,9 @@ const DEFAULT_ASK_FALLBACK: ExecSecurity = "deny";
 const DEFAULT_AUTO_ALLOW_SKILLS = false;
 const DEFAULT_SOCKET = "~/.openclaw/exec-approvals.sock";
 const DEFAULT_FILE = "~/.openclaw/exec-approvals.json";
-export const DEFAULT_SAFE_BINS = ["jq", "grep", "cut", "sort", "uniq", "head", "tail", "tr", "wc"];
+// Security Hardening: Removed "head", "tail", "grep", "sort", "uniq" to prevent arbitrary file reads (LFI).
+// Agents should use explicit file reading tools with proper access controls.
+export const DEFAULT_SAFE_BINS = [];
 
 function hashExecApprovalsRaw(raw: string | null): string {
   return crypto

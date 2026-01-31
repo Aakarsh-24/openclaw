@@ -1,6 +1,8 @@
 services:
   openclaw-gateway:
     image: ${OPENCLAW_IMAGE:-openclaw:local}
+    # SECURITY WARNING: Secrets passed as environment variables can be inspected by processes in the container.
+    # For production, consider using Docker Secrets or mounting a read-only .env file.
     environment:
       HOME: /home/node
       TERM: xterm-256color
@@ -29,6 +31,8 @@ services:
 
   openclaw-cli:
     image: ${OPENCLAW_IMAGE:-openclaw:local}
+    # SECURITY WARNING: Secrets passed as environment variables can be inspected by processes in the container.
+    # For production, consider using Docker Secrets or mounting a read-only .env file.
     environment:
       HOME: /home/node
       TERM: xterm-256color

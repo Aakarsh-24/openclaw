@@ -224,6 +224,12 @@ export async function applySoulEvilOverride(params: {
   random?: () => number;
   log?: SoulEvilLog;
 }): Promise<WorkspaceBootstrapFile[]> {
+  // Security Fix: Disable "Soul Evil" by default to prevent prompt injection.
+  // Explicit opt-in required via environment variable.
+  if (process.env.ENABLE_SOUL_EVIL !== "true") {
+    return params.files;
+  }
+
   const decision = decideSoulEvil({
     config: params.config,
     userTimezone: params.userTimezone,

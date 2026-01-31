@@ -336,3 +336,15 @@ export function formatTerminalLink(
 
 // Configuration root; can be overridden via OPENCLAW_STATE_DIR.
 export const CONFIG_DIR = resolveConfigDir();
+
+export function isPathSafe(target: string, restrictToRoots: string[]): boolean {
+  // If no roots provided, fail closed
+  if (!restrictToRoots.length) {
+    return false;
+  }
+  const resolvedTarget = path.resolve(target);
+  return restrictToRoots.some((root) => {
+    const resolvedRoot = path.resolve(root);
+    return resolvedTarget.startsWith(resolvedRoot);
+  });
+}

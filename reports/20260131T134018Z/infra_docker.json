@@ -1,0 +1,6 @@
+{
+  "Path": "C:\\Users\\Pablo\\Documents\\openclaw\\Dockerfile.sandbox-browser",
+  "LineNumber": 26,
+  "Pattern": "EXPOSE",
+  "Line": "EXPOSE 9222 5900 6080"
+}
