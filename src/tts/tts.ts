@@ -60,11 +60,21 @@ const DEFAULT_ELEVENLABS_VOICE_SETTINGS = {
   speed: 1.0,
 };
 
+const DEFAULT_FISH_BASE_URL = "https://api.fish.audio/v1";
+const DEFAULT_FISH_REFERENCE_ID = "af8da5691bce47528366886685ca7a03"; // Default English voice
+const DEFAULT_FISH_TEMPERATURE = 0.7;
+const DEFAULT_FISH_LATENCY = "normal";
+const DEFAULT_FISH_PROSODY = {
+  speed: 1.0,
+  volume: 0,
+};
+
 const TELEGRAM_OUTPUT = {
   openai: "opus" as const,
   // ElevenLabs output formats use codec_sample_rate_bitrate naming.
   // Opus @ 48kHz/64kbps is a good voice-note tradeoff for Telegram.
   elevenlabs: "opus_48000_64",
+  fish: "opus",
   extension: ".opus",
   voiceCompatible: true,
 };
@@ -72,6 +82,7 @@ const TELEGRAM_OUTPUT = {
 const DEFAULT_OUTPUT = {
   openai: "mp3" as const,
   elevenlabs: "mp3_44100_128",
+  fish: "mp3",
   extension: ".mp3",
   voiceCompatible: false,
 };
@@ -124,6 +135,17 @@ export type ResolvedTtsConfig = {
     proxy?: string;
     timeoutMs?: number;
   };
+  fish: {
+    apiKey?: string;
+    baseUrl: string;
+    referenceId: string;
+    temperature: number;
+    prosody: {
+      speed: number;
+      volume: number;
+    };
+    latency: "low" | "normal" | "balanced";
+  };
   prefsPath?: string;
   maxTextLength: number;
   timeoutMs: number;
@@ -164,6 +186,15 @@ type TtsDirectiveOverrides = {
     applyTextNormalization?: "auto" | "on" | "off";
     languageCode?: string;
     voiceSettings?: Partial<ResolvedTtsConfig["elevenlabs"]["voiceSettings"]>;
+  };
+  fish?: {
+    referenceId?: string;
+    temperature?: number;
+    prosody?: {
+      speed?: number;
+      volume?: number;
+    };
+    latency?: "low" | "normal" | "balanced";
   };
 };
 
@@ -297,6 +328,17 @@ export function resolveTtsConfig(cfg: OpenClawConfig): ResolvedTtsConfig {
       saveSubtitles: raw.edge?.saveSubtitles ?? false,
       proxy: raw.edge?.proxy?.trim() || undefined,
       timeoutMs: raw.edge?.timeoutMs,
+    },
+    fish: {
+      apiKey: raw.fish?.apiKey,
+      baseUrl: raw.fish?.baseUrl?.trim() || DEFAULT_FISH_BASE_URL,
+      referenceId: raw.fish?.referenceId ?? DEFAULT_FISH_REFERENCE_ID,
+      temperature: raw.fish?.temperature ?? DEFAULT_FISH_TEMPERATURE,
+      prosody: {
+        speed: raw.fish?.prosody?.speed ?? DEFAULT_FISH_PROSODY.speed,
+        volume: raw.fish?.prosody?.volume ?? DEFAULT_FISH_PROSODY.volume,
+      },
+      latency: raw.fish?.latency ?? DEFAULT_FISH_LATENCY,
     },
     prefsPath: raw.prefsPath,
     maxTextLength: raw.maxTextLength ?? DEFAULT_MAX_TEXT_LENGTH,
@@ -500,10 +542,13 @@ export function resolveTtsApiKey(
   if (provider === "openai") {
     return config.openai.apiKey || process.env.OPENAI_API_KEY;
   }
+  if (provider === "fish") {
+    return config.fish.apiKey || process.env.FISH_AUDIO_API_KEY;
+  }
   return undefined;
 }
 
-export const TTS_PROVIDERS = ["openai", "elevenlabs", "edge"] as const;
+export const TTS_PROVIDERS = ["openai", "elevenlabs", "edge", "fish"] as const;
 
 export function resolveTtsProviderOrder(primary: TtsProvider): TtsProvider[] {
   return [primary, ...TTS_PROVIDERS.filter((provider) => provider !== primary)];
@@ -1122,6 +1167,67 @@ async function openaiTTS(params: {
   }
 }
 
+async function fishAudioTTS(params: {
+  text: string;
+  apiKey: string;
+  baseUrl: string;
+  referenceId: string;
+  temperature: number;
+  prosody: {
+    speed: number;
+    volume: number;
+  };
+  latency: "low" | "normal" | "balanced";
+  outputFormat: string;
+  timeoutMs: number;
+}): Promise<Buffer> {
+  const {
+    text,
+    apiKey,
+    baseUrl,
+    referenceId,
+    temperature,
+    prosody,
+    latency,
+    outputFormat,
+    timeoutMs,
+  } = params;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(`${baseUrl}/tts`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        text,
+        reference_id: referenceId,
+        temperature,
+        prosody: {
+          speed: prosody.speed,
+          volume: prosody.volume,
+        },
+        normalize: true,
+        format: outputFormat,
+        latency,
+      }),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      throw new Error(`fish.audio API error (${response.status})`);
+    }
+
+    return Buffer.from(await response.arrayBuffer());
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 function inferEdgeExtension(outputFormat: string): string {
   const normalized = outputFormat.toLowerCase();
   if (normalized.includes("webm")) {
@@ -1264,7 +1370,19 @@ export async function textToSpeech(params: {
       }
 
       let audioBuffer: Buffer;
-      if (provider === "elevenlabs") {
+      if (provider === "fish") {
+        audioBuffer = await fishAudioTTS({
+          text: params.text,
+          apiKey,
+          baseUrl: config.fish.baseUrl,
+          referenceId: config.fish.referenceId,
+          temperature: config.fish.temperature,
+          prosody: config.fish.prosody,
+          latency: config.fish.latency,
+          outputFormat: output.fish,
+          timeoutMs: config.timeoutMs,
+        });
+      } else if (provider === "elevenlabs") {
         const voiceIdOverride = params.overrides?.elevenlabs?.voiceId;
         const modelIdOverride = params.overrides?.elevenlabs?.modelId;
         const voiceSettings = {
@@ -1312,7 +1430,12 @@ export async function textToSpeech(params: {
         audioPath,
         latencyMs,
         provider,
-        outputFormat: provider === "openai" ? output.openai : output.elevenlabs,
+        outputFormat:
+          provider === "fish"
+            ? output.fish
+            : provider === "openai"
+              ? output.openai
+              : output.elevenlabs,
         voiceCompatible: output.voiceCompatible,
       };
     } catch (err) {
