@@ -586,8 +586,7 @@ export async function startGatewayServer(
   // Schedule pending marker cleanup after successful startup
   schedulePendingMarkerClear(5000);
 
-  // Log rollback error if config was rolled back
-  // TODO: inject into session via cron.wake or similar mechanism
+  // Notify session if config was rolled back
   if (rollbackResult.rolledBack && rollbackResult.error) {
     log.warn(
       `⚠️ Config rollback triggered after startup failure.\n` +
@@ -595,6 +594,24 @@ export async function startGatewayServer(
         `Previous config restored from backup.\n` +
         `Error: ${rollbackResult.error}`,
     );
+
+    // Inject wake event to notify the session
+    const wakeText =
+      `⚠️ **Config Rollback Triggered**\n\n` +
+      `A config change caused the gateway to crash on startup.\n` +
+      `**Reason:** ${rollbackResult.reason ?? "config.patch"}\n` +
+      `**Previous config restored from:** ~/.openclaw/openclaw.json.bak\n` +
+      (rollbackResult.failedConfigPath
+        ? `**Failed config saved to:** ${rollbackResult.failedConfigPath}\n`
+        : "") +
+      `\nTo investigate, check the failed config and logs.`;
+
+    try {
+      cron.wake({ mode: "now", text: wakeText });
+      log.info("config-pending: sent rollback notification to session via cron.wake");
+    } catch (err) {
+      log.warn(`config-pending: failed to send rollback notification: ${err}`);
+    }
   }
 
   return {

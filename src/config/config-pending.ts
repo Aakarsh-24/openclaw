@@ -16,6 +16,8 @@ const CONFIG_DIR = STATE_DIR;
 
 const PENDING_MARKER_PATH = path.join(CONFIG_DIR, "config-pending.json");
 const BACKUP_PATH = path.join(CONFIG_DIR, "openclaw.json.bak");
+const FAILED_CONFIG_PATH = path.join(CONFIG_DIR, "openclaw.json.failed");
+const ROLLBACK_HISTORY_PATH = path.join(CONFIG_DIR, "config-rollback-history.json");
 
 export interface ConfigPendingMarker {
   /** ISO timestamp when config change was applied */
@@ -89,6 +91,38 @@ export interface RollbackResult {
   sessionKey?: string;
   /** Reason from the original change */
   reason?: string;
+  /** Path to the failed config file (if saved) */
+  failedConfigPath?: string;
+}
+
+export interface RollbackHistoryEntry {
+  /** ISO timestamp when rollback occurred */
+  at: string;
+  /** Reason from the original change */
+  reason?: string;
+  /** How long the gateway ran before crashing (ms) */
+  elapsedMs: number;
+  /** Path to the failed config file */
+  failedConfigPath?: string;
+}
+
+/**
+ * Append an entry to the rollback history file.
+ */
+async function appendRollbackHistory(entry: RollbackHistoryEntry): Promise<void> {
+  let history: RollbackHistoryEntry[] = [];
+  try {
+    const content = await fs.readFile(ROLLBACK_HISTORY_PATH, "utf-8");
+    history = JSON.parse(content) as RollbackHistoryEntry[];
+    if (!Array.isArray(history)) history = [];
+  } catch {
+    // File doesn't exist or invalid - start fresh
+  }
+
+  // Keep last 50 entries to prevent unbounded growth
+  history = [...history.slice(-49), entry];
+  await fs.writeFile(ROLLBACK_HISTORY_PATH, JSON.stringify(history, null, 2), "utf-8");
+  log.debug(`config-pending: appended rollback to history (${history.length} entries)`);
 }
 
 /**
@@ -151,6 +185,16 @@ export async function checkPendingOnStartup(): Promise<RollbackResult> {
     // Ignore log capture errors
   }
 
+  // Save the failed config before restoring
+  let failedConfigPath: string | undefined;
+  try {
+    await fs.copyFile(CONFIG_PATH, FAILED_CONFIG_PATH);
+    failedConfigPath = FAILED_CONFIG_PATH;
+    log.info(`config-pending: saved failed config to ${FAILED_CONFIG_PATH}`);
+  } catch (err) {
+    log.warn(`config-pending: failed to save failed config: ${err}`);
+  }
+
   // Perform rollback
   try {
     await fs.copyFile(marker.rollbackTo, CONFIG_PATH);
@@ -165,6 +209,18 @@ export async function checkPendingOnStartup(): Promise<RollbackResult> {
     };
   }
 
+  // Append to rollback history
+  try {
+    await appendRollbackHistory({
+      at: new Date().toISOString(),
+      reason: marker.reason,
+      elapsedMs: elapsed,
+      failedConfigPath,
+    });
+  } catch (err) {
+    log.warn(`config-pending: failed to append to rollback history: ${err}`);
+  }
+
   await clearPendingMarker();
 
   const errorMsg = capturedError
@@ -176,6 +232,7 @@ export async function checkPendingOnStartup(): Promise<RollbackResult> {
     error: errorMsg,
     sessionKey: marker.sessionKey,
     reason: marker.reason,
+    failedConfigPath,
   };
 }
 
