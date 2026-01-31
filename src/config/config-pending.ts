@@ -16,6 +16,7 @@ const CONFIG_DIR = STATE_DIR;
 
 const PENDING_MARKER_PATH = path.join(CONFIG_DIR, "config-pending.json");
 const BACKUP_PATH = path.join(CONFIG_DIR, "openclaw.json.bak");
+const VERIFIED_PATH = path.join(CONFIG_DIR, "openclaw.json.verified");
 const FAILED_CONFIG_PATH = path.join(CONFIG_DIR, "openclaw.json.failed");
 const ROLLBACK_HISTORY_PATH = path.join(CONFIG_DIR, "config-rollback-history.json");
 
@@ -26,8 +27,10 @@ const DIST_BACKUP_DIR = path.join(CONFIG_DIR, "dist.bak");
 export interface ConfigPendingMarker {
   /** ISO timestamp when config change was applied */
   appliedAt: string;
-  /** Path to backup file */
+  /** Path to verified (last known good) config for rollback */
   rollbackTo: string;
+  /** Path to pre-restart config snapshot (for inspection) */
+  preRestartSnapshot?: string;
   /** Path to dist backup (for code/schema rollback) */
   distBackupPath?: string;
   /** Crash detection window in ms */
@@ -99,18 +102,27 @@ async function restoreDist(backupPath: string): Promise<boolean> {
 
 /**
  * Write a pending marker before applying a config change.
- * Also backs up the current config to .bak.
+ * Saves current config to .bak (pre-restart snapshot) and references .verified for rollback.
  */
 export async function writePendingMarker(opts: PendingMarkerOptions = {}): Promise<void> {
   const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
-  // Backup current config
+  // Save current config as pre-restart snapshot (for inspection if something goes wrong)
   try {
     await fs.copyFile(CONFIG_PATH, BACKUP_PATH);
-    log.debug(`config-pending: backed up config to ${BACKUP_PATH}`);
+    log.debug(`config-pending: saved pre-restart snapshot to ${BACKUP_PATH}`);
   } catch (err) {
-    log.warn(`config-pending: failed to backup config: ${err}`);
-    // Continue anyway - we'll still write the marker
+    log.warn(`config-pending: failed to save pre-restart snapshot: ${err}`);
+  }
+
+  // Check that verified config exists (that's what we'll rollback to)
+  let hasVerified = false;
+  try {
+    await fs.access(VERIFIED_PATH);
+    hasVerified = true;
+  } catch {
+    log.warn(`config-pending: no verified config exists at ${VERIFIED_PATH} - first run?`);
+    // On first run, fall back to using .bak (the pre-restart snapshot)
   }
 
   // Check if we should include dist in rollback (uses existing last-known-good backup)
@@ -129,7 +141,8 @@ export async function writePendingMarker(opts: PendingMarkerOptions = {}): Promi
 
   const marker: ConfigPendingMarker = {
     appliedAt: new Date().toISOString(),
-    rollbackTo: BACKUP_PATH,
+    rollbackTo: hasVerified ? VERIFIED_PATH : BACKUP_PATH,
+    preRestartSnapshot: BACKUP_PATH,
     distBackupPath,
     timeoutMs,
     reason: opts.reason,
@@ -138,7 +151,7 @@ export async function writePendingMarker(opts: PendingMarkerOptions = {}): Promi
 
   await fs.writeFile(PENDING_MARKER_PATH, JSON.stringify(marker, null, 2), "utf-8");
   log.debug(
-    `config-pending: wrote pending marker (timeout=${timeoutMs}ms, distBackup=${!!distBackupPath})`,
+    `config-pending: wrote pending marker (timeout=${timeoutMs}ms, rollbackTo=${hasVerified ? "verified" : "bak"}, distBackup=${!!distBackupPath})`,
   );
 }
 
@@ -153,6 +166,28 @@ export async function clearPendingMarker(): Promise<void> {
     if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
       log.warn(`config-pending: failed to clear pending marker: ${err}`);
     }
+  }
+}
+
+/**
+ * Mark the current config and dist as verified (last known good).
+ * Call this after startup is confirmed successful.
+ */
+export async function markConfigVerified(): Promise<void> {
+  // Save current config as verified
+  try {
+    await fs.copyFile(CONFIG_PATH, VERIFIED_PATH);
+    log.info(`config-pending: marked config as verified (${VERIFIED_PATH})`);
+  } catch (err) {
+    log.warn(`config-pending: failed to save verified config: ${err}`);
+  }
+
+  // Backup dist as last known good
+  try {
+    await backupDist();
+    log.info(`config-pending: backed up dist as last-known-good`);
+  } catch (err) {
+    log.warn(`config-pending: failed to backup dist: ${err}`);
   }
 }
 
@@ -328,7 +363,7 @@ export async function checkPendingOnStartup(): Promise<RollbackResult> {
 
 /**
  * Schedule clearing the pending marker after successful startup.
- * Also backs up dist/ as "last known good" for future rollbacks.
+ * Also marks config and dist as verified (last known good).
  * Call this once the gateway is confirmed running.
  */
 export function schedulePendingMarkerClear(delayMs: number = 5000): void {
@@ -343,9 +378,8 @@ export function schedulePendingMarkerClear(delayMs: number = 5000): void {
         log.info("config-pending: startup confirmed successful, marker cleared");
       }
 
-      // Backup current dist as "last known good" for future rollbacks
-      await backupDist();
-      log.info("config-pending: dist backed up as last-known-good");
+      // Mark current config and dist as verified (last known good)
+      await markConfigVerified();
     } catch (err) {
       log.warn(`config-pending: failed to clear marker or backup dist: ${err}`);
     }
