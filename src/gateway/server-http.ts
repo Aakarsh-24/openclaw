@@ -140,7 +140,7 @@ export function createHooksRequestHandler(
         sendJson(res, 400, { ok: false, error: normalized.error });
         return true;
       }
-      const runId = dispatchAgentHook(normalized.value);
+      const runId = dispatchAgentHook(normalized.value, normalized.value.agentId);
       sendJson(res, 202, { ok: true, runId });
       return true;
     }

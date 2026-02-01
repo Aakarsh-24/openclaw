@@ -59,6 +59,10 @@ export type HookAction =
       timeoutSeconds?: number;
     };
 
+type ActionValidationResult =
+  | { ok: true; action: HookAction }
+  | { ok: false; error: string };
+
 export type HookMappingResult =
   | ({ ok: true; action: HookAction } & { agentId?: string; accountId?: string })
   | { ok: true; action: null; skipped: true }
@@ -171,9 +175,11 @@ export async function applyHookMappings(
     if (!merged.ok) {
       return merged;
     }
-    (merged as any).agentId = mapping.agentId;
-    (merged as any).accountId = mapping.accountId;
-    return merged;
+    return {
+      ...merged,
+      agentId: mapping.agentId,
+      accountId: mapping.accountId,
+    };
   }
   return null;
 }
@@ -273,7 +279,7 @@ function mergeAction(
   base: HookAction,
   override: HookTransformResult,
   defaultAction: "wake" | "agent",
-): HookMappingResult {
+): ActionValidationResult {
   if (!override) {
     return validateAction(base);
   }
@@ -309,7 +315,7 @@ function mergeAction(
   });
 }
 
-function validateAction(action: HookAction): HookMappingResult {
+function validateAction(action: HookAction): ActionValidationResult {
   if (action.kind === "wake") {
     if (!action.text?.trim()) {
       return { ok: false, error: "hook mapping requires text" };
