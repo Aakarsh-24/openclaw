@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import type { OpenClawConfig } from "../../config/config.js";
 import {
   loadSessionStore,
+  mergeSessionEntry,
   resolveStorePath,
   type SessionEntry,
   updateSessionStore,
@@ -18,29 +19,32 @@ export async function resolveCronSession(params: {
     agentId: params.agentId,
   });
   const store = loadSessionStore(storePath);
-  const entry = store[params.sessionKey];
-  const sessionId = crypto.randomUUID();
+  const existing = store[params.sessionKey];
+  
+  const sessionId = existing?.sessionId ?? crypto.randomUUID();
+  const isNewSession = !existing;
   const systemSent = false;
-  const sessionEntry: SessionEntry = {
+  
+  const patch: Partial<SessionEntry> = {
     sessionId,
     updatedAt: params.nowMs,
     systemSent,
-    thinkingLevel: entry?.thinkingLevel,
-    verboseLevel: entry?.verboseLevel,
-    model: entry?.model,
-    contextTokens: entry?.contextTokens,
-    sendPolicy: entry?.sendPolicy,
-    lastChannel: entry?.lastChannel,
-    lastTo: entry?.lastTo,
-    lastAccountId: entry?.lastAccountId,
-    skillsSnapshot: entry?.skillsSnapshot,
   };
 
+  let sessionEntry: SessionEntry;
   await updateSessionStore(storePath, (currentStore) => {
+    const current = currentStore[params.sessionKey];
+    sessionEntry = mergeSessionEntry(current, patch);
     currentStore[params.sessionKey] = sessionEntry;
   });
 
   const updatedStore = loadSessionStore(storePath);
 
-  return { storePath, store: updatedStore, sessionEntry, systemSent, isNewSession: true };
+  return {
+    storePath,
+    store: updatedStore,
+    sessionEntry: sessionEntry!,
+    systemSent,
+    isNewSession
+  };
 }
