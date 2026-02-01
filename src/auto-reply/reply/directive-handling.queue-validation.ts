@@ -36,12 +36,17 @@ export function maybeHandleQueueDirective(params: {
     const capLabel = typeof settings.cap === "number" ? String(settings.cap) : "default";
     const dropLabel = settings.dropPolicy ?? "default";
 
+    // Followup queues are keyed by the same string used in enqueue APIs.
+    // SessionEntry.sessionId is the session key string for the current conversation.
     const queueKey = params.sessionEntry?.sessionId;
     const depth = queueKey ? getFollowupQueueDepth(queueKey) : 0;
+
+    // Treat explicit 0 values as overrides (e.g., debounce=0).
     const overrides = Boolean(
-      params.sessionEntry?.queueDebounceMs ??
-      params.sessionEntry?.queueCap ??
-      params.sessionEntry?.queueDrop,
+      params.sessionEntry &&
+      (params.sessionEntry.queueDebounceMs !== undefined ||
+        params.sessionEntry.queueCap !== undefined ||
+        params.sessionEntry.queueDrop !== undefined),
     );
 
     const lines = [
