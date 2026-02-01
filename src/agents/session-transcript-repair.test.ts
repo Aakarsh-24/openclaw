@@ -161,7 +161,13 @@ describe("repairToolUseResultPairing malformed tool_use stripping", () => {
       {
         role: "assistant",
         content: [
-          { type: "toolCall", id: "call_1", name: "read", arguments: {}, partialJson: '{"foo":' },
+          {
+            type: "toolCall",
+            id: "call_1",
+            name: "read",
+            arguments: {},
+            partialJson: '{"foo":',
+          },
           { type: "text", text: "done" },
         ],
       },

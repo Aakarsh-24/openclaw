@@ -10,6 +10,9 @@ type ToolCallLike = {
  * Returns true for non-tool blocks (they pass through) and valid tool blocks.
  * Returns false for malformed tool blocks that should be stripped.
  *
+ * Handles both camelCase (toolCall, toolUse, functionCall) and snake_case
+ * (tool_use, function_call) type variants to support all provider SDKs.
+ *
  * Malformed conditions (indicate interrupted/incomplete tool calls):
  * - Missing or empty `id` field (tool call wasn't fully initialized)
  * - Has `partialJson` field (Anthropic SDK streaming artifact)
@@ -30,8 +33,9 @@ function isValidToolUseBlock(block: unknown): boolean {
     partial?: unknown;
     incomplete?: unknown;
   };
-  // Only validate tool-related types
-  if (rec.type !== "toolCall" && rec.type !== "toolUse" && rec.type !== "functionCall") {
+  // Only validate tool-related types (both camelCase and snake_case variants)
+  const toolTypes = ["toolCall", "toolUse", "functionCall", "tool_use", "function_call"];
+  if (!toolTypes.includes(rec.type as string)) {
     return true;
   }
   // Malformed: missing/invalid id (tool call wasn't fully initialized)
