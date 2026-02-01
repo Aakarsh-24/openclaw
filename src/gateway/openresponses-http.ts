@@ -3,14 +3,15 @@
  *
  * Implements the OpenResponses `/v1/responses` endpoint for OpenClaw Gateway.
  *
- * SECURITY NOTE: Streaming responses (stream: true) bypass the http_response_sending hook.
- * This is a known limitation - implementing output scanning for streaming would require
- * buffering the entire response, which defeats the purpose of streaming.
+ * SECURITY NOTE: Streaming responses run http_response_sending hook at END-OF-STREAM.
+ * Content is accumulated during streaming and scanned when the stream completes.
+ * However, already-streamed content cannot be "unsent" - if the hook returns block=true,
+ * it is logged for audit purposes but the data has already reached the client.
  *
- * Plugins that need output scanning should:
- * 1. For non-streaming: Use http_response_sending hook (fully supported)
- * 2. For streaming: Consider using message_sending hook at the messaging layer,
- *    or accept that streaming responses cannot be scanned for output leaks.
+ * For real-time blocking of streaming responses, consider:
+ * 1. Disable streaming (stream: false) - full blocking/redaction supported
+ * 2. Use message_sending hook at the messaging layer
+ * 3. Accept audit-only mode for streaming (current behavior)
  *
  * @see https://www.open-responses.com/
  */
@@ -446,8 +447,9 @@ export async function handleOpenResponsesHttpRequest(
   // SECURITY: Run http_request_received hook before processing
   // ==========================================================================
   const hookRunner = getGlobalHookRunner();
-  if (hookRunner) {
-    const httpCtx = buildHttpContext(req, responseId);
+  // Build HTTP context once for use in both request and response hooks
+  const httpCtx = hookRunner ? buildHttpContext(req, responseId) : undefined;
+  if (hookRunner && httpCtx) {
     const userContent = extractUserContentForScanning(payload.input);
 
     try {
@@ -707,10 +709,10 @@ export async function handleOpenResponsesHttpRequest(
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Streaming mode
-  // SECURITY NOTE: http_response_sending hook is NOT invoked for streaming.
-  // Streaming responses cannot be scanned without buffering, which breaks UX.
-  // See module-level security note for details.
+  // Streaming mode - End-of-stream scanning for http_response_sending hook.
+  // Content is accumulated during streaming and scanned at completion.
+  // NOTE: Already-sent content cannot be "unsent" - blocking at end-of-stream
+  // logs for audit but cannot prevent already-streamed data from reaching client.
   // ─────────────────────────────────────────────────────────────────────────
 
   setSseHeaders(res);
@@ -736,6 +738,34 @@ export async function handleOpenResponsesHttpRequest(
 
     closed = true;
     unsubscribe();
+
+    // Run http_response_sending hook at end-of-stream for audit
+    if (hookRunner && httpCtx && accumulatedText) {
+      hookRunner
+        .runHttpResponseSending(
+          {
+            content: accumulatedText,
+            responseBody: {
+              output: [{ content: accumulatedText }],
+            },
+            requestBody: payload as unknown as Record<string, unknown>,
+            isStreaming: true,
+            isFinalChunk: true,
+          },
+          httpCtx,
+        )
+        .then((hookResult) => {
+          if (hookResult?.block) {
+            // Cannot unsend already-streamed content, but log for audit
+            console.warn(
+              `[openresponses-http] STREAMING AUDIT: Response would have been blocked: ${hookResult.blockReason || "security policy"}`,
+            );
+          }
+        })
+        .catch((err) => {
+          console.error("[openresponses-http] End-of-stream hook error:", err);
+        });
+    }
 
     writeSseEvent(res, {
       type: "response.output_text.done",

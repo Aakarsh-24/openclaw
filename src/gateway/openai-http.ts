@@ -1,14 +1,15 @@
 /**
  * OpenAI-compatible Chat Completions HTTP Handler
  *
- * SECURITY NOTE: Streaming responses (stream: true) bypass the http_response_sending hook.
- * This is a known limitation - implementing output scanning for streaming would require
- * buffering the entire response, which defeats the purpose of streaming.
+ * SECURITY NOTE: Streaming responses run http_response_sending hook at END-OF-STREAM.
+ * Content is accumulated during streaming and scanned when the stream completes.
+ * However, already-streamed content cannot be "unsent" - if the hook returns block=true,
+ * it is logged for audit purposes but the data has already reached the client.
  *
- * Plugins that need output scanning should:
- * 1. For non-streaming: Use http_response_sending hook (fully supported)
- * 2. For streaming: Consider using message_sending hook at the messaging layer,
- *    or accept that streaming responses cannot be scanned for output leaks.
+ * For real-time blocking of streaming responses, consider:
+ * 1. Disable streaming (stream: false) - full blocking/redaction supported
+ * 2. Use message_sending hook at the messaging layer
+ * 3. Accept audit-only mode for streaming (current behavior)
  */
 
 import type { IncomingMessage, ServerResponse } from "node:http";
@@ -275,8 +276,9 @@ export async function handleOpenAiHttpRequest(
   // This allows security plugins to scan and block malicious requests
   // ==========================================================================
   const hookRunner = getGlobalHookRunner();
-  if (hookRunner) {
-    const httpCtx = buildHttpContext(req, runId);
+  // Build HTTP context once for use in both request and response hooks
+  const httpCtx = hookRunner ? buildHttpContext(req, runId) : undefined;
+  if (hookRunner && httpCtx) {
     const userContent = extractUserContentForScanning(payload.messages);
 
     try {
@@ -362,8 +364,7 @@ export async function handleOpenAiHttpRequest(
       // SECURITY: Run http_response_sending hook before returning response
       // This allows security plugins to scan for data exfiltration/leaks
       // ======================================================================
-      if (hookRunner) {
-        const httpCtx = buildHttpContext(req, runId);
+      if (hookRunner && httpCtx) {
         const responseBody = {
           id: runId,
           object: "chat.completion",
@@ -441,15 +442,17 @@ export async function handleOpenAiHttpRequest(
   }
 
   // ==========================================================================
-  // STREAMING PATH - Note: http_response_sending hook is NOT invoked here.
-  // Streaming responses cannot be scanned without buffering, which breaks UX.
-  // See module-level security note for details.
+  // STREAMING PATH - End-of-stream scanning for http_response_sending hook.
+  // Content is accumulated during streaming and scanned at completion.
+  // NOTE: Already-sent content cannot be "unsent" - blocking at end-of-stream
+  // logs for audit but cannot prevent already-streamed data from reaching client.
   // ==========================================================================
   setSseHeaders(res);
 
   let wroteRole = false;
   let sawAssistantDelta = false;
   let closed = false;
+  let accumulatedContent = ""; // Accumulate for end-of-stream scanning
 
   const unsubscribe = onAgentEvent((evt) => {
     if (evt.runId !== runId) {
@@ -466,6 +469,9 @@ export async function handleOpenAiHttpRequest(
       if (!content) {
         return;
       }
+
+      // Accumulate content for end-of-stream scanning
+      accumulatedContent += content;
 
       if (!wroteRole) {
         wroteRole = true;
@@ -500,6 +506,35 @@ export async function handleOpenAiHttpRequest(
       if (phase === "end" || phase === "error") {
         closed = true;
         unsubscribe();
+
+        // Run http_response_sending hook at end-of-stream for audit
+        if (hookRunner && httpCtx && accumulatedContent) {
+          hookRunner
+            .runHttpResponseSending(
+              {
+                content: accumulatedContent,
+                responseBody: {
+                  choices: [{ message: { content: accumulatedContent } }],
+                },
+                requestBody: payload as Record<string, unknown>,
+                isStreaming: true,
+                isFinalChunk: true,
+              },
+              httpCtx,
+            )
+            .then((hookResult) => {
+              if (hookResult?.block) {
+                // Cannot unsend already-streamed content, but log for audit
+                console.warn(
+                  `[openai-http] STREAMING AUDIT: Response would have been blocked: ${hookResult.blockReason || "security policy"}`,
+                );
+              }
+            })
+            .catch((err) => {
+              console.error("[openai-http] End-of-stream hook error:", err);
+            });
+        }
+
         writeDone(res);
         res.end();
       }
