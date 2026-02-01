@@ -290,7 +290,7 @@ export function createSignalEventHandler(deps: SignalEventHandlerDeps) {
         return false;
       }
       // Don't debounce messages with quote context - they need their context preserved
-      if (entry.quoteContext) {
+      if (entry.quoteContext?.text) {
         return false;
       }
       return !hasControlCommand(entry.bodyText, deps.cfg);
@@ -599,7 +599,7 @@ export function createSignalEventHandler(deps: SignalEventHandlerDeps) {
       quoteContext = {
         text: quote.text.trim(),
         authorDisplay: quoteAuthorDisplay,
-        messageId: quote.id ? String(quote.id) : undefined,
+        messageId: quote.id != null ? String(quote.id) : undefined,
       };
     }
 
