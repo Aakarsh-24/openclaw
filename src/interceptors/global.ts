@@ -1,14 +1,20 @@
+import { createCommandSafetyGuard } from "./builtin/command-safety-guard.js";
+import { createSecurityAudit } from "./builtin/security-audit.js";
 import { createInterceptorRegistry, type InterceptorRegistry } from "./registry.js";
 
 let globalRegistry: InterceptorRegistry | null = null;
 
 /**
  * Initialize the global interceptor registry.
- * Creates the registry if not already initialized. Idempotent.
+ * Creates the registry and registers built-in interceptors if not already initialized.
+ * Idempotent.
  */
 export function initializeGlobalInterceptors(): InterceptorRegistry {
   if (!globalRegistry) {
     globalRegistry = createInterceptorRegistry();
+    // Register built-in interceptors
+    globalRegistry.add(createCommandSafetyGuard());
+    globalRegistry.add(createSecurityAudit());
   }
   return globalRegistry;
 }

@@ -82,4 +82,40 @@ describe("interceptor registry", () => {
     // When no toolName is passed, entries with toolMatcher are still included
     expect(registry.get("tool.before")).toHaveLength(2);
   });
+
+  it("throws on toolMatcher that matches no known tool", () => {
+    const registry = createInterceptorRegistry();
+    expect(() =>
+      registry.add({
+        id: "bad",
+        name: "tool.before",
+        handler: () => {},
+        toolMatcher: /^nonexistent_tool$/,
+      }),
+    ).toThrow(/does not match any known tool name/);
+  });
+
+  it("allows toolMatcher that matches a known tool", () => {
+    const registry = createInterceptorRegistry();
+    expect(() =>
+      registry.add({
+        id: "good",
+        name: "tool.before",
+        handler: () => {},
+        toolMatcher: /^exec$/,
+      }),
+    ).not.toThrow();
+  });
+
+  it("allows toolMatcher with regex patterns matching known tools", () => {
+    const registry = createInterceptorRegistry();
+    expect(() =>
+      registry.add({
+        id: "multi",
+        name: "tool.before",
+        handler: () => {},
+        toolMatcher: /^(read|write|edit)$/,
+      }),
+    ).not.toThrow();
+  });
 });

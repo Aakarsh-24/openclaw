@@ -25,6 +25,29 @@ User prompt
 
 Interceptors are registered on a **registry** (a simple ordered list). When a tool executes, the adapter queries the registry for matching interceptors, runs them sequentially, and uses the (possibly mutated) output.
 
+## Known Tool Names
+
+The registry validates `toolMatcher` regexes at registration time. If your regex cannot match any known tool name, `registry.add()` throws immediately instead of failing silently at runtime.
+
+The canonical (normalized) tool names are:
+
+| Group | Tool names |
+|-------|-----------|
+| File system (`group:fs`) | `read`, `write`, `edit`, `apply_patch` |
+| Runtime (`group:runtime`) | `exec`, `process` |
+| Memory (`group:memory`) | `memory_search`, `memory_get` |
+| Web (`group:web`) | `web_search`, `web_fetch` |
+| Sessions (`group:sessions`) | `sessions_list`, `sessions_history`, `sessions_send`, `sessions_spawn`, `session_status` |
+| UI (`group:ui`) | `browser`, `canvas` |
+| Automation (`group:automation`) | `cron`, `gateway` |
+| Messaging (`group:messaging`) | `message` |
+| Nodes (`group:nodes`) | `nodes` |
+| Other | `agents_list`, `image`, `tts` |
+
+Note: `bash` is normalized to `exec` and `apply-patch` to `apply_patch` (see `src/agents/tool-policy.ts`). Plugin-provided tools are not in this list but can still be intercepted — just skip `toolMatcher` validation with a catch-all regex or omit `toolMatcher` entirely.
+
+The full set is defined in `src/interceptors/types.ts` as `KNOWN_TOOL_NAMES`.
+
 ## Interceptor Names
 
 | Name | When it runs | What it can do |
@@ -94,6 +117,55 @@ type ToolAfterOutput = {
 };
 ```
 
+## Built-in Interceptors
+
+Two interceptors are registered automatically when the global registry is initialized.
+
+### Command Safety Guard
+
+**ID**: `builtin:command-safety-guard`
+**Hook**: `tool.before` on `exec`
+**Priority**: 100 (runs first)
+**Source**: `src/interceptors/builtin/command-safety-guard.ts`
+
+Blocks dangerous bash commands before they execute. Patterns are checked against the command string with quoted strings stripped to reduce false positives.
+
+Blocked categories:
+
+- Filesystem destruction (`rm -rf /`, `rm -rf ~`, `rm *`, `find / -delete`)
+- Direct disk operations (`dd`, `mkfs`, `fdisk` on `/dev/*`)
+- Permission disasters (`chmod 777`, `chmod 000` on system dirs, `chown -R /`)
+- System file corruption (overwriting `/etc/passwd`, `/etc/shadow`, `/etc/sudoers`)
+- Remote code execution (`curl | bash`, `wget | sh`)
+- Network backdoors (`nc -l -e /bin/bash`)
+- Fork bombs (`:(){ :|:& };:`)
+- Git hook bypass (`git commit --no-verify`)
+- Docker data wipe (`docker system prune -a --volumes`)
+
+### Security Audit
+
+**ID**: `builtin:security-audit`
+**Hook**: `tool.before` on `read`, `write`, `edit`
+**Priority**: 99
+**Source**: `src/interceptors/builtin/security-audit.ts`
+
+Blocks read/write/edit access to sensitive files and paths.
+
+Blocked path patterns:
+
+- SSH private keys (`id_rsa`, `id_dsa`, `id_ecdsa`, `id_ed25519`)
+- Cloud credentials (`.aws/`, `.boto`, `credentials.json`, `service-account.json`, `kubeconfig`)
+- Crypto/keyring (`.gnupg/`, `.password-store/`)
+- System auth files (`/etc/passwd`, `/etc/shadow`, `/etc/sudoers`)
+- Environment files (`/.env`)
+- Certificate/key files (`.pem`, `.key`, `.p12`, `.pfx`)
+
+Allow-listed exceptions (not blocked):
+
+- Files inside `node_modules/`
+- Files matching `.test.` or inside `/test/` or `/fixtures/` directories
+- `package-lock.json`
+
 ## Adding a New Interceptor
 
 ### 1. Get the registry
@@ -129,6 +201,18 @@ registry.add({
 });
 ```
 
+If you use `toolMatcher`, it is validated at registration time:
+
+```typescript
+// This throws immediately:
+registry.add({
+  id: "bad",
+  name: "tool.before",
+  toolMatcher: /^nonexistent_tool$/,  // Error: does not match any known tool name
+  handler: () => {},
+});
+```
+
 ### 3. Remove when done (optional)
 
 ```typescript
@@ -145,10 +229,10 @@ Prevent the `exec` tool from running `rm -rf`:
 registry.add({
   id: "safety:no-rm-rf",
   name: "tool.before",
-  priority: 100,  // high priority — runs first
+  priority: 100,
   toolMatcher: /^exec$/,
   handler: (_input, output) => {
-    const cmd = String(output.args.command ?? "");
+    const cmd = typeof output.args.command === "string" ? output.args.command : "";
     if (cmd.includes("rm -rf")) {
       output.block = true;
       output.blockReason = "rm -rf is not allowed";
@@ -173,7 +257,7 @@ registry.add({
   name: "tool.before",
   toolMatcher: /^exec$/,
   handler: (_input, output) => {
-    const cmd = String(output.args.command ?? "");
+    const cmd = typeof output.args.command === "string" ? output.args.command : "";
     if (!cmd.includes("--color")) {
       output.args = { ...output.args, command: `${cmd} --color=never` };
     }
@@ -248,7 +332,7 @@ Interceptors run in **descending priority order** (higher number runs first). In
 | 0 (default) | General-purpose |
 | Negative | Logging, auditing (observe final state) |
 
-## Tool Matching
+## Tool Matching and Validation
 
 The optional `toolMatcher` field is a `RegExp` tested against the normalized tool name. If omitted, the interceptor runs for all tools.
 
@@ -263,7 +347,7 @@ toolMatcher: /^web/
 toolMatcher: /^(read|write)$/
 ```
 
-When `toolMatcher` is set and doesn't match the current tool, the interceptor is skipped entirely.
+**Validation**: When you call `registry.add()`, the `toolMatcher` is tested against all known tool names. If it cannot match any known tool, registration throws an error with the full list of valid tool names. This catches typos and stale tool names at startup instead of silently doing nothing at runtime.
 
 ## Registry API
 
@@ -277,7 +361,7 @@ const registry = createInterceptorRegistry();
 
 | Method | Description |
 |--------|-------------|
-| `add(reg)` | Register an interceptor |
+| `add(reg)` | Register an interceptor (validates `toolMatcher`) |
 | `remove(id)` | Remove by ID |
 | `get(name, toolName?)` | Get matching interceptors, sorted by priority |
 | `list()` | List all registered interceptors |
@@ -285,7 +369,7 @@ const registry = createInterceptorRegistry();
 
 ## Global Registry
 
-A global singleton registry is initialized at gateway startup via `initializeGlobalInterceptors()`. It is called automatically in `runEmbeddedAttempt()`.
+A global singleton registry is initialized at gateway startup via `initializeGlobalInterceptors()`. It is called automatically in `runEmbeddedAttempt()`. Built-in interceptors (command-safety-guard and security-audit) are registered automatically on first init.
 
 ```typescript
 import {
@@ -294,7 +378,7 @@ import {
   resetGlobalInterceptors,
 } from "../interceptors/global.js";
 
-// Initialize (idempotent)
+// Initialize (idempotent) — also registers built-in interceptors
 const registry = initializeGlobalInterceptors();
 
 // Access from anywhere
@@ -308,11 +392,13 @@ resetGlobalInterceptors();
 
 ### Source Files
 
-- `src/interceptors/types.ts` — Type definitions
-- `src/interceptors/registry.ts` — Array-backed registry with add/remove/get/clear
+- `src/interceptors/types.ts` — Type definitions + `KNOWN_TOOL_NAMES` set
+- `src/interceptors/registry.ts` — Array-backed registry with add/remove/get/clear + toolMatcher validation
 - `src/interceptors/trigger.ts` — Runs matched interceptors sequentially
-- `src/interceptors/global.ts` — Global singleton (created at gateway startup)
+- `src/interceptors/global.ts` — Global singleton + built-in interceptor registration
 - `src/interceptors/index.ts` — Public re-exports
+- `src/interceptors/builtin/command-safety-guard.ts` — Blocks dangerous bash commands
+- `src/interceptors/builtin/security-audit.ts` — Blocks access to sensitive files
 
 ### Integration Points
 
@@ -324,15 +410,18 @@ resetGlobalInterceptors();
 ```
 Gateway startup
   -> loadPlugins() (existing)
-  -> initializeGlobalInterceptors() (creates empty registry)
-  -> Plugins call registry.add() to register interceptors
+  -> initializeGlobalInterceptors()
+     -> Creates empty registry
+     -> Registers builtin:command-safety-guard
+     -> Registers builtin:security-audit
+  -> Plugins call registry.add() to register custom interceptors
   -> Tools created via toToolDefinitions() read the global registry
   -> Each tool.execute() runs: tool.before -> real execute -> tool.after
 ```
 
 ## Testing
 
-Run interceptor tests:
+Run all interceptor tests:
 
 ```bash
 pnpm test src/interceptors/

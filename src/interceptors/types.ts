@@ -2,6 +2,48 @@ import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 
 export type InterceptorName = "tool.before" | "tool.after";
 
+/**
+ * Known normalized tool names from tool-policy.ts.
+ * Used for toolMatcher validation — interceptors targeting unknown tools
+ * will throw at registration time instead of failing silently.
+ */
+export const KNOWN_TOOL_NAMES = new Set([
+  // group:fs
+  "read",
+  "write",
+  "edit",
+  "apply_patch",
+  // group:runtime
+  "exec",
+  "process",
+  // group:memory
+  "memory_search",
+  "memory_get",
+  // group:web
+  "web_search",
+  "web_fetch",
+  // group:sessions
+  "sessions_list",
+  "sessions_history",
+  "sessions_send",
+  "sessions_spawn",
+  "session_status",
+  // group:ui
+  "browser",
+  "canvas",
+  // group:automation
+  "cron",
+  "gateway",
+  // group:messaging
+  "message",
+  // group:nodes
+  "nodes",
+  // openclaw native
+  "agents_list",
+  "image",
+  "tts",
+]);
+
 export type ToolBeforeInput = {
   toolName: string;
   toolCallId: string;

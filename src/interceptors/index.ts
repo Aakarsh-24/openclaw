@@ -5,6 +5,7 @@ export {
   getGlobalInterceptorRegistry,
   resetGlobalInterceptors,
 } from "./global.js";
+export { KNOWN_TOOL_NAMES } from "./types.js";
 export type {
   InterceptorName,
   InterceptorHandler,

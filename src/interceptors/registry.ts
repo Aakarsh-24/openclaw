@@ -1,11 +1,35 @@
 import type { InterceptorName, InterceptorRegistration } from "./types.js";
+import { KNOWN_TOOL_NAMES } from "./types.js";
+
+// Internal storage uses the base union type
+type AnyInterceptorRegistration = InterceptorRegistration;
+
+/**
+ * Validate that a toolMatcher regex can match at least one known tool name.
+ * Throws if the regex cannot match any known tool, preventing silent misconfigurations.
+ */
+function validateToolMatcher(id: string, matcher: RegExp): void {
+  const matchesAny = [...KNOWN_TOOL_NAMES].some((name) => matcher.test(name));
+  if (!matchesAny) {
+    throw new Error(
+      `Interceptor "${id}": toolMatcher ${matcher} does not match any known tool name. ` +
+        `Known tools: ${[...KNOWN_TOOL_NAMES].join(", ")}`,
+    );
+  }
+}
 
 export function createInterceptorRegistry() {
-  const entries: InterceptorRegistration[] = [];
+  const entries: AnyInterceptorRegistration[] = [];
 
   return {
-    add(reg: InterceptorRegistration): void {
-      entries.push(reg);
+    add<N extends InterceptorName>(reg: InterceptorRegistration<N>): void {
+      if (reg.toolMatcher) {
+        validateToolMatcher(reg.id, reg.toolMatcher);
+      }
+      // Cast is safe: we store the narrowed registration in the union-typed array.
+      // TypeScript cannot prove handler contravariance here, but the trigger function
+      // always calls handlers with the correct input/output types for the given name.
+      entries.push(reg as unknown as AnyInterceptorRegistration);
     },
 
     remove(id: string): void {
@@ -15,7 +39,7 @@ export function createInterceptorRegistry() {
       }
     },
 
-    get(name: InterceptorName, toolName?: string): InterceptorRegistration[] {
+    get(name: InterceptorName, toolName?: string): AnyInterceptorRegistration[] {
       return entries
         .filter((e) => {
           if (e.name !== name) {
@@ -29,7 +53,7 @@ export function createInterceptorRegistry() {
         .toSorted((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
     },
 
-    list(): InterceptorRegistration[] {
+    list(): AnyInterceptorRegistration[] {
       return entries.slice();
     },
 
