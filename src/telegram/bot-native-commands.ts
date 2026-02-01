@@ -284,7 +284,7 @@ export const registerTelegramNativeCommands = ({
   nativeSkillsEnabled,
   nativeDisabledExplicit,
   nativeCommandAllowlist,
-  nativeSkillAllowlist,
+  nativeSkillAllowlist: _nativeSkillAllowlist,
   resolveGroupPolicy,
   resolveTelegramGroupConfig,
   shouldSkipUpdate,
