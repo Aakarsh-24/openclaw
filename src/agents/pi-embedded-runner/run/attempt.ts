@@ -444,7 +444,7 @@ export async function runEmbeddedAttempt(
         tools,
         sandboxEnabled: !!sandbox?.enabled,
         hookCtx: {
-          agentId: params.sessionKey?.split(":")[0] || "main",
+          agentId: params.sessionKey?.split(":")[0]?.trim() || "main",
           sessionKey: params.sessionKey,
         },
       });

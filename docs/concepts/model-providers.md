@@ -140,7 +140,7 @@ Moonshot uses OpenAI-compatible endpoints, so configure it as a custom provider:
   - `moonshot/kimi-k2-turbo-preview`
   - `moonshot/kimi-k2-thinking`
   - `moonshot/kimi-k2-thinking-turbo`
-    {/* moonshot-kimi-k2-model-refs:end */}
+  {/* moonshot-kimi-k2-model-refs:end */}
 
 ```json5
 {

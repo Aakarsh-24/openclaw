@@ -865,7 +865,11 @@
           },
           {
             "group": "Help",
-            "pages": ["help/index", "help/troubleshooting", "help/faq"]
+            "pages": [
+              "help/index",
+              "help/troubleshooting",
+              "help/faq"
+            ]
           },
           {
             "group": "Install & Updates",
@@ -998,7 +1002,13 @@
           },
           {
             "group": "Web & Interfaces",
-            "pages": ["web/index", "web/control-ui", "web/dashboard", "web/webchat", "tui"]
+            "pages": [
+              "web/index",
+              "web/control-ui",
+              "web/dashboard",
+              "web/webchat",
+              "tui"
+            ]
           },
           {
             "group": "Channels",
@@ -1161,7 +1171,11 @@
         "groups": [
           {
             "group": "开始",
-            "pages": ["zh-CN/index", "zh-CN/start/getting-started", "zh-CN/start/wizard"]
+            "pages": [
+              "zh-CN/index",
+              "zh-CN/start/getting-started",
+              "zh-CN/start/wizard"
+            ]
           }
         ]
       }
