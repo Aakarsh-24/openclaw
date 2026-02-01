@@ -53,7 +53,7 @@ describe("getOpencodeZenStaticFallbackModels", () => {
   it("returns an array of models", () => {
     const models = getOpencodeZenStaticFallbackModels();
     expect(Array.isArray(models)).toBe(true);
-    expect(models.length).toBe(19);
+    expect(models.length).toBe(29);
   });
 
   it("includes Claude, GPT, Gemini, and GLM models", () => {
@@ -98,7 +98,7 @@ describe("OPENCODE_ZEN_MODEL_ALIASES", () => {
     expect(OPENCODE_ZEN_MODEL_ALIASES.opus).toBe("claude-opus-4-5");
     expect(OPENCODE_ZEN_MODEL_ALIASES.sonnet).toBe("claude-sonnet-4-5");
     expect(OPENCODE_ZEN_MODEL_ALIASES.haiku).toBe("claude-haiku-4-5");
-    expect(OPENCODE_ZEN_MODEL_ALIASES.codex).toBe("gpt-5.1-codex");
+    expect(OPENCODE_ZEN_MODEL_ALIASES.codex).toBe("gpt-5.2-codex");
     expect(OPENCODE_ZEN_MODEL_ALIASES.gpt5).toBe("gpt-5.2");
     expect(OPENCODE_ZEN_MODEL_ALIASES.gemini).toBe("gemini-3-pro");
     expect(OPENCODE_ZEN_MODEL_ALIASES.glm).toBe("glm-4.7");
