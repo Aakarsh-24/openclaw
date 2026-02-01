@@ -36,4 +36,9 @@ ENV NODE_ENV=production
 # This reduces the attack surface by preventing container escape via root privileges
 USER node
 
+# Configure npm to use a user-writable directory for global packages
+# This prevents EACCES errors when installing skills via ClawdHub or npm install -g
+RUN npm config set prefix /home/node/.npm-global
+ENV PATH="/home/node/.npm-global/bin:${PATH}"
+
 CMD ["node", "dist/index.js"]
