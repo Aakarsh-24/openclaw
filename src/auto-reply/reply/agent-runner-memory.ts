@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { createInternalHookEvent, triggerInternalHook } from "../../hooks/internal-hooks.js";
 import { resolveAgentModelFallbacksOverride } from "../../agents/agent-scope.js";
 import { runWithModelFallback } from "../../agents/model-fallback.js";
 import { isCliProvider } from "../../agents/model-selection.js";
@@ -77,6 +78,21 @@ export async function runMemoryFlushIfNeeded(params: {
 
   if (!shouldFlushMemory) {
     return params.sessionEntry;
+  }
+
+  if (shouldFlushMemory && params.sessionKey && params.sessionStore && params.storePath) {
+    // Lifecycle hook: Memory Flush Start
+    const hookEvent = createInternalHookEvent(
+      "agent",
+      "flush",
+      params.sessionKey,
+      {
+        sessionId: params.followupRun.run.sessionId,
+      }
+    );
+    await triggerInternalHook(hookEvent);
+
+    const contextTokensUsed = params.sessionEntry?.contextTokens ?? 0;
   }
 
   let activeSessionEntry = params.sessionEntry;

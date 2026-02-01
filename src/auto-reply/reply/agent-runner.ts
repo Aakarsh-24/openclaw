@@ -41,6 +41,7 @@ import { incrementCompactionCount } from "./session-updates.js";
 import type { TypingController } from "./typing.js";
 import { createTypingSignaler } from "./typing-mode.js";
 import { emitDiagnosticEvent, isDiagnosticsEnabled } from "../../infra/diagnostic-events.js";
+import { createInternalHookEvent, triggerInternalHook } from "../../hooks/internal-hooks.js";
 
 const BLOCK_REPLY_SEND_TIMEOUT_MS = 15_000;
 
@@ -245,6 +246,7 @@ export async function runReplyAgent(params: {
     }
     const prevSessionId = cleanupTranscripts ? prevEntry.sessionId : undefined;
     const nextSessionId = crypto.randomUUID();
+    const runId = opts?.runId ?? crypto.randomUUID();
     const nextEntry: SessionEntry = {
       ...prevEntry,
       sessionId: nextSessionId,
@@ -289,6 +291,44 @@ export async function runReplyAgent(params: {
         }
       }
     }
+
+    // Lifecycle hooks: Session Ended / Reset / Start
+    // 1. Session Ended (for the OLD session)
+    if (prevSessionId) {
+      const hookEvent = createInternalHookEvent(
+        "session",
+        "ended",
+        sessionKey,
+        {
+          sessionId: prevSessionId,
+        }
+      );
+      await triggerInternalHook(hookEvent);
+    }
+
+    // 2. Session Reset (Transition)
+    const resetEvent = createInternalHookEvent(
+      "session",
+      "reset",
+      sessionKey,
+      {
+        oldSessionId: prevSessionId,
+        newSessionId: nextSessionId,
+      }
+    );
+    await triggerInternalHook(resetEvent);
+
+    // 3. Session Start (for the NEW session)
+    const startEvent = createInternalHookEvent(
+      "session",
+      "start",
+      sessionKey,
+      {
+        sessionId: nextSessionId,
+      }
+    );
+    await triggerInternalHook(startEvent);
+
     return true;
   };
   const resetSessionAfterCompactionFailure = async (reason: string): Promise<boolean> =>
@@ -507,9 +547,42 @@ export async function runReplyAgent(params: {
     }
     if (verboseEnabled && activeIsNewSession) {
       finalPayloads = [{ text: `🧭 New session: ${followupRun.run.sessionId}` }, ...finalPayloads];
+      // Lifecycle hook: Session Start (Initial)
+      const hookEvent = createInternalHookEvent(
+        "session",
+        "start",
+        sessionKey ?? "",
+        {
+          sessionId: followupRun.run.sessionId,
+        }
+      );
+      await triggerInternalHook(hookEvent);
     }
     if (responseUsageLine) {
       finalPayloads = appendUsageLine(finalPayloads, responseUsageLine);
+    }
+
+    // Lifecycle hook: Turn End
+    // Capture the final exchange for memory indexing
+    // We only emit if there is actual content involved (input or output).
+    const assistantOutput = Array.isArray(finalPayloads)
+      ? finalPayloads.map(p => p.text).filter(Boolean).join("\n")
+      : finalPayloads.text;
+
+    if (commandBody || assistantOutput) {
+      const hookEvent = createInternalHookEvent(
+        "agent",
+        "reply",
+        sessionKey ?? "",
+        {
+          sessionId: followupRun.run.sessionId,
+          input: commandBody,
+          output: assistantOutput,
+          turnId: Date.now(),
+          senderId: sessionCtx.SenderId,
+        }
+      );
+      await triggerInternalHook(hookEvent);
     }
 
     return finalizeWithFollowup(
