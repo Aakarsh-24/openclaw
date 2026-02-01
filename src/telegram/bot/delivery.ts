@@ -1,4 +1,5 @@
 import { type Bot, GrammyError, InputFile } from "grammy";
+import * as fs from "node:fs/promises";
 import type { ReplyPayload } from "../../auto-reply/types.js";
 import type { ReplyToMode } from "../../config/config.js";
 import type { MarkdownTableMode } from "../../config/types.base.js";
@@ -9,7 +10,7 @@ import { danger, logVerbose } from "../../globals.js";
 import { formatErrorMessage } from "../../infra/errors.js";
 import { mediaKindFromMime } from "../../media/constants.js";
 import { fetchRemoteMedia } from "../../media/fetch.js";
-import { isGifMedia } from "../../media/mime.js";
+import { detectMime, isGifMedia } from "../../media/mime.js";
 import { saveMediaBuffer } from "../../media/store.js";
 import { loadWebMedia } from "../../web/media.js";
 import { withTelegramApiErrorLogging } from "../api-logging.js";
@@ -19,6 +20,7 @@ import {
   markdownToTelegramHtml,
   renderTelegramHtmlText,
 } from "../format.js";
+import { isLocalApiPath, normalizeApiRoot } from "../local-api.js";
 import { buildInlineKeyboard } from "../send.js";
 import { cacheSticker, getCachedSticker } from "../sticker-cache.js";
 import { resolveTelegramVoiceSend } from "../voice.js";
@@ -26,6 +28,7 @@ import { buildTelegramThreadParams, resolveTelegramReplyId } from "./helpers.js"
 
 const PARSE_ERR_RE = /can't parse entities|parse entities|find end of the entity/i;
 const VOICE_FORBIDDEN_RE = /VOICE_MESSAGES_FORBIDDEN/;
+const TELEGRAM_API_BASE = "https://api.telegram.org";
 
 export async function deliverReplies(params: {
   replies: ReplyPayload[];
@@ -292,6 +295,7 @@ export async function resolveMedia(
   maxBytes: number,
   token: string,
   proxyFetch?: typeof fetch,
+  apiBase?: string,
 ): Promise<{
   path: string;
   contentType?: string;
@@ -318,25 +322,35 @@ export async function resolveMedia(
         logVerbose("telegram: getFile returned no file_path for sticker");
         return null;
       }
-      const fetchImpl = proxyFetch ?? globalThis.fetch;
-      if (!fetchImpl) {
-        logVerbose("telegram: fetch not available for sticker download");
-        return null;
+
+      // Handle Local Bot API absolute paths vs remote HTTP downloads
+      let buffer: Buffer;
+      let contentType: string | undefined;
+      if (isLocalApiPath(file.file_path)) {
+        // Local Bot API returns absolute file paths - read directly from filesystem
+        buffer = await fs.readFile(file.file_path);
+        const mime = await detectMime({ buffer, filePath: file.file_path });
+        contentType = mime ?? undefined;
+      } else {
+        // Standard Telegram API - download via HTTP
+        const fetchImpl = proxyFetch ?? globalThis.fetch;
+        if (!fetchImpl) {
+          logVerbose("telegram: fetch not available for sticker download");
+          return null;
+        }
+        const baseUrl = normalizeApiRoot(apiBase) ?? TELEGRAM_API_BASE;
+        const url = `${baseUrl}/file/bot${token}/${file.file_path}`;
+        const fetched = await fetchRemoteMedia({
+          url,
+          fetchImpl,
+          filePathHint: file.file_path,
+        });
+        buffer = fetched.buffer;
+        contentType = fetched.contentType ?? undefined;
       }
-      const url = `https://api.telegram.org/file/bot${token}/${file.file_path}`;
-      const fetched = await fetchRemoteMedia({
-        url,
-        fetchImpl,
-        filePathHint: file.file_path,
-      });
-      const originalName = fetched.fileName ?? file.file_path;
-      const saved = await saveMediaBuffer(
-        fetched.buffer,
-        fetched.contentType,
-        "inbound",
-        maxBytes,
-        originalName,
-      );
+
+      const originalName = file.file_path;
+      const saved = await saveMediaBuffer(buffer, contentType, "inbound", maxBytes, originalName);
 
       // Check sticker cache for existing description
       const cached = sticker.file_unique_id ? getCachedSticker(sticker.file_unique_id) : null;
@@ -400,24 +414,31 @@ export async function resolveMedia(
   if (!file.file_path) {
     throw new Error("Telegram getFile returned no file_path");
   }
-  const fetchImpl = proxyFetch ?? globalThis.fetch;
-  if (!fetchImpl) {
-    throw new Error("fetch is not available; set channels.telegram.proxy in config");
+
+  let buffer: Buffer;
+  let contentType: string | undefined;
+  if (isLocalApiPath(file.file_path)) {
+    buffer = await fs.readFile(file.file_path);
+    const mime = await detectMime({ buffer, filePath: file.file_path });
+    contentType = mime ?? undefined;
+  } else {
+    const fetchImpl = proxyFetch ?? globalThis.fetch;
+    if (!fetchImpl) {
+      throw new Error("fetch is not available; set channels.telegram.proxy in config");
+    }
+    const baseUrl = normalizeApiRoot(apiBase) ?? TELEGRAM_API_BASE;
+    const url = `${baseUrl}/file/bot${token}/${file.file_path}`;
+    const fetched = await fetchRemoteMedia({
+      url,
+      fetchImpl,
+      filePathHint: file.file_path,
+    });
+    buffer = fetched.buffer;
+    contentType = fetched.contentType ?? undefined;
   }
-  const url = `https://api.telegram.org/file/bot${token}/${file.file_path}`;
-  const fetched = await fetchRemoteMedia({
-    url,
-    fetchImpl,
-    filePathHint: file.file_path,
-  });
-  const originalName = fetched.fileName ?? file.file_path;
-  const saved = await saveMediaBuffer(
-    fetched.buffer,
-    fetched.contentType,
-    "inbound",
-    maxBytes,
-    originalName,
-  );
+
+  const originalName = file.file_path;
+  const saved = await saveMediaBuffer(buffer, contentType, "inbound", maxBytes, originalName);
   let placeholder = "<media:document>";
   if (msg.photo) {
     placeholder = "<media:image>";

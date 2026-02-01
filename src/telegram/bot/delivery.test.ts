@@ -304,3 +304,6 @@ describe("deliverReplies", () => {
     expect(sendMessage).not.toHaveBeenCalled();
   });
 });
+
+// Note: resolveMedia local API path detection is tested via isLocalApiPath in local-api.test.ts
+// ESM modules don't allow spying on fs.readFile, so integration testing would require actual file access
