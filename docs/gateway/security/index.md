@@ -519,6 +519,8 @@ Recommendations:
 
 - Keep tool summary redaction on (`logging.redactSensitive: "tools"`; default).
 - Add custom patterns for your environment via `logging.redactPatterns` (tokens, hostnames, internal URLs).
+- Optionally enable PII redaction: `logging.redactPii: true` (or a list of entity keys) so credit card, SSN, email, phone, etc. are masked in logs and tool display; `openclaw status --all` uses the same pipeline.
+- For inbound messages, optional ingestion redaction: `messaging.piiAtIngestion: "redact"` (or `"detect"` to log only) and optional `messaging.redactPiiEntities`. See [Logging](/gateway/logging) for entity keys.
 - When sharing diagnostics, prefer `openclaw status --all` (pasteable, secrets redacted) over raw logs.
 - Prune old session transcripts and log files if you don’t need long retention.
 
