@@ -514,13 +514,15 @@ export async function resolveImplicitProviders(params: {
   }
 
   // Chutes provider - supports both API key and OAuth
-  const chutesKey =
-    resolveEnvApiKeyVarName("chutes") ??
-    resolveApiKeyFromProfiles({ provider: "chutes", store: authStore });
-  const chutesOauthProfiles = listProfilesForProvider(authStore, "chutes");
-  if (chutesKey) {
-    providers.chutes = { ...buildChutesProvider(), apiKey: chutesKey };
-  } else if (chutesOauthProfiles.length > 0) {
+  const chutesEnvKey = resolveEnvApiKeyVarName("chutes");
+  const chutesProfiles = listProfilesForProvider(authStore, "chutes");
+  const chutesProfileKey =
+    chutesProfiles.length > 0
+      ? resolveApiKeyFromProfiles({ provider: "chutes", store: authStore })
+      : undefined;
+  if (chutesEnvKey ?? chutesProfileKey) {
+    providers.chutes = { ...buildChutesProvider(), apiKey: (chutesEnvKey ?? chutesProfileKey)! };
+  } else if (chutesProfiles.length > 0) {
     providers.chutes = { ...buildChutesProvider(), apiKey: CHUTES_OAUTH_PLACEHOLDER };
   }
 
