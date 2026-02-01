@@ -62,7 +62,9 @@ function applyBaselineSecurityHeaders(res: ServerResponse) {
   if (!res.hasHeader("X-Content-Type-Options")) res.setHeader("X-Content-Type-Options", "nosniff");
   if (!res.hasHeader("Referrer-Policy"))
     res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
-  if (!res.hasHeader("X-Frame-Options")) res.setHeader("X-Frame-Options", "DENY");
+  // Use SAMEORIGIN instead of DENY to avoid surprising breakage for same-origin embedding
+  // while still preventing third-party framing (clickjacking).
+  if (!res.hasHeader("X-Frame-Options")) res.setHeader("X-Frame-Options", "SAMEORIGIN");
   if (!res.hasHeader("Permissions-Policy")) {
     res.setHeader(
       "Permissions-Policy",
