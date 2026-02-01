@@ -336,6 +336,19 @@ Success:
 [gateway] listening on ws://0.0.0.0:18789
 ```
 
+If you see a config hint on first run, initialize config via the CLI container:
+
+```bash
+# Case A: "Missing config. Run `openclaw setup` ..."
+docker compose run --rm openclaw-cli -- setup
+
+# Case B: "Gateway start blocked: set gateway.mode=local ..."
+docker compose run --rm openclaw-cli -- config set gateway.mode local
+
+# Then restart the gateway container
+docker compose restart openclaw-gateway
+```
+
 From your laptop:
 
 ```bash
