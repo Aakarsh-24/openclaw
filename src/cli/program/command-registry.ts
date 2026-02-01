@@ -1,22 +1,7 @@
 import type { Command } from "commander";
 import type { ProgramContext } from "./context.js";
-import { agentsListCommand } from "../../commands/agents.js";
-import { healthCommand } from "../../commands/health.js";
-import { sessionsCommand } from "../../commands/sessions.js";
-import { statusCommand } from "../../commands/status.js";
 import { defaultRuntime } from "../../runtime.js";
 import { getFlagValue, getPositiveIntFlagValue, getVerboseFlag, hasFlag } from "../argv.js";
-import { registerBrowserCli } from "../browser-cli.js";
-import { registerConfigCli } from "../config-cli.js";
-import { registerMemoryCli, runMemoryStatus } from "../memory-cli.js";
-import { registerAgentCommands } from "./register.agent.js";
-import { registerConfigureCommand } from "./register.configure.js";
-import { registerMaintenanceCommands } from "./register.maintenance.js";
-import { registerMessageCommands } from "./register.message.js";
-import { registerOnboardCommand } from "./register.onboard.js";
-import { registerSetupCommand } from "./register.setup.js";
-import { registerStatusHealthSessionsCommands } from "./register.status-health-sessions.js";
-import { registerSubCliCommands } from "./register.subclis.js";
 
 type CommandRegisterParams = {
   program: Command;
@@ -32,7 +17,7 @@ type RouteSpec = {
 
 export type CommandRegistration = {
   id: string;
-  register: (params: CommandRegisterParams) => void;
+  register: (params: CommandRegisterParams) => Promise<void> | void;
   routes?: RouteSpec[];
 };
 
@@ -46,6 +31,7 @@ const routeHealth: RouteSpec = {
     if (timeoutMs === null) {
       return false;
     }
+    const { healthCommand } = await import("../../commands/health.js");
     await healthCommand({ json, timeoutMs, verbose }, defaultRuntime);
     return true;
   },
@@ -64,6 +50,7 @@ const routeStatus: RouteSpec = {
     if (timeoutMs === null) {
       return false;
     }
+    const { statusCommand } = await import("../../commands/status.js");
     await statusCommand({ json, deep, all, usage, timeoutMs, verbose }, defaultRuntime);
     return true;
   },
@@ -81,6 +68,7 @@ const routeSessions: RouteSpec = {
     if (active === null) {
       return false;
     }
+    const { sessionsCommand } = await import("../../commands/sessions.js");
     await sessionsCommand({ json, store, active }, defaultRuntime);
     return true;
   },
@@ -91,6 +79,7 @@ const routeAgentsList: RouteSpec = {
   run: async (argv) => {
     const json = hasFlag(argv, "--json");
     const bindings = hasFlag(argv, "--bindings");
+    const { agentsListCommand } = await import("../../commands/agents.js");
     await agentsListCommand({ json, bindings }, defaultRuntime);
     return true;
   },
@@ -107,6 +96,7 @@ const routeMemoryStatus: RouteSpec = {
     const deep = hasFlag(argv, "--deep");
     const index = hasFlag(argv, "--index");
     const verbose = hasFlag(argv, "--verbose");
+    const { runMemoryStatus } = await import("../memory-cli.js");
     await runMemoryStatus({ agent, json, deep, index, verbose });
     return true;
   },
@@ -115,61 +105,105 @@ const routeMemoryStatus: RouteSpec = {
 export const commandRegistry: CommandRegistration[] = [
   {
     id: "setup",
-    register: ({ program }) => registerSetupCommand(program),
+    register: async ({ program }) => {
+      const { registerSetupCommand } = await import("./register.setup.js");
+      registerSetupCommand(program);
+    },
   },
   {
     id: "onboard",
-    register: ({ program }) => registerOnboardCommand(program),
+    register: async ({ program }) => {
+      const { registerOnboardCommand } = await import("./register.onboard.js");
+      registerOnboardCommand(program);
+    },
   },
   {
     id: "configure",
-    register: ({ program }) => registerConfigureCommand(program),
+    register: async ({ program }) => {
+      const { registerConfigureCommand } = await import("./register.configure.js");
+      registerConfigureCommand(program);
+    },
   },
   {
     id: "config",
-    register: ({ program }) => registerConfigCli(program),
+    register: async ({ program }) => {
+      const { registerConfigCli } = await import("../config-cli.js");
+      registerConfigCli(program);
+    },
+  },
+  {
+    id: "git",
+    register: async ({ program }) => {
+      const { registerGitCommand } = await import("./register.git.js");
+      registerGitCommand(program);
+    },
   },
   {
     id: "maintenance",
-    register: ({ program }) => registerMaintenanceCommands(program),
+    register: async ({ program }) => {
+      const { registerMaintenanceCommands } = await import("./register.maintenance.js");
+      registerMaintenanceCommands(program);
+    },
   },
   {
     id: "message",
-    register: ({ program, ctx }) => registerMessageCommands(program, ctx),
+    register: async ({ program, ctx }) => {
+      const { registerMessageCommands } = await import("./register.message.js");
+      registerMessageCommands(program, ctx);
+    },
   },
   {
     id: "memory",
-    register: ({ program }) => registerMemoryCli(program),
+    register: async ({ program }) => {
+      const { registerMemoryCli } = await import("../memory-cli.js");
+      registerMemoryCli(program);
+    },
     routes: [routeMemoryStatus],
   },
   {
     id: "agent",
-    register: ({ program, ctx }) =>
-      registerAgentCommands(program, { agentChannelOptions: ctx.agentChannelOptions }),
+    register: async ({ program, ctx }) => {
+      const { registerAgentCommands } = await import("./register.agent.js");
+      registerAgentCommands(program, { agentChannelOptions: ctx.agentChannelOptions });
+    },
     routes: [routeAgentsList],
   },
   {
     id: "subclis",
-    register: ({ program, argv }) => registerSubCliCommands(program, argv),
+    register: async ({ program, argv }) => {
+      const { registerSubCliCommands } = await import("./register.subclis.js");
+      registerSubCliCommands(program, argv);
+    },
   },
   {
     id: "status-health-sessions",
-    register: ({ program }) => registerStatusHealthSessionsCommands(program),
+    register: async ({ program }) => {
+      const { registerStatusHealthSessionsCommands } =
+        await import("./register.status-health-sessions.js");
+      registerStatusHealthSessionsCommands(program);
+    },
     routes: [routeHealth, routeStatus, routeSessions],
   },
   {
     id: "browser",
-    register: ({ program }) => registerBrowserCli(program),
+    register: async ({ program }) => {
+      const { registerBrowserCli } = await import("../browser-cli.js");
+      registerBrowserCli(program);
+    },
   },
 ];
 
-export function registerProgramCommands(
+export async function registerProgramCommands(
   program: Command,
   ctx: ProgramContext,
   argv: string[] = process.argv,
 ) {
+  const debugBoot = process.env.OPENCLAW_DEBUG_BOOT === "1";
   for (const entry of commandRegistry) {
-    entry.register({ program, ctx, argv });
+    if (debugBoot) {
+      console.timeLog("boot", `registering ${entry.id}`);
+    }
+    await entry.register({ program, ctx, argv });
   }
 }
 

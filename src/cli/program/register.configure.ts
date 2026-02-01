@@ -1,9 +1,5 @@
 import type { Command } from "commander";
-import {
-  CONFIGURE_WIZARD_SECTIONS,
-  configureCommand,
-  configureCommandWithSections,
-} from "../../commands/configure.js";
+import { CONFIGURE_WIZARD_SECTIONS } from "../../commands/configure.constants.js";
 import { defaultRuntime } from "../../runtime.js";
 import { formatDocsLink } from "../../terminal/links.js";
 import { theme } from "../../terminal/theme.js";
@@ -31,6 +27,10 @@ export function registerConfigureCommand(program: Command) {
               .map((value: unknown) => (typeof value === "string" ? value.trim() : ""))
               .filter(Boolean)
           : [];
+
+        const { configureCommand, configureCommandWithSections } =
+          await import("../../commands/configure.js");
+
         if (sections.length === 0) {
           await configureCommand(defaultRuntime);
           return;

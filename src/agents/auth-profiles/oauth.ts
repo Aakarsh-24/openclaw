@@ -15,7 +15,7 @@ import { ensureAuthStoreFile, resolveAuthStorePath } from "./paths.js";
 import { suggestOAuthProfileIdForLegacyDefault } from "./repair.js";
 import { ensureAuthProfileStore, saveAuthProfileStore } from "./store.js";
 
-const OAUTH_PROVIDER_IDS = new Set(getOAuthProviders().map((provider) => provider.id));
+const OAUTH_PROVIDER_IDS = new Set<string>(getOAuthProviders().map((provider) => provider.id));
 
 const resolveOAuthProvider = (provider: string): OAuthProvider | null =>
   OAUTH_PROVIDER_IDS.has(provider) ? provider : null;

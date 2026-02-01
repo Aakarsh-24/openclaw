@@ -37,42 +37,34 @@ const isExcludedSource = (filePath) => {
   );
 };
 
-const findLatestMtime = (dirPath, shouldSkip) => {
-  let latest = null;
-  const queue = [dirPath];
-  while (queue.length > 0) {
-    const current = queue.pop();
-    if (!current) {
-      continue;
-    }
-    let entries = [];
-    try {
-      entries = fs.readdirSync(current, { withFileTypes: true });
-    } catch {
-      continue;
-    }
+const hasNewerSource = (dirPath, thresholdMtime, shouldSkip) => {
+  try {
+    // Node 20+ supports recursive readdir.
+    // This avoids the overhead of manual directory traversal in JS.
+    const entries = fs.readdirSync(dirPath, { recursive: true, withFileTypes: true });
     for (const entry of entries) {
-      const fullPath = path.join(current, entry.name);
-      if (entry.isDirectory()) {
-        queue.push(fullPath);
-        continue;
-      }
       if (!entry.isFile()) {
         continue;
       }
+
+      const parentPath = entry.parentPath ?? entry.path;
+      const fullPath = path.join(parentPath, entry.name);
+
       if (shouldSkip?.(fullPath)) {
         continue;
       }
+
+      // Fast path: early exit as soon as we find a newer file
       const mtime = statMtime(fullPath);
-      if (mtime == null) {
-        continue;
-      }
-      if (latest == null || mtime > latest) {
-        latest = mtime;
+      if (mtime != null && mtime > thresholdMtime) {
+        return true;
       }
     }
+  } catch {
+    // If we can't read the directory (e.g. permission or version issue), assume dirty.
+    return true;
   }
-  return latest;
+  return false;
 };
 
 const shouldBuild = () => {
@@ -94,8 +86,8 @@ const shouldBuild = () => {
     }
   }
 
-  const srcMtime = findLatestMtime(srcRoot, isExcludedSource);
-  if (srcMtime != null && srcMtime > stampMtime) {
+  // Check src/ with early exit
+  if (hasNewerSource(srcRoot, stampMtime, isExcludedSource)) {
     return true;
   }
   return false;
@@ -137,10 +129,24 @@ if (!shouldBuild()) {
   runNode();
 } else {
   logRunner("Building TypeScript (dist is stale).");
-  const pnpmArgs = ["exec", compiler, ...projectArgs];
-  const buildCmd = process.platform === "win32" ? "cmd.exe" : "pnpm";
-  const buildArgs =
-    process.platform === "win32" ? ["/d", "/s", "/c", "pnpm", ...pnpmArgs] : pnpmArgs;
+
+  let buildCmd = "";
+  let buildArgs = [];
+
+  // Optimization: Bypass pnpm overhead by invoking binary directly if possible (non-Windows only)
+  // Windows needs complex .cmd handling or shell invocation, so we stick to pnpm there.
+  const localBin = path.join(cwd, "node_modules", ".bin", compiler);
+  const canUseLocalBin = process.platform !== "win32" && fs.existsSync(localBin);
+
+  if (canUseLocalBin) {
+    buildCmd = localBin;
+    buildArgs = projectArgs;
+  } else {
+    const pnpmArgs = ["exec", compiler, ...projectArgs];
+    buildCmd = process.platform === "win32" ? "cmd.exe" : "pnpm";
+    buildArgs = process.platform === "win32" ? ["/d", "/s", "/c", "pnpm", ...pnpmArgs] : pnpmArgs;
+  }
+
   const build = spawn(buildCmd, buildArgs, {
     cwd,
     env,
