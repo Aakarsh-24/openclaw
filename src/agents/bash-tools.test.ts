@@ -146,13 +146,41 @@ describe("exec tool backgrounding", () => {
     expect(entry?.name).toBe("echo hello");
   });
 
-  it("uses default timeout when timeout is omitted", async () => {
+  it("does not time out background execs when timeout is omitted", async () => {
     const customBash = createExecTool({ timeoutSec: 1, backgroundMs: 10 });
     const customProcess = createProcessTool();
 
     const result = await customBash.execute("call1", {
       command: longDelayCmd,
       background: true,
+    });
+
+    const sessionId = (result.details as { sessionId: string }).sessionId;
+    let status = "running";
+    const deadline = Date.now() + 5000;
+
+    while (Date.now() < deadline && status === "running") {
+      const poll = await customProcess.execute("call2", {
+        action: "poll",
+        sessionId,
+      });
+      status = (poll.details as { status: string }).status;
+      if (status === "running") {
+        await sleep(50);
+      }
+    }
+
+    expect(status).toBe("completed");
+  });
+
+  it("respects explicit timeout for background execs", async () => {
+    const customBash = createExecTool({ timeoutSec: 5, backgroundMs: 10 });
+    const customProcess = createProcessTool();
+
+    const result = await customBash.execute("call1", {
+      command: longDelayCmd,
+      background: true,
+      timeout: 1,
     });
 
     const sessionId = (result.details as { sessionId: string }).sessionId;
