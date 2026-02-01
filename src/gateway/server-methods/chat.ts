@@ -152,6 +152,7 @@ function appendUserTranscriptMessage(params: {
   sessionFile?: string;
   senderId?: string;
   senderName?: string;
+  createIfMissing?: boolean;
 }): TranscriptAppendResult {
   const transcriptPath = resolveTranscriptPath({
     sessionId: params.sessionId,
@@ -163,7 +164,16 @@ function appendUserTranscriptMessage(params: {
   }
 
   if (!fs.existsSync(transcriptPath)) {
-    return { ok: false, error: "transcript file not found" };
+    if (!params.createIfMissing) {
+      return { ok: false, error: "transcript file not found" };
+    }
+    const ensured = ensureTranscriptFile({
+      transcriptPath,
+      sessionId: params.sessionId,
+    });
+    if (!ensured.ok) {
+      return { ok: false, error: ensured.error ?? "failed to create transcript file" };
+    }
   }
 
   const now = Date.now();
@@ -504,6 +514,7 @@ export const chatHandlers: GatewayRequestHandlers = {
           sessionFile: entry.sessionFile,
           senderId: clientInfo?.id,
           senderName: clientInfo?.displayName,
+          createIfMissing: true,
         });
         if (!userAppended.ok) {
           context.logGateway.debug?.(
