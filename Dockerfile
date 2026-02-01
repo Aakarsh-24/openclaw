@@ -36,4 +36,4 @@ ENV NODE_ENV=production
 # This reduces the attack surface by preventing container escape via root privileges
 USER node
 
-CMD ["sh", "-c", "OPENCLAW_GATEWAY_PORT=${PORT:-18789} exec node dist/index.js gateway run --bind lan --allow-unconfigured"]
+CMD ["sh", "-c", "mkdir -p \"${OPENCLAW_STATE_DIR:-$HOME/.openclaw}\" && if [ ! -f \"${OPENCLAW_STATE_DIR:-$HOME/.openclaw}/openclaw.json\" ]; then echo '{\"gateway\":{\"mode\":\"local\"}}' > \"${OPENCLAW_STATE_DIR:-$HOME/.openclaw}/openclaw.json\"; fi && OPENCLAW_GATEWAY_PORT=${PORT:-18789} exec node dist/index.js gateway run --bind lan --allow-unconfigured"]
