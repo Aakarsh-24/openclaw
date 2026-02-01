@@ -288,6 +288,11 @@ describe("config-pending", () => {
         await fs.writeFile(configPath, JSON.stringify({ version: "crashed" }), "utf-8");
         await fs.writeFile(verifiedPath, JSON.stringify({ version: "good" }), "utf-8");
         await fs.mkdir(distBackupDir, { recursive: true });
+        await fs.writeFile(path.join(distBackupDir, "test.js"), "// backup content", "utf-8");
+
+        // Create a temp target dir for dist rollback (avoids wiping real dist/)
+        const distTargetDir = path.join(home, "fake-dist-target");
+        await fs.mkdir(distTargetDir, { recursive: true });
 
         const recentTime = new Date(Date.now() - 500).toISOString();
         await fs.writeFile(
@@ -302,13 +307,18 @@ describe("config-pending", () => {
         );
 
         const { checkPendingOnStartup } = await import("./config-pending.js");
-        const result = await checkPendingOnStartup();
+        const result = await checkPendingOnStartup({ distTargetDir });
 
         expect(result.rolledBack).toBe(true);
-        expect(result).toHaveProperty("distRolledBack");
+        expect(result.distRolledBack).toBe(true);
+
+        // Verify the backup was restored to the target dir
+        const restoredContent = await fs.readFile(path.join(distTargetDir, "test.js"), "utf-8");
+        expect(restoredContent).toBe("// backup content");
 
         const history = JSON.parse(await fs.readFile(historyPath, "utf-8"));
         expect(history[0]).toHaveProperty("distRolledBack");
+        expect(history[0].distRolledBack).toBe(true);
       });
     });
   });
@@ -365,10 +375,7 @@ describe("config-pending", () => {
     it("returns null if source does not exist", async () => {
       await withTempHome(async (home) => {
         const { backupDist } = await import("./config-pending.js");
-        const result = await backupDist(
-          path.join(home, "nonexistent"),
-          path.join(home, "backup"),
-        );
+        const result = await backupDist(path.join(home, "nonexistent"), path.join(home, "backup"));
         expect(result).toBeNull();
       });
     });
@@ -404,10 +411,7 @@ describe("config-pending", () => {
     it("returns false if backup does not exist", async () => {
       await withTempHome(async (home) => {
         const { restoreDist } = await import("./config-pending.js");
-        const result = await restoreDist(
-          path.join(home, "nonexistent"),
-          path.join(home, "target"),
-        );
+        const result = await restoreDist(path.join(home, "nonexistent"), path.join(home, "target"));
         expect(result).toBe(false);
       });
     });

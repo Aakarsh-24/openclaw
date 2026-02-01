@@ -250,13 +250,20 @@ async function appendRollbackHistory(entry: RollbackHistoryEntry): Promise<void>
   log.debug(`config-pending: appended rollback to history (${history.length} entries)`);
 }
 
+export interface CheckPendingOptions {
+  /** Override dist target dir for testing (default: DIST_DIR) */
+  distTargetDir?: string;
+}
+
 /**
  * Check for pending marker on startup and rollback if needed.
  * Should be called early in gateway startup, before loading config.
  *
  * Returns info about whether rollback occurred (for error injection).
  */
-export async function checkPendingOnStartup(): Promise<RollbackResult> {
+export async function checkPendingOnStartup(
+  opts: CheckPendingOptions = {},
+): Promise<RollbackResult> {
   let marker: ConfigPendingMarker;
 
   // Try to read the pending marker
@@ -337,7 +344,7 @@ export async function checkPendingOnStartup(): Promise<RollbackResult> {
   // Perform dist rollback if we have a backup
   let distRolledBack = false;
   if (marker.distBackupPath) {
-    distRolledBack = await restoreDist(marker.distBackupPath);
+    distRolledBack = await restoreDist(marker.distBackupPath, opts.distTargetDir);
     if (!distRolledBack) {
       log.warn(`config-pending: dist rollback failed, continuing with config-only rollback`);
     }
