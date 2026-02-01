@@ -1,16 +1,16 @@
+import JSON5 from "json5";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-
-import JSON5 from "json5";
-
+import type { OpenClawConfig, ConfigFileSnapshot, LegacyConfigIssue } from "./types.js";
 import {
   loadShellEnvFallback,
   resolveShellEnvFallbackTimeoutMs,
   shouldDeferShellEnvFallback,
   shouldEnableShellEnvFallback,
 } from "../infra/shell-env.js";
+import { VERSION } from "../version.js";
 import { DuplicateAgentDirError, findDuplicateAgentDirs } from "./agent-dirs.js";
 import {
   applyCompactionDefaults,
@@ -22,19 +22,22 @@ import {
   applySessionDefaults,
   applyTalkApiKey,
 } from "./defaults.js";
+<<<<<<< HEAD
 import { VERSION } from "../version.js";
 import {
   MissingEnvVarError,
   resolveConfigEnvVars,
   restoreConfigEnvVars,
 } from "./env-substitution.js";
+=======
+import { MissingEnvVarError, resolveConfigEnvVars } from "./env-substitution.js";
+>>>>>>> origin/main
 import { collectConfigEnvVars } from "./env-vars.js";
 import { ConfigIncludeError, resolveConfigIncludes } from "./includes.js";
 import { findLegacyConfigIssues } from "./legacy.js";
 import { normalizeConfigPaths } from "./normalize-paths.js";
 import { resolveConfigPath, resolveDefaultConfigCandidates, resolveStateDir } from "./paths.js";
 import { applyConfigOverrides } from "./runtime-overrides.js";
-import type { OpenClawConfig, ConfigFileSnapshot, LegacyConfigIssue } from "./types.js";
 import { validateConfigObjectWithPlugins } from "./validation.js";
 import { compareOpenClawVersions } from "./version.js";
 
