@@ -176,15 +176,14 @@ export function resolveGcpLocation(env: NodeJS.ProcessEnv = process.env): string
 }
 
 /**
- * Check if gcloud ADC is available
+ * Check if gcloud ADC credentials are available (not just project env vars)
  */
 export function hasGcloudAdc(env: NodeJS.ProcessEnv = process.env): boolean {
-  // Check for service account or ADC
-  return !!(
-    env.GOOGLE_APPLICATION_CREDENTIALS?.trim() ||
-    env.GOOGLE_CLOUD_PROJECT?.trim() ||
-    env.GCLOUD_PROJECT?.trim()
-  );
+  // Only return true if actual credentials are available:
+  // - GOOGLE_APPLICATION_CREDENTIALS points to a service account key file
+  // - Or we're on GCE/Cloud Run with implicit credentials (check via metadata server at runtime)
+  // Project env vars alone are not credentials
+  return !!env.GOOGLE_APPLICATION_CREDENTIALS?.trim();
 }
 
 /**
@@ -207,10 +206,9 @@ export function buildVertexAnthropicProvider(params: {
 /**
  * Resolve implicit Vertex Anthropic provider if GCP credentials are available
  */
-export async function resolveImplicitVertexAnthropicProvider(params: {
-  agentDir: string;
+export function resolveImplicitVertexAnthropicProvider(params: {
   env?: NodeJS.ProcessEnv;
-}): Promise<ProviderConfig | null> {
+}): ProviderConfig | null {
   const env = params.env ?? process.env;
 
   const project = resolveGcpProject(env);
