@@ -42,6 +42,7 @@ import {
   type FailoverReason,
 } from "../pi-embedded-helpers.js";
 import { normalizeUsage, type UsageLike } from "../usage.js";
+import { emitAgentEvent } from "../../infra/agent-events.js";
 
 import { compactEmbeddedPiSessionDirect } from "./compact.js";
 import { resolveGlobalLane, resolveSessionLane } from "./lanes.js";
@@ -67,6 +68,51 @@ function scrubAnthropicRefusalMagic(prompt: string): string {
     ANTHROPIC_MAGIC_STRING_TRIGGER_REFUSAL,
     ANTHROPIC_MAGIC_STRING_REPLACEMENT,
   );
+}
+
+function emitGuardrailBlockLifecycle(params: {
+  runId: string;
+  sessionKey?: string;
+  onAgentEvent?: (evt: { stream: string; data: Record<string, unknown> }) => void;
+  message: string;
+  startedAt: number;
+}) {
+  if (!params.runId) {
+    return;
+  }
+  const trimmed = params.message.trim();
+  emitAgentEvent({
+    runId: params.runId,
+    sessionKey: params.sessionKey,
+    stream: "lifecycle",
+    data: { phase: "start", startedAt: params.startedAt },
+  });
+  void params.onAgentEvent?.({
+    stream: "lifecycle",
+    data: { phase: "start" },
+  });
+  if (trimmed) {
+    emitAgentEvent({
+      runId: params.runId,
+      sessionKey: params.sessionKey,
+      stream: "assistant",
+      data: { text: trimmed, delta: trimmed },
+    });
+    void params.onAgentEvent?.({
+      stream: "assistant",
+      data: { text: trimmed, delta: trimmed },
+    });
+  }
+  emitAgentEvent({
+    runId: params.runId,
+    sessionKey: params.sessionKey,
+    stream: "lifecycle",
+    data: { phase: "end", endedAt: Date.now() },
+  });
+  void params.onAgentEvent?.({
+    stream: "lifecycle",
+    data: { phase: "end" },
+  });
 }
 
 export async function runEmbeddedPiAgent(
@@ -380,6 +426,15 @@ export async function runEmbeddedPiAgent(
 
           if (guardrailBlock) {
             const isBeforeRequest = guardrailBlock.stage === "before_request";
+            if (isBeforeRequest) {
+              emitGuardrailBlockLifecycle({
+                runId: params.runId,
+                sessionKey: params.sessionKey ?? params.sessionId,
+                onAgentEvent: params.onAgentEvent,
+                message: attempt.assistantTexts.join("\n\n"),
+                startedAt: started,
+              });
+            }
             const payloads = buildEmbeddedRunPayloads({
               assistantTexts: attempt.assistantTexts,
               toolMetas: attempt.toolMetas,
