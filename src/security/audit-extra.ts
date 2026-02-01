@@ -219,6 +219,28 @@ export function collectHooksHardeningFindings(cfg: OpenClawConfig): SecurityAudi
     });
   }
 
+  // Warn when external content safety wrapping is disabled for hooks (untrusted email/webhook input).
+  const gmailAllowUnsafe = cfg.hooks?.gmail?.allowUnsafeExternalContent === true;
+  const mappings = Array.isArray(cfg.hooks?.mappings) ? cfg.hooks.mappings : [];
+  const mappingAllowsUnsafe = mappings.some(
+    (m) =>
+      m &&
+      typeof m === "object" &&
+      (m as { allowUnsafeExternalContent?: boolean }).allowUnsafeExternalContent === true,
+  );
+  if (gmailAllowUnsafe || mappingAllowsUnsafe) {
+    findings.push({
+      checkId: "hooks.allow_unsafe_external_content",
+      severity: "warn",
+      title: "External content safety wrapping is disabled for hooks",
+      detail:
+        "allowUnsafeExternalContent is enabled for Gmail or one or more hook mappings. " +
+        "Untrusted email/webhook content will be sent to the agent without security boundaries; consider enabling wrapping to reduce prompt-injection risk.",
+      remediation:
+        "Remove hooks.gmail.allowUnsafeExternalContent and allowUnsafeExternalContent from hook mappings unless you explicitly need raw content.",
+    });
+  }
+
   return findings;
 }
 
