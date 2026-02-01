@@ -15,7 +15,7 @@ import type { CommandArgs } from "../auto-reply/commands-registry.js";
 import { resolveTelegramCustomCommands } from "../config/telegram-custom-commands.js";
 import { dispatchReplyWithBufferedBlockDispatcher } from "../auto-reply/reply/provider-dispatcher.js";
 import { finalizeInboundContext } from "../auto-reply/reply/inbound-context.js";
-import { danger, logVerbose } from "../globals.js";
+import { danger, warn, logVerbose } from "../globals.js";
 import { resolveMarkdownTableMode } from "../config/markdown-tables.js";
 import { withTelegramApiErrorLogging } from "./api-logging.js";
 import {
@@ -322,6 +322,8 @@ export const registerTelegramNativeCommands = ({
     existingCommands.add(normalized);
     pluginCommands.push({ command: normalized, description });
   }
+  const TELEGRAM_MAX_COMMANDS = 100;
+
   const allCommands: Array<{ command: string; description: string }> = [
     ...nativeCommands.map((command) => ({
       command: command.name,
@@ -331,11 +333,23 @@ export const registerTelegramNativeCommands = ({
     ...customCommands,
   ];
 
-  if (allCommands.length > 0) {
+  if (allCommands.length > TELEGRAM_MAX_COMMANDS) {
+    runtime.error?.(
+      warn(
+        `Telegram limits bots to ${TELEGRAM_MAX_COMMANDS} commands. ` +
+          `${allCommands.length} commands configured; registering first ${TELEGRAM_MAX_COMMANDS}. ` +
+          `Set channels.telegram.commands.native: false to disable skill command registration.`,
+      ),
+    );
+  }
+
+  const commandsToRegister = allCommands.slice(0, TELEGRAM_MAX_COMMANDS);
+
+  if (commandsToRegister.length > 0) {
     withTelegramApiErrorLogging({
       operation: "setMyCommands",
       runtime,
-      fn: () => bot.api.setMyCommands(allCommands),
+      fn: () => bot.api.setMyCommands(commandsToRegister),
     }).catch(() => {});
 
     if (typeof (bot as unknown as { command?: unknown }).command !== "function") {
