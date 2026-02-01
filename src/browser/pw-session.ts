@@ -98,6 +98,12 @@ const MAX_CONSOLE_MESSAGES = 500;
 const MAX_PAGE_ERRORS = 200;
 const MAX_NETWORK_REQUESTS = 500;
 
+// Default download path for CDP-connected browsers
+export const CDP_DOWNLOAD_PATH = "/tmp/openclaw/downloads";
+
+// Track pages that have download behavior configured
+const downloadBehaviorConfigured = new WeakSet<Page>();
+
 let cached: ConnectedBrowser | null = null;
 let connecting: Promise<ConnectedBrowser> | null = null;
 
@@ -180,11 +186,47 @@ export function restoreRoleRefsForTarget(opts: {
   state.roleRefsMode = cached.mode;
 }
 
+/**
+ * Configure download behavior for a page via CDP.
+ * This is required for Playwright to receive download events when connected via CDP.
+ * Without this, downloads go to Chrome's default handling and Playwright can't intercept them.
+ */
+async function configureDownloadBehavior(page: Page): Promise<void> {
+  if (downloadBehaviorConfigured.has(page)) {
+    return;
+  }
+  downloadBehaviorConfigured.add(page);
+
+  try {
+    const session = await page.context().newCDPSession(page);
+    try {
+      // Create the download directory if it doesn't exist
+      const fs = await import("node:fs/promises");
+      await fs.mkdir(CDP_DOWNLOAD_PATH, { recursive: true });
+
+      // Enable download events and set the download path
+      await session.send("Browser.setDownloadBehavior", {
+        behavior: "allowAndName",
+        downloadPath: CDP_DOWNLOAD_PATH,
+        eventsEnabled: true,
+      });
+    } finally {
+      await session.detach().catch(() => {});
+    }
+  } catch {
+    // Best-effort: some CDP connections may not support this command
+    // (e.g., extension relay stubs it out). Downloads will fall back to Chrome's default handling.
+  }
+}
+
 export function ensurePageState(page: Page): PageState {
   const existing = pageStates.get(page);
   if (existing) {
     return existing;
   }
+
+  // Configure download behavior for this page (async, best-effort)
+  void configureDownloadBehavior(page);
 
   const state: PageState = {
     console: [],
@@ -446,6 +488,8 @@ export async function getPageForTargetId(opts: {
   }
   const first = pages[0];
   if (!opts.targetId) {
+    // Ensure download behavior is configured before returning
+    await configureDownloadBehavior(first);
     return first;
   }
   const found = await findPageByTargetId(browser, opts.targetId, opts.cdpUrl);
@@ -454,10 +498,14 @@ export async function getPageForTargetId(opts: {
     // which prevents us from resolving a page's targetId via newCDPSession(). If Playwright
     // only exposes a single Page, use it as a best-effort fallback.
     if (pages.length === 1) {
+      // Ensure download behavior is configured before returning
+      await configureDownloadBehavior(first);
       return first;
     }
     throw new Error("tab not found");
   }
+  // Ensure download behavior is configured before returning
+  await configureDownloadBehavior(found);
   return found;
 }
 
