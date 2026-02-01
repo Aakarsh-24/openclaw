@@ -24,6 +24,42 @@ const DISCORD_CANNOT_DM = 50007;
 
 type DiscordRequest = RetryRunner;
 
+/**
+ * Sanitize model output by removing reasoning/thinking blocks and internal markers.
+ * This prevents LLMs with extended reasoning from polluting Discord with their intermediate thoughts.
+ * Handles formats from Gemini 3 Pro, DeepSeek, Kimi, Grok, and other reasoning models.
+ */
+function sanitizeModelOutput(text: string): string {
+  if (!text) return "";
+
+  let out = text;
+
+  // Remove <think>...</think> (Gemini 3 Pro, DeepSeek, Kimi)
+  out = out.replace(/<think>[\s\S]*?<\/think>/gi, "");
+
+  // Remove "Thought:" blocks (Grok, older reasoning models)
+  out = out.replace(/(^|\n)\s*Thoughts?:[\s\S]*?(?=\n\s*\n|$)/gi, "$1");
+
+  // Remove "Thinking..." markers - fixed to handle space before ellipsis
+  out = out.replace(/Thinking(?:\s*\.{3})?\s*/gi, "");
+
+  // Remove bracketed reasoning like [Thinking...], [thinking], etc.
+  // Includes the brackets themselves
+  out = out.replace(/\[\s*(?:thinking|thoughts?)(?:\s*\.{3})?\s*\]/gi, "");
+
+  // Remove parenthesized reasoning like (thinking), (thoughts), etc.
+  // Includes the parentheses themselves
+  out = out.replace(/\(\s*(?:thinking|thoughts?)(?:\s*\.{3})?\s*\)/gi, "");
+
+  // Collapse multiple blank lines and cleanup
+  out = out.replace(/\n{3,}/g, "\n\n");
+  out = out.replace(/\s*\[\s*\]\s*/g, " ");
+  out = out.replace(/\s*\(\s*\)\s*/g, " ");
+  out = out.replace(/ {2,}/g, " ").trim();
+
+  return out;
+}
+
 type DiscordRecipient =
   | {
       kind: "user";
@@ -288,17 +324,23 @@ async function sendDiscordText(
   embeds?: unknown[],
   chunkMode?: ChunkMode,
 ) {
-  if (!text.trim()) {
-    throw new Error("Message must be non-empty for Discord sends");
+  // Sanitize model output first (remove <think>, "Thought:", etc.)
+  const sanitized = sanitizeModelOutput(text).trim();
+
+  if (!sanitized) {
+    throw new Error(
+      "Message reduced to empty after sanitization (only reasoning content was present)",
+    );
   }
+
   const messageReference = replyTo ? { message_id: replyTo, fail_if_not_exists: false } : undefined;
-  const chunks = chunkDiscordTextWithMode(text, {
+  const chunks = chunkDiscordTextWithMode(sanitized, {
     maxChars: DISCORD_TEXT_LIMIT,
     maxLines: maxLinesPerMessage,
     chunkMode,
   });
-  if (!chunks.length && text) {
-    chunks.push(text);
+  if (!chunks.length && sanitized) {
+    chunks.push(sanitized);
   }
   if (chunks.length === 1) {
     const res = (await request(
@@ -348,15 +390,17 @@ async function sendDiscordMedia(
   chunkMode?: ChunkMode,
 ) {
   const media = await loadWebMedia(mediaUrl);
-  const chunks = text
-    ? chunkDiscordTextWithMode(text, {
+  // Sanitize model output first
+  const sanitized = sanitizeModelOutput(text).trim();
+  const chunks = sanitized
+    ? chunkDiscordTextWithMode(sanitized, {
         maxChars: DISCORD_TEXT_LIMIT,
         maxLines: maxLinesPerMessage,
         chunkMode,
       })
     : [];
-  if (!chunks.length && text) {
-    chunks.push(text);
+  if (!chunks.length && sanitized) {
+    chunks.push(sanitized);
   }
   const caption = chunks[0] ?? "";
   const messageReference = replyTo ? { message_id: replyTo, fail_if_not_exists: false } : undefined;
