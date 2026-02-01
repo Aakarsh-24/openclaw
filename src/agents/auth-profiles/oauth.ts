@@ -63,10 +63,7 @@ async function refreshOAuthTokenWithLock(params: {
               const newCredentials = await refreshQwenPortalCredentials(cred);
               return { apiKey: newCredentials.access, newCredentials };
             })()
-          : await getOAuthApiKey(
-              cred.provider as import("@mariozechner/pi-ai").OAuthProvider,
-              oauthCreds,
-            );
+          : await getOAuthApiKey(cred.provider, oauthCreds);
     if (!result) {
       return null;
     }
