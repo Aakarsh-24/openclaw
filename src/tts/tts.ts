@@ -1189,8 +1189,10 @@ function isValidGeminiVoice(voice: string): voice is GeminiTtsVoice {
   return GEMINI_TTS_VOICES.some((v) => v.toLowerCase() === voice.toLowerCase());
 }
 
-function isValidGeminiModel(model: string): model is GeminiTtsModel {
-  return GEMINI_TTS_MODELS.includes(model as GeminiTtsModel);
+function isValidGeminiModel(model: string): boolean {
+  // Allow any model string that looks like a Gemini model (relaxed validation)
+  // This permits custom/future models and region-specific variants
+  return typeof model === "string" && model.length > 0 && model.startsWith("gemini-");
 }
 
 /**
@@ -1252,8 +1254,9 @@ async function geminiTTS(params: {
   model: string;
   voiceName: string;
   timeoutMs: number;
+  wrapInWav?: boolean;
 }): Promise<Buffer> {
-  const { text, apiKey, model, voiceName, timeoutMs } = params;
+  const { text, apiKey, model, voiceName, timeoutMs, wrapInWav = true } = params;
 
   if (!isValidGeminiModel(model)) {
     throw new Error(`Invalid Gemini TTS model: ${model}`);
@@ -1313,8 +1316,8 @@ async function geminiTTS(params: {
     // Gemini returns base64-encoded audio (audio/L16 PCM at 24kHz mono)
     const pcmBuffer = Buffer.from(inlineData.data, "base64");
 
-    // Wrap PCM data in WAV container for compatibility
-    return wrapPcmInWav(pcmBuffer, 24000, 1, 16);
+    // Wrap PCM data in WAV container for compatibility (unless raw PCM requested)
+    return wrapInWav ? wrapPcmInWav(pcmBuffer, 24000, 1, 16) : pcmBuffer;
   } finally {
     clearTimeout(timeout);
   }
@@ -1612,6 +1615,7 @@ export async function textToSpeechTelephony(params: {
           model: config.gemini.model,
           voiceName: config.gemini.voiceName,
           timeoutMs: config.timeoutMs,
+          wrapInWav: false, // Telephony needs raw PCM
         });
 
         return {
