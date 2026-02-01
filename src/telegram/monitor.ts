@@ -106,10 +106,13 @@ const isTimeoutAbortError = (err: unknown): boolean => {
     return false;
   }
 
-  // Walk the error cause chain looking for timeout-specific error codes
+  // Walk the error cause chain looking for timeout-specific indicators
   let current: any = err;
   while (current) {
     const code = current.code;
+    const name = current.name;
+    const message = current.message ? String(current.message).toLowerCase() : "";
+
     // Check for timeout-specific error codes from undici/Node.js
     if (
       code === "ETIMEDOUT" ||
@@ -119,6 +122,17 @@ const isTimeoutAbortError = (err: unknown): boolean => {
     ) {
       return true;
     }
+
+    // Check for TimeoutError name (common in undici/AbortSignal chains)
+    if (name === "TimeoutError") {
+      return true;
+    }
+
+    // Fall back to message heuristic if code/name don't match
+    if (message.includes("timeout") || message.includes("timed out")) {
+      return true;
+    }
+
     current = current.cause;
   }
   return false;
