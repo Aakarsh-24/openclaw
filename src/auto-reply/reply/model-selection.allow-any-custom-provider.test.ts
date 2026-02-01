@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { OpenClawConfig } from "../../config/config.js";
 import type { SessionEntry } from "../../config/sessions.js";
 
@@ -23,9 +23,13 @@ vi.mock("../../agents/auth-profiles/session-override.js", () => ({
   clearSessionAuthProfileOverride: vi.fn(async () => {}),
 }));
 
+import { updateSessionStore } from "../../config/sessions.js";
 import { createModelSelectionState } from "./model-selection.js";
 
+const updateSessionStoreMock = vi.mocked(updateSessionStore);
+
 describe("createModelSelectionState: allowAny with custom providers (#2144)", () => {
+  beforeEach(() => updateSessionStoreMock.mockClear());
   const baseCfg: OpenClawConfig = {
     models: {
       providers: {
@@ -71,6 +75,10 @@ describe("createModelSelectionState: allowAny with custom providers (#2144)", ()
     expect(state.provider).toBe("deepseek");
     expect(state.model).toBe("deepseek-chat");
     expect(state.resetModelOverride).toBe(false);
+    // Session entry should NOT have been mutated
+    expect(sessionEntry.providerOverride).toBe("deepseek");
+    expect(sessionEntry.modelOverride).toBe("deepseek-chat");
+    expect(updateSessionStoreMock).not.toHaveBeenCalled();
   });
 
   it("preserves OpenRouter model override when allowAny is true", async () => {
@@ -100,6 +108,9 @@ describe("createModelSelectionState: allowAny with custom providers (#2144)", ()
     expect(state.provider).toBe("openrouter");
     expect(state.model).toBe("google/gemini-2.5-flash");
     expect(state.resetModelOverride).toBe(false);
+    expect(sessionEntry.providerOverride).toBe("openrouter");
+    expect(sessionEntry.modelOverride).toBe("google/gemini-2.5-flash");
+    expect(updateSessionStoreMock).not.toHaveBeenCalled();
   });
 
   it("still allows built-in Anthropic model overrides", async () => {
@@ -129,6 +140,9 @@ describe("createModelSelectionState: allowAny with custom providers (#2144)", ()
     expect(state.provider).toBe("anthropic");
     expect(state.model).toBe("claude-sonnet-4-5");
     expect(state.resetModelOverride).toBe(false);
+    expect(sessionEntry.providerOverride).toBe("anthropic");
+    expect(sessionEntry.modelOverride).toBe("claude-sonnet-4-5");
+    expect(updateSessionStoreMock).not.toHaveBeenCalled();
   });
 
   it("still rejects models not in allowlist when allowlist is configured", async () => {
@@ -173,5 +187,8 @@ describe("createModelSelectionState: allowAny with custom providers (#2144)", ()
     expect(state.provider).toBe(defaultProvider);
     expect(state.model).toBe(defaultModel);
     expect(state.resetModelOverride).toBe(true);
+    // Session entry should have been mutated: override fields deleted
+    expect(sessionEntry.modelOverride).toBeUndefined();
+    expect(sessionEntry.providerOverride).toBeUndefined();
   });
 });
