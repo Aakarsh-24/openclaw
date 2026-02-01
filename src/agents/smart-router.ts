@@ -14,7 +14,7 @@ import {
   type RoutingConfig,
   type RoutingTier,
   type RouterResult,
-  type RuleConfig,
+  type TierConfig,
   DEFAULT_CONFIG,
 } from "./routing-config.js";
 import { UsageTracker, getUsageTracker } from "./usage-tracker.js";
@@ -27,13 +27,50 @@ export interface SmartRouterOptions {
 
 export type LLMRouterFunction = (query: string) => Promise<{ tier: RoutingTier; ack?: string } | null>;
 
+/**
+ * Deep merge two objects, with source taking precedence.
+ * Only merges plain objects; arrays and other types are replaced.
+ */
+function deepMerge<T extends Record<string, unknown>>(target: T, source: Partial<T>): T {
+  const result = { ...target };
+  
+  for (const key of Object.keys(source) as Array<keyof T>) {
+    const sourceValue = source[key];
+    const targetValue = target[key];
+    
+    if (
+      sourceValue !== undefined &&
+      typeof sourceValue === "object" &&
+      sourceValue !== null &&
+      !Array.isArray(sourceValue) &&
+      typeof targetValue === "object" &&
+      targetValue !== null &&
+      !Array.isArray(targetValue)
+    ) {
+      // Recursively merge nested objects
+      result[key] = deepMerge(
+        targetValue as Record<string, unknown>,
+        sourceValue as Record<string, unknown>
+      ) as T[keyof T];
+    } else if (sourceValue !== undefined) {
+      // Replace with source value
+      result[key] = sourceValue as T[keyof T];
+    }
+  }
+  
+  return result;
+}
+
 export class SmartRouter {
   private config: RoutingConfig;
   private usageTracker: UsageTracker;
   private llmRouter?: LLMRouterFunction;
 
   constructor(options: SmartRouterOptions = {}) {
-    this.config = { ...DEFAULT_CONFIG, ...options.config };
+    // Deep merge config to preserve nested defaults when partial config provided
+    this.config = options.config 
+      ? deepMerge(DEFAULT_CONFIG, options.config)
+      : DEFAULT_CONFIG;
     this.usageTracker = options.usageTracker ?? getUsageTracker();
     this.llmRouter = options.llmRouter;
   }
@@ -87,32 +124,46 @@ export class SmartRouter {
 
   /**
    * Check for prefix overrides (!flash, sonnet:, etc.)
+   * If forced model is at quota, tries fallback chain.
    */
   private checkPrefixOverride(query: string): RouterResult | null {
     const lowerQuery = query.toLowerCase();
 
     for (const [prefix, model] of Object.entries(this.config.prefixOverrides)) {
       if (lowerQuery.startsWith(prefix.toLowerCase())) {
-        // Check quota
-        if (this.isModelAtLimit(model)) {
-          return {
-            tier: "OVERRIDE",
-            model,
-            ack: null,
-            source: `prefix:${prefix}`,
-            error: "quota_exceeded",
-          };
-        }
-
         // Strip prefix from query
         const cleanQuery = query.slice(prefix.length).replace(/^[\s:：]+/, "").trim();
 
+        // Check quota and try fallbacks if needed
+        let finalModel = model;
+        let usedFallback = false;
+        
+        if (this.isModelAtLimit(model)) {
+          // Try to find a fallback - use TIER3_COMPLEX fallbacks as default for overrides
+          const fallback = this.findAvailableFallback("TIER3_COMPLEX");
+          if (fallback) {
+            finalModel = fallback;
+            usedFallback = true;
+          } else {
+            // No fallback available - return error
+            return {
+              tier: "OVERRIDE",
+              model,
+              ack: null,
+              cleanQuery,
+              source: `prefix:${prefix}`,
+              error: "quota_exceeded_no_fallback",
+            };
+          }
+        }
+
         return {
           tier: "OVERRIDE",
-          model,
+          model: finalModel,
           ack: null,
           cleanQuery,
           source: `prefix:${prefix}`,
+          usedFallback,
         };
       }
     }
@@ -212,25 +263,34 @@ export class SmartRouter {
   }
 
   /**
-   * Create a router result with model and ack from tier config
+   * Create a router result with model and ack from tier config.
+   * If primary model is at quota, uses fallback and adjusts ack accordingly.
    */
   private createResult(tier: RoutingTier, source: string): RouterResult {
     const tierConfig = this.config.tiers[tier];
     let model = tierConfig?.model ?? "google/gemini-2.5-flash";
+    let ack = tierConfig?.ack ?? null;
+    let usedFallback = false;
 
     // Check quota and fallback if needed
     if (model && this.isModelAtLimit(model)) {
       const fallbackModel = this.findAvailableFallback(tier);
       if (fallbackModel) {
         model = fallbackModel;
+        usedFallback = true;
+        // Adjust ack to indicate fallback (slightly longer wait expected)
+        if (ack) {
+          ack = `${ack} (using fallback)`;
+        }
       }
     }
 
     return {
       tier,
       model: model ?? "google/gemini-2.5-flash",
-      ack: tierConfig?.ack ?? null,
+      ack,
       source,
+      usedFallback,
     };
   }
 

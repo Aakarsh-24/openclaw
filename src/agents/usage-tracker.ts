@@ -6,6 +6,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import os from "node:os";
 
 export interface UsageStats {
   date: string;
@@ -109,7 +110,8 @@ let defaultTracker: UsageTracker | null = null;
 export function getUsageTracker(configDir?: string): UsageTracker {
   if (!defaultTracker || configDir) {
     defaultTracker = new UsageTracker({
-      configDir: configDir ?? process.env.OPENCLAW_CONFIG_DIR ?? path.join(process.env.HOME ?? "~", ".clawdbot"),
+      // Use os.homedir() for reliable home directory resolution (not ~ literal)
+      configDir: configDir ?? process.env.OPENCLAW_CONFIG_DIR ?? path.join(os.homedir(), ".openclaw"),
     });
   }
   return defaultTracker;

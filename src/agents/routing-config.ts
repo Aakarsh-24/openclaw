@@ -78,6 +78,8 @@ export interface RouterResult {
   source: string;
   skip?: boolean;
   error?: string;
+  /** Indicates the primary model was at quota and a fallback was used */
+  usedFallback?: boolean;
 }
 
 export const DEFAULT_CONFIG: RoutingConfig = {

@@ -147,8 +147,9 @@ All routing behavior is driven by `routing-rules.json`:
 
 **Pre-commit checks:**
 ```bash
-# Must pass before any PR
-grep -rE "(AIza|sk-|Bearer [A-Za-z0-9])" . && echo "FAIL: Keys detected" || echo "OK"
+# Must pass before any PR - search for common API key patterns
+# Example patterns: Google AI keys, OpenAI keys, Bearer tokens
+grep -rE "(A]Iza|sk[-]|Bearer [A-Za-z0-9])" . && echo "FAIL" || echo "OK"
 ```
 
 ## Testing
@@ -186,10 +187,11 @@ grep -rE "(AIza|sk-|Bearer [A-Za-z0-9])" . && echo "FAIL: Keys detected" || echo
 
 ## Files
 
-- `scripts/smart-router.sh` — Main router script
-- `scripts/routing-rules.json` — Configuration
-- `~/.clawdbot/usage-stats.json` — Daily usage tracking
-- `docs/SMART-ROUTING.md` — This documentation
+- `src/agents/smart-router.ts` — Main router class
+- `src/agents/routing-config.ts` — Types and default configuration
+- `src/agents/usage-tracker.ts` — Daily usage tracking
+- `src/agents/smart-router.test.ts` — Test suite
+- `~/.openclaw/usage-stats.json` — Runtime usage data (auto-created)
 
 ## Gateway Integration (TODO)
 
