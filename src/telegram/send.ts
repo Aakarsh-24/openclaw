@@ -820,7 +820,7 @@ export async function createForumTopicTelegram(
         ].join(" "),
       );
     }
-    if (/CHAT_NOT_MODIFIED|not enough rights/i.test(errText)) {
+    if (/not enough rights/i.test(errText)) {
       return new Error(
         `Telegram createForumTopic failed: bot must be an administrator with topic management rights.`,
       );
