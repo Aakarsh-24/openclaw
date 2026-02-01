@@ -440,6 +440,7 @@ export class GatewayClient {
         this.pending.delete(id);
         reject(new Error(`Gateway request timeout for ${method}`));
       }, timeoutMs);
+      timeout.unref();
 
       this.pending.set(id, {
         resolve: (value) => {
