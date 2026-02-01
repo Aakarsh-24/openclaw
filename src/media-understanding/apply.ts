@@ -120,20 +120,36 @@ function appendFileBlocks(body: string | undefined, blocks: string[]): string {
 
 /** Detect known binary media via magic bytes to prevent text-heuristic misclassification. */
 function hasMagic(buffer: Buffer, ascii: string): boolean {
-  if (buffer.length < ascii.length) return false;
+  if (buffer.length < ascii.length) {
+    return false;
+  }
   for (let i = 0; i < ascii.length; i++) {
-    if (buffer[i] !== ascii.charCodeAt(i)) return false;
+    if (buffer[i] !== ascii.charCodeAt(i)) {
+      return false;
+    }
   }
   return true;
 }
 
 function isKnownBinaryMedia(buffer?: Buffer): boolean {
-  if (!buffer || buffer.length < 4) return false;
-  if (hasMagic(buffer, "OggS")) return true; // OGG/Opus (Telegram voice)
-  if (hasMagic(buffer, "RIFF")) return true; // WAV/AVI
-  if (hasMagic(buffer, "ID3")) return true; // MP3 with ID3 tag
-  if (hasMagic(buffer, "fLaC")) return true; // FLAC
-  if (buffer[0] === 0xff && (buffer[1] & 0xe0) === 0xe0) return true; // MP3 sync
+  if (!buffer || buffer.length < 4) {
+    return false;
+  }
+  if (hasMagic(buffer, "OggS")) {
+    return true;
+  }
+  if (hasMagic(buffer, "RIFF")) {
+    return true;
+  }
+  if (hasMagic(buffer, "ID3")) {
+    return true;
+  }
+  if (hasMagic(buffer, "fLaC")) {
+    return true;
+  }
+  if (buffer[0] === 0xff && (buffer[1] & 0xe0) === 0xe0) {
+    return true;
+  }
   return false;
 }
 
