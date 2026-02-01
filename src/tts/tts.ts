@@ -1183,7 +1183,6 @@ export const GEMINI_TTS_MODELS = [
 ] as const;
 
 type GeminiTtsVoice = (typeof GEMINI_TTS_VOICES)[number];
-type GeminiTtsModel = (typeof GEMINI_TTS_MODELS)[number];
 
 function isValidGeminiVoice(voice: string): voice is GeminiTtsVoice {
   return GEMINI_TTS_VOICES.some((v) => v.toLowerCase() === voice.toLowerCase());
