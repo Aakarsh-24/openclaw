@@ -90,15 +90,23 @@ import { detectAndLoadPromptImages } from "./images.js";
 
 /**
  * Wraps a promise with a timeout, rejecting if it doesn't settle in time.
- * Used to prevent hanging on lock release or other async cleanup. (Fix for #3092)
+ * Clears the timer when the main promise settles to prevent leaks. (Fix for #3092)
  */
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error(`${label} timeout after ${ms}ms`)), ms),
-    ),
-  ]);
+  let timer: NodeJS.Timeout | undefined;
+  return new Promise<T>((resolve, reject) => {
+    timer = setTimeout(() => reject(new Error(`${label} timeout after ${ms}ms`)), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      },
+    );
+  });
 }
 
 export function injectHistoryImagesIntoMessages(
@@ -833,12 +841,9 @@ export async function runEmbeddedAttempt(
               ? activeSession.prompt(effectivePrompt, { images: imageResult.images })
               : activeSession.prompt(effectivePrompt);
 
-          // Prevent late rejection (after abort) from becoming unhandled
-          void promptPromise.catch((err) => {
-            if (runAbortController.signal.aborted) {
-              log.debug(`prompt rejected after abort: ${err}`);
-            }
-          });
+          // Suppress late rejection (after abort wins the race) to avoid unhandled rejection warning.
+          // The actual error is captured via promptError in the catch block below.
+          void promptPromise.catch(() => {});
 
           // Race prompt against abort signal - guarantees finally block runs on timeout
           await Promise.race([abortable(promptPromise), rejectOnAbort(runAbortController.signal)]);
