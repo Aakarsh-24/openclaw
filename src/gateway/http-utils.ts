@@ -15,7 +15,7 @@ export function getHeader(req: IncomingMessage, name: string): string | undefine
 
 export function getBearerToken(req: IncomingMessage): string | undefined {
   const raw = getHeader(req, "authorization")?.trim();
-  if (!raw || raw.length < 8) {
+  if (!raw) {
     return undefined;
   }
   if (!raw.toLowerCase().startsWith("bearer ")) {
