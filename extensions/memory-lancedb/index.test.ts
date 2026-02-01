@@ -1,12 +1,12 @@
 /**
- * Memory Plugin E2E Tests
- *
- * Tests the memory plugin functionality including:
- * - Plugin registration and configuration
- * - Memory storage and retrieval
- * - Auto-recall via hooks
- * - Auto-capture filtering
- */
+* Memory Plugin E2E Tests
+*
+* Tests the memory plugin functionality including:
+* - Plugin registration and configuration
+* - Memory storage and retrieval
+* - Auto-recall via hooks
+* - Auto-capture filtering
+*/
 
 import fs from "node:fs/promises";
 import os from "node:os";

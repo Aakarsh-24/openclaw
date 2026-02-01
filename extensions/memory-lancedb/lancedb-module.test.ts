@@ -1,19 +1,19 @@
 /**
- * LanceDB Native Module Availability Test
- *
- * This test verifies that @lancedb/lancedb native module is correctly
- * compiled and available in the environment. This is critical for:
- * - Docker multi-stage build validation
- * - Production deployment verification
- * - Memory extension functionality
- *
- * The test ensures the Rust-based lancedb native module (compiled to .node binary)
- * is present and functional, which is essential for the memory-lancedb extension.
- *
- * Note: These tests are skipped in CI environments where the native module
- * may not be available. They are primarily useful for verifying Docker image
- * builds and production environments where the module should be compiled.
- */
+* LanceDB Native Module Availability Test
+*
+* This test verifies that @lancedb/lancedb native module is correctly
+* compiled and available in the environment. This is critical for:
+* - Docker multi-stage build validation
+* - Production deployment verification
+* - Memory extension functionality
+*
+* The test ensures the Rust-based lancedb native module (compiled to .node binary)
+* is present and functional, which is essential for the memory-lancedb extension.
+*
+* Note: These tests are skipped in CI environments where the native module
+* may not be available. They are primarily useful for verifying Docker image
+* builds and production environments where the module should be compiled.
+*/
 
 import { describe, test, expect } from "vitest";
 
@@ -45,7 +45,8 @@ describeLanceDB("@lancedb/lancedb native module", () => {
       throw new Error(
         `Failed to import @lancedb/lancedb. ` +
         `This indicates the native module compilation failed or the binary is missing from the image. ` +
-        `Error: ${err.message}`
+        `Error: ${err.message}`,
+        { cause: err }
       );
     }
   });
