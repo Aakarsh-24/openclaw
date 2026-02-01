@@ -10,9 +10,9 @@ import {
   renderStreamingGroup,
 } from "../chat/grouped-render";
 import { normalizeMessage, normalizeRoleForGrouping } from "../chat/message-normalizer";
+import { renderModelPickerDialog } from "../components/model-picker-dialog";
 import { icons } from "../icons";
 import { renderMarkdownSidebar } from "./markdown-sidebar";
-import { renderModelPickerDialog } from "../components/model-picker-dialog";
 import "../components/resizable-divider";
 
 export type CompactionIndicatorStatus = {
@@ -42,7 +42,13 @@ export type ChatProps = {
   disabledReason: string | null;
   error: string | null;
   sessions: SessionsListResult | null;
-  availableModels?: Array<{ id: string; name?: string; provider?: string; contextWindow?: number; reasoning?: boolean }>;
+  availableModels?: Array<{
+    id: string;
+    name?: string;
+    provider?: string;
+    contextWindow?: number;
+    reasoning?: boolean;
+  }>;
   currentModel?: string | null;
   // Focus mode
   focusMode: boolean;
@@ -202,12 +208,12 @@ function renderModelSelector(props: ChatProps) {
   }
 
   const currentModel = props.currentModel || "";
-  
+
   // Find current model display name
   const currentModelEntry = props.availableModels.find((m) => m.id === currentModel);
   const currentModelDisplay = currentModelEntry?.name || currentModel || "Select model...";
   const currentProvider = currentModelEntry?.provider || "";
-  
+
   return html`
     <div class="chat-compose__meta">
       <button

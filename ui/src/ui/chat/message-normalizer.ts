@@ -87,7 +87,7 @@ export function isToolResultMessage(message: unknown): boolean {
   if (!message || typeof message !== "object") return false;
   const m = message as Record<string, unknown>;
   const role = typeof m.role === "string" ? m.role.toLowerCase() : "";
-  
+
   // Explicit tool roles
   if (role === "tool" || role === "toolresult" || role === "tool_result" || role === "function") {
     return true;

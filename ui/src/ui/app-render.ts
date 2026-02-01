@@ -23,17 +23,6 @@ import { parseAgentSessionKey } from "../../../src/routing/session-key.js";
 import { refreshChatAvatar } from "./app-chat";
 import { renderChatControls, renderTab, renderThemeToggle } from "./app-render.helpers";
 import { loadChannels } from "./controllers/channels";
-import { loadPresence } from "./controllers/presence";
-import { deleteSession, loadSessions, patchSession } from "./controllers/sessions";
-import {
-  installSkill,
-  loadSkills,
-  saveSkillApiKey,
-  updateSkillEdit,
-  updateSkillEnabled,
-  type SkillMessage,
-} from "./controllers/skills";
-import { loadNodes } from "./controllers/nodes";
 import { loadChatHistory, patchChatModel } from "./controllers/chat";
 import {
   applyConfig,
@@ -66,8 +55,19 @@ import {
 } from "./controllers/exec-approvals";
 import { loadLogs } from "./controllers/logs";
 import { loadNodes } from "./controllers/nodes";
+import { loadNodes } from "./controllers/nodes";
+import { loadPresence } from "./controllers/presence";
 import { loadPresence } from "./controllers/presence";
 import { deleteSession, loadSessions, patchSession } from "./controllers/sessions";
+import { deleteSession, loadSessions, patchSession } from "./controllers/sessions";
+import {
+  installSkill,
+  loadSkills,
+  saveSkillApiKey,
+  updateSkillEdit,
+  updateSkillEnabled,
+  type SkillMessage,
+} from "./controllers/skills";
 import {
   installSkill,
   loadSkills,

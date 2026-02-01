@@ -19,10 +19,10 @@ import {
   parseExecApprovalResolved,
   removeExecApproval,
 } from "./controllers/exec-approval";
+import { loadAvailableModels } from "./controllers/models";
 import { loadNodes } from "./controllers/nodes";
 import { loadSessions } from "./controllers/sessions";
 import { GatewayBrowserClient } from "./gateway";
-import { loadAvailableModels } from "./controllers/models";
 
 type GatewayHost = {
   settings: UiSettings;

@@ -36,6 +36,15 @@ export async function loadGatewayModelCatalog(): Promise<GatewayModelChoice[]> {
   const catalog = await loadModelCatalog({ config: loadConfig() });
   const configuredProviders = getConfiguredProviders();
 
+  // If no providers are configured, return the full catalog
+  // (allows model picker to work during initial setup)
+  if (configuredProviders.size === 0) {
+    return catalog.map((entry) => ({
+      ...entry,
+      configured: false,
+    }));
+  }
+
   // Filter to only models from configured providers
   // and add the "configured" flag for UI display
   return catalog

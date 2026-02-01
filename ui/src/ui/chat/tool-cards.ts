@@ -3,7 +3,7 @@ import type { ToolCard } from "../types/chat-types";
 import { icons } from "../icons";
 import { formatToolDetail, resolveToolDisplay } from "../tool-display";
 import { TOOL_INLINE_THRESHOLD } from "./constants";
-import { extractTextCached, extractRawText } from "./message-extract";
+import { extractRawText } from "./message-extract";
 import { isToolResultMessage, normalizeMessage } from "./message-normalizer";
 import { formatToolOutputForSidebar, getTruncatedPreview } from "./tool-helpers";
 

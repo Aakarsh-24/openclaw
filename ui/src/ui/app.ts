@@ -222,7 +222,13 @@ export class OpenClawApp extends LitElement {
   @state() debugLoading = false;
   @state() debugStatus: StatusSummary | null = null;
   @state() debugHealth: HealthSnapshot | null = null;
-  @state() debugModels: Array<{ id: string; name?: string; provider?: string; contextWindow?: number; reasoning?: boolean }> = [];
+  @state() debugModels: Array<{
+    id: string;
+    name?: string;
+    provider?: string;
+    contextWindow?: number;
+    reasoning?: boolean;
+  }> = [];
   @state() debugHeartbeat: unknown | null = null;
   @state() debugCallMethod = "";
   @state() debugCallParams = "{}";

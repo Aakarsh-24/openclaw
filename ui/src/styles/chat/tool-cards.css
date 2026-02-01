@@ -9,9 +9,10 @@
   transition:
     border-color 150ms ease-out,
     background 150ms ease-out;
-  /* Allow cards to expand for inline output */
-  max-height: 800px;
-  overflow: hidden;
+  /* Allow cards to expand for inline output, but avoid dominating the viewport */
+  max-height: 400px;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .chat-tool-card__inline-output {
@@ -27,7 +28,7 @@
 .chat-tool-card__inline-output pre {
   margin: 0;
   white-space: pre-wrap;
-  word-break: break-all;
+  overflow-wrap: break-word;
 }
 
 .chat-tool-card__duration {

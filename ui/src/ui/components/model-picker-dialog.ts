@@ -1,13 +1,8 @@
 import { html, nothing } from "lit";
+import type { ModelEntry } from "../controllers/models";
 import { icons } from "../icons";
 
-export type ModelEntry = {
-  id: string;
-  name?: string;
-  provider?: string;
-  contextWindow?: number;
-  reasoning?: boolean;
-};
+export type { ModelEntry } from "../controllers/models";
 
 export type ModelPickerDialogProps = {
   open: boolean;
@@ -93,20 +88,41 @@ export function renderModelPickerDialog(props: ModelPickerDialogProps) {
     }
   };
 
+  // Use document-level listener for Escape key (more reliable than element-level)
   const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === "Escape") {
       props.onClose();
+      e.stopPropagation();
     }
   };
+
+  // Attach document listener when dialog is rendered
+  // Note: Lit will re-render on close, so we set up listener each time dialog opens
+  setTimeout(() => {
+    const cleanup = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        props.onClose();
+        document.removeEventListener("keydown", cleanup);
+      }
+    };
+    document.addEventListener("keydown", cleanup);
+    // Focus the dialog for accessibility
+    const dialog = document.querySelector(".model-picker-dialog") as HTMLElement;
+    dialog?.focus();
+  }, 0);
 
   return html`
     <div
       class="model-picker-backdrop"
       @click=${handleBackdropClick}
-      @keydown=${handleKeyDown}
-      tabindex="-1"
     >
-      <div class="model-picker-dialog" role="dialog" aria-modal="true" aria-labelledby="model-picker-title">
+      <div
+        class="model-picker-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="model-picker-title"
+        tabindex="0"
+      >
         <div class="model-picker-header">
           <h2 id="model-picker-title" class="model-picker-title">Select Model</h2>
           <button
@@ -123,7 +139,7 @@ export function renderModelPickerDialog(props: ModelPickerDialogProps) {
           ${providers.map((provider) => {
             const models = grouped.get(provider) || [];
             if (models.length === 0) return nothing;
-            
+
             return html`
               <div class="model-picker-provider">
                 <div class="model-picker-provider-header">
@@ -135,7 +151,7 @@ export function renderModelPickerDialog(props: ModelPickerDialogProps) {
                   ${models.map((model) => {
                     const isSelected = model.id === props.currentModel;
                     const contextStr = formatContextWindow(model.contextWindow);
-                    
+
                     return html`
                       <button
                         class="model-picker-model ${isSelected ? "model-picker-model--selected" : ""}"
@@ -151,7 +167,13 @@ export function renderModelPickerDialog(props: ModelPickerDialogProps) {
                         </div>
                         <div class="model-picker-model-meta">
                           ${contextStr ? html`<span class="model-picker-model-context" title="Context window">${contextStr} ctx</span>` : nothing}
-                          ${model.reasoning ? html`<span class="model-picker-model-badge" title="Reasoning/thinking model">🧠</span>` : nothing}
+                          ${
+                            model.reasoning
+                              ? html`
+                                  <span class="model-picker-model-badge" title="Reasoning/thinking model">🧠</span>
+                                `
+                              : nothing
+                          }
                         </div>
                       </button>
                     `;
@@ -164,9 +186,12 @@ export function renderModelPickerDialog(props: ModelPickerDialogProps) {
         
         <div class="model-picker-footer">
           <div class="model-picker-current">
-            ${props.currentModel 
-              ? html`Current: <strong>${props.models.find((m) => m.id === props.currentModel)?.name || props.currentModel}</strong>`
-              : html`<em>No model selected</em>`
+            ${
+              props.currentModel
+                ? html`Current: <strong>${props.models.find((m) => m.id === props.currentModel)?.name || props.currentModel}</strong>`
+                : html`
+                    <em>No model selected</em>
+                  `
             }
           </div>
         </div>

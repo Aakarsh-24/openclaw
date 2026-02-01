@@ -398,7 +398,9 @@
   color: var(--text);
   font-size: 12px;
   cursor: pointer;
-  transition: border-color 150ms ease-out, background 150ms ease-out;
+  transition:
+    border-color 150ms ease-out,
+    background 150ms ease-out;
 }
 
 .chat-model-button:hover {
