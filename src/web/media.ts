@@ -28,6 +28,7 @@ type WebMediaOptions = {
   optimizeImages?: boolean;
   allowAnyLocal?: boolean;
   localRoots?: string[];
+  agentId?: string;
   lookupFn?: typeof import("node:dns/promises").lookup;
   maxRedirects?: number;
 };
@@ -101,13 +102,13 @@ function logOptimizedImage(params: { originalSize: number; optimized: OptimizedI
 }
 
 function resolveAllowedLocalRoots(options: WebMediaOptions): string[] | null {
-  if (options.allowAnyLocal || process.env.OPENCLAW_MEDIA_ALLOW_ANY_LOCAL === "1") {
+  if (options.allowAnyLocal) {
     return null;
   }
   if (Array.isArray(options.localRoots) && options.localRoots.length > 0) {
     return options.localRoots;
   }
-  return resolveMediaLocalRoots(loadConfig());
+  return resolveMediaLocalRoots(loadConfig(), options.agentId);
 }
 
 async function resolveLocalMediaPath(mediaUrl: string, roots: string[]): Promise<string> {

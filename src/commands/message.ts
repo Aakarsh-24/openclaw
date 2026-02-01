@@ -29,28 +29,18 @@ export async function messageCommand(
 
   const outboundDeps: OutboundSendDeps = createOutboundSendDeps(deps);
 
-  const run = async () => {
-    const priorAllowAny = process.env.OPENCLAW_MEDIA_ALLOW_ANY_LOCAL;
-    process.env.OPENCLAW_MEDIA_ALLOW_ANY_LOCAL = "1";
-    try {
-      return await runMessageAction({
-        cfg,
-        action,
-        params: opts,
-        deps: outboundDeps,
-        gateway: {
-          clientName: GATEWAY_CLIENT_NAMES.CLI,
-          mode: GATEWAY_CLIENT_MODES.CLI,
-        },
-      });
-    } finally {
-      if (priorAllowAny === undefined) {
-        delete process.env.OPENCLAW_MEDIA_ALLOW_ANY_LOCAL;
-      } else {
-        process.env.OPENCLAW_MEDIA_ALLOW_ANY_LOCAL = priorAllowAny;
-      }
-    }
-  };
+  const run = async () =>
+    await runMessageAction({
+      cfg,
+      action,
+      params: opts,
+      deps: outboundDeps,
+      gateway: {
+        clientName: GATEWAY_CLIENT_NAMES.CLI,
+        mode: GATEWAY_CLIENT_MODES.CLI,
+      },
+      mediaLoadOptions: { allowAnyLocal: true },
+    });
 
   const json = opts.json === true;
   const dryRun = opts.dryRun === true;
