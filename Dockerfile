@@ -38,7 +38,7 @@ USER node
 
 # Configure npm to use a user-writable directory for global packages
 # This prevents EACCES errors when installing skills via ClawdHub or npm install -g
-RUN npm config set prefix /home/node/.npm-global
+RUN mkdir -p /home/node/.npm-global && npm config set prefix /home/node/.npm-global
 ENV PATH="/home/node/.npm-global/bin:${PATH}"
 
 CMD ["node", "dist/index.js"]
