@@ -57,6 +57,7 @@ export function subscribeEmbeddedPiSession(params: SubscribeEmbeddedPiSessionPar
     lastAssistantTextTrimmed: undefined,
     assistantTextBaseline: 0,
     suppressBlockChunks: false, // Avoid late chunk inserts after final text merge.
+    nativeReasoningDetected: false,
     lastReasoningSent: undefined,
     compactionInFlight: false,
     pendingCompactionRetry: 0,
@@ -323,8 +324,11 @@ export function subscribeEmbeddedPiSession(params: SubscribeEmbeddedPiSessionPar
     // If enforcement is disabled, we still strip the tags themselves to prevent
     // hallucinations (e.g. Minimax copying the style) from leaking, but we
     // do not enforce buffering/extraction logic.
+    // Also skip enforcement when native reasoning has been detected — the provider
+    // handles reasoning separation at the API level (e.g. via the `reasoning` field
+    // in streaming chunks), so tag-based enforcement is unnecessary.
     const finalCodeSpans = buildCodeSpanIndex(processed, inlineStateStart);
-    if (!params.enforceFinalTag) {
+    if (!params.enforceFinalTag || state.nativeReasoningDetected) {
       state.inlineCode = finalCodeSpans.inlineState;
       FINAL_TAG_SCAN_RE.lastIndex = 0;
       return stripTagsOutsideCodeSpans(processed, FINAL_TAG_SCAN_RE, finalCodeSpans.isInside);
