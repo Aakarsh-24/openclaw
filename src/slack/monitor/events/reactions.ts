@@ -15,6 +15,30 @@ export function registerSlackReactionEvents(params: { ctx: SlackMonitorContext }
         return;
       }
 
+      // Check reactionNotifications config (consistent with Telegram implementation)
+      const reactionMode = ctx.reactionMode;
+      if (reactionMode === "off") {
+        return;
+      }
+
+      // Skip bot's own reactions
+      if (ctx.botUserId && event.user === ctx.botUserId) {
+        return;
+      }
+
+      // For "own" mode, only process reactions on messages sent by the bot
+      if (reactionMode === "own" && event.item_user !== ctx.botUserId) {
+        return;
+      }
+
+      // For allowlist mode, only process reactions from allowlisted users
+      if (reactionMode === "allowlist") {
+        const allowlist = ctx.reactionAllowlist;
+        if (!event.user || !allowlist.includes(event.user)) {
+          return;
+        }
+      }
+
       const channelInfo = item.channel ? await ctx.resolveChannelName(item.channel) : {};
       const channelType = channelInfo?.type;
       if (
