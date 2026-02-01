@@ -58,7 +58,7 @@ describe("createForumTopicTelegram", () => {
         api: mockApi,
         token: "tok",
       }),
-    ).rejects.toThrow("Forum topic name must be 128 characters or less");
+    ).rejects.toThrow("Forum topic name must be 128 characters or less (received: 129)");
   });
 
   it("creates a forum topic with default parameters", async () => {

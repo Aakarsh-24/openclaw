@@ -785,7 +785,9 @@ export async function createForumTopicTelegram(
   }
   const trimmedName = name.trim();
   if (trimmedName.length > 128) {
-    throw new Error("Forum topic name must be 128 characters or less");
+    throw new Error(
+      `Forum topic name must be 128 characters or less (received: ${trimmedName.length})`,
+    );
   }
 
   const cfg = loadConfig();
