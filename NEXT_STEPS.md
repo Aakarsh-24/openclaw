@@ -5,5 +5,6 @@
 - [x] Analyze import graph to find eager loading culprits <!-- id: 3 -->
 - [x] Refactor `command-registry.ts` to use dynamic imports (High Impact) <!-- id: 7 -->
 - [x] Verify performance improvements (Action Plan Step 5) <!-- id: 8 -->
-- [ ] Add regression test script `scripts/benchmark-cli-load.sh` <!-- id: 9 -->
+- [x] Add regression test script `scripts/benchmark-cli-load.sh` <!-- id: 9 -->
+- [ ] Iterate on instrumentation to find remaining bottlenecks <!-- id: 10 -->
 

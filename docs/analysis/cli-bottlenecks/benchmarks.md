@@ -28,6 +28,16 @@ Measurements taken on macOS (Apple Silicon) using `node openclaw.mjs` after fixi
 - **Help**: `openclaw help` is now 1.5s faster, confirming that we successfully deferred loading of command implementations.
 - **Status**: `openclaw status` is nearly 4s faster, validating the "Fast Path" router.
 
+## Automated Regression
+
+A script is available to run these benchmarks consistently:
+
+```bash
+./scripts/benchmark-cli-load.sh
+```
+
+This script runs against the production build (`dist/`) using `openclaw.mjs` to bypass development overhead.
+
 ### Observations
 
 -   **High Baseline Latency**: Even `--version` takes >3s, indicating a very heavy initial import graph before any command logic runs.
