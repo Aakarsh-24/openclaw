@@ -652,7 +652,12 @@ function parseTtsDirectives(
             if (!policy.allowProvider) {
               break;
             }
-            if (rawValue === "openai" || rawValue === "elevenlabs" || rawValue === "edge") {
+            if (
+              rawValue === "openai" ||
+              rawValue === "elevenlabs" ||
+              rawValue === "gemini" ||
+              rawValue === "edge"
+            ) {
               overrides.provider = rawValue;
             } else {
               warnings.push(`unsupported provider "${rawValue}"`);
@@ -1181,9 +1186,7 @@ type GeminiTtsVoice = (typeof GEMINI_TTS_VOICES)[number];
 type GeminiTtsModel = (typeof GEMINI_TTS_MODELS)[number];
 
 function isValidGeminiVoice(voice: string): voice is GeminiTtsVoice {
-  return GEMINI_TTS_VOICES.some(
-    (v) => v.toLowerCase() === voice.toLowerCase(),
-  );
+  return GEMINI_TTS_VOICES.some((v) => v.toLowerCase() === voice.toLowerCase());
 }
 
 function isValidGeminiModel(model: string): model is GeminiTtsModel {
