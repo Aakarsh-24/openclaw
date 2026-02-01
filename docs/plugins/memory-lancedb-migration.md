@@ -7,11 +7,13 @@ The memory-lancedb plugin now supports both **OpenAI** and **Google Gemini** emb
 ## ⚠️ Critical: Database Compatibility
 
 **Embedding models are NOT compatible with each other** due to different vector dimensions:
+
 - OpenAI small: **1536** dimensions
-- OpenAI large: **3072** dimensions  
+- OpenAI large: **3072** dimensions
 - Google Gemini: **768** dimensions
 
 ### Current Status
+
 - ✅ **Adding new provider**: Supported (use `embedding.provider` setting)
 - ❌ **Migrating existing data**: NOT supported (requires manual database reset)
 - 🔜 **Automatic migration tool**: Planned for future release
@@ -92,21 +94,21 @@ For clarity or edge cases, explicitly specify the provider:
 2. **BACKUP and DELETE Your Existing Database** ⚠️ **REQUIRED**
 
    **Step 2a: Backup (Optional but Recommended)**
-   
+
    Before deleting, consider backing up your memories in case you need them later:
-   
+
    ```bash
    # Backup the entire database directory
    cp -r ~/.openclaw/memory/lancedb ~/.openclaw/memory/lancedb.backup.openai
-   
+
    # Or if using custom dbPath:
    cp -r <your-custom-db-path> <your-custom-db-path>.backup.openai
    ```
-   
+
    This backup will remain compatible with your OpenAI configuration if you need to restore it.
 
    **Step 2b: Delete the Database**
-   
+
    After backing up, delete the database to allow the plugin to create a new one with correct dimensions:
 
    ```bash
@@ -116,6 +118,7 @@ For clarity or edge cases, explicitly specify the provider:
    This removes all OpenAI-based memories. They cannot be migrated to Google Gemini due to incompatible vector dimensions.
 
    **Alternative locations (if using custom `dbPath`):**
+
    ```bash
    rm -rf <your-custom-db-path>/*
    ```
@@ -159,6 +162,7 @@ For clarity or edge cases, explicitly specify the provider:
 
 5. **Verify It Works**
    Check logs for:
+
    ```
    memory-lancedb: plugin registered (db: ..., lazy init)
    memory-lancedb: initialized (db: ..., model: gemini-embedding-001)
@@ -170,7 +174,7 @@ For clarity or edge cases, explicitly specify the provider:
 
 ### Will My Existing Memories Still Work When I Switch Providers?
 
-**Short answer: NO.** 
+**Short answer: NO.**
 
 Memories created with one embedding model are **NOT compatible** with different models because the vector dimensions differ:
 
@@ -230,6 +234,7 @@ LanceDB requires all vectors in a table to have the same dimension. This is a fu
 - text-embedding-3-large: $0.13 per 1M tokens
 
 **Cost Comparison for typical usage** (assuming 1000 memories, ~100 tokens each):
+
 - Google Gemini: ~$0.002 per full re-embed cycle
 - OpenAI small: ~$0.002 per full re-embed cycle
 - OpenAI large: ~$0.013 per full re-embed cycle
