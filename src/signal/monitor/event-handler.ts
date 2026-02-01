@@ -105,7 +105,7 @@ export function createSignalEventHandler(deps: SignalEventHandlerDeps) {
         .filter(Boolean)
         .join(" ");
       const quotePrefix = quoteMeta ? `(replying to ${quoteMeta})` : "(replying to)";
-      // Format: > (replying to Author id:123) quoted text\nactual message
+      // Format: (replying to Author id:123)\n> quoted text\n\nactual message
       const quotedText = entry.quoteContext.text
         .split("\n")
         .map((line) => `> ${line}`)
