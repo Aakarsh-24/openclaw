@@ -99,8 +99,9 @@ export async function resolveSlackMedia(params: {
       continue;
     }
     try {
-      // Note: We ignore init options because fetchWithSlackAuth handles
-      // redirect behavior specially. fetchRemoteMedia only passes the URL.
+      // Note: fetchRemoteMedia calls fetchImpl(url) with the URL string today and
+      // handles size limits internally. We ignore init options because
+      // fetchWithSlackAuth handles redirect/auth behavior specially.
       const fetchImpl: FetchLike = (input) => {
         const inputUrl =
           typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
