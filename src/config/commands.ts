@@ -63,11 +63,12 @@ export function resolveNativeCommandsEnabled(params: {
 export function resolveNativeCommandAllowlist(params: {
   providerSetting?: NativeCommandsSetting;
   globalSetting?: NativeCommandsSetting;
-}): Set<string> | null {
+}): { set: Set<string>; order: string[] } | null {
   const { providerSetting, globalSetting } = params;
   const setting = providerSetting === undefined ? globalSetting : providerSetting;
   if (Array.isArray(setting)) {
-    return new Set(setting.map((s) => s.toLowerCase()));
+    const order = setting.map((s) => s.toLowerCase());
+    return { set: new Set(order), order };
   }
   return null;
 }

@@ -110,6 +110,7 @@ type RegisterTelegramNativeCommandsParams = {
   nativeSkillsEnabled: boolean;
   nativeDisabledExplicit: boolean;
   nativeCommandAllowlist: Set<string> | null;
+  nativeCommandAllowlistOrder: string[] | null;
   nativeSkillAllowlist: Set<string> | null;
   resolveGroupPolicy: (chatId: string | number) => ChannelGroupPolicy;
   resolveTelegramGroupConfig: (
@@ -284,6 +285,7 @@ export const registerTelegramNativeCommands = ({
   nativeSkillsEnabled,
   nativeDisabledExplicit,
   nativeCommandAllowlist,
+  nativeCommandAllowlistOrder,
   nativeSkillAllowlist: _nativeSkillAllowlist,
   resolveGroupPolicy,
   resolveTelegramGroupConfig,
@@ -307,7 +309,13 @@ export const registerTelegramNativeCommands = ({
       })
     : [];
   const nativeCommands = nativeCommandAllowlist
-    ? nativeCommandsAll.filter((cmd) => nativeCommandAllowlist.has(cmd.name.toLowerCase()))
+    ? nativeCommandsAll
+        .filter((cmd) => nativeCommandAllowlist.has(cmd.name.toLowerCase()))
+        .toSorted((a, b) => {
+          const aIdx = nativeCommandAllowlistOrder?.indexOf(a.name.toLowerCase()) ?? -1;
+          const bIdx = nativeCommandAllowlistOrder?.indexOf(b.name.toLowerCase()) ?? -1;
+          return (aIdx === -1 ? Infinity : aIdx) - (bIdx === -1 ? Infinity : bIdx);
+        })
     : nativeCommandsAll;
   const reservedCommands = new Set(
     listNativeCommandSpecs().map((command) => command.name.toLowerCase()),

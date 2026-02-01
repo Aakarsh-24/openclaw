@@ -262,10 +262,12 @@ export function createTelegramBot(opts: TelegramBotOptions) {
     providerSetting: telegramCfg.commands?.native,
     globalSetting: cfg.commands?.native,
   });
-  const nativeCommandAllowlist = resolveNativeCommandAllowlist({
+  const nativeCommandAllowlistResult = resolveNativeCommandAllowlist({
     providerSetting: telegramCfg.commands?.native,
     globalSetting: cfg.commands?.native,
   });
+  const nativeCommandAllowlist = nativeCommandAllowlistResult?.set ?? null;
+  const nativeCommandAllowlistOrder = nativeCommandAllowlistResult?.order ?? null;
   const nativeSkillAllowlist = resolveNativeSkillAllowlist({
     providerSetting: telegramCfg.commands?.nativeSkills,
     globalSetting: cfg.commands?.nativeSkills,
@@ -393,6 +395,7 @@ export function createTelegramBot(opts: TelegramBotOptions) {
     nativeSkillsEnabled,
     nativeDisabledExplicit,
     nativeCommandAllowlist,
+    nativeCommandAllowlistOrder,
     nativeSkillAllowlist,
     resolveGroupPolicy,
     resolveTelegramGroupConfig,
