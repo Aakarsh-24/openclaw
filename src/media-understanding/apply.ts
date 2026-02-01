@@ -415,6 +415,7 @@ export async function applyMediaUnderstanding(params: {
       finalizeInboundContext(ctx, {
         forceBodyForAgent: true,
         forceBodyForCommands: outputs.length > 0,
+        cfg,
       });
     }
 
