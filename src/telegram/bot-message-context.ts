@@ -626,7 +626,8 @@ export const buildTelegramMessageContext = async ({
     IsForum: isForum,
     // Originating channel for reply routing.
     OriginatingChannel: "telegram" as const,
-    OriginatingTo: `telegram:${chatId}`,
+    OriginatingTo:
+      dmThreadId != null ? `telegram:${chatId}:topic:${dmThreadId}` : `telegram:${chatId}`,
   });
 
   await recordInboundSession({
