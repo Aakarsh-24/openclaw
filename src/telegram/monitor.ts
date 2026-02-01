@@ -117,10 +117,12 @@ const isTimeoutAbortError = (err: unknown): boolean => {
   const stack = error.stack?.toLowerCase() || "";
 
   // Look for timeout-related indicators in the error
-  return message.includes("timeout") ||
+  return (
+    message.includes("timeout") ||
     stack.includes("timeout") ||
     stack.includes("undici") ||
-    stack.includes("getupdates");
+    stack.includes("getupdates")
+  );
 };
 
 export async function monitorTelegramProvider(opts: MonitorTelegramOpts = {}) {
@@ -236,8 +238,11 @@ export async function monitorTelegramProvider(opts: MonitorTelegramOpts = {}) {
       }
 
       let reason = "network error";
-      if (isConflict) reason = "getUpdates conflict";
-      else if (isTimeout) reason = "request timeout";
+      if (isConflict) {
+        reason = "getUpdates conflict";
+      } else if (isTimeout) {
+        reason = "request timeout";
+      }
 
       const errMsg = formatErrorMessage(err);
       const delayMs = computeBackoff(TELEGRAM_POLL_RESTART_POLICY, restartAttempts);
