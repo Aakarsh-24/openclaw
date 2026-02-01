@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+# AgentMemory CLI wrapper
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+CMD="${1:-help}"
+shift || true
+
+case "$CMD" in
+  store|s)
+    exec bash "$SCRIPT_DIR/scripts/store.sh" "$@"
+    ;;
+  search|find|f)
+    exec bash "$SCRIPT_DIR/scripts/search.sh" "$@"
+    ;;
+  list|ls|l)
+    exec bash "$SCRIPT_DIR/scripts/list.sh" "$@"
+    ;;
+  delete|rm|d)
+    exec bash "$SCRIPT_DIR/scripts/delete.sh" "$@"
+    ;;
+  sync)
+    exec bash "$SCRIPT_DIR/scripts/sync.sh" "$@"
+    ;;
+  help|--help|-h)
+    cat <<EOF
+AgentMemory CLI - Persistent cloud memory for AI agents
+
+Usage: agentmemory <command> [options]
+
+Commands:
+  store <content> [category] [importance]   Store a memory
+    Aliases: s
+    Example: agentmemory store "User prefers dark mode" preferences high
+
+  search <query> [limit]                    Search memories semantically
+    Aliases: find, f
+    Example: agentmemory search "user preferences" 5
+
+  list [limit] [offset]                     List all memories
+    Aliases: ls, l
+    Example: agentmemory list 20 0
+
+  delete <memory_id>                        Delete a memory
+    Aliases: rm, d
+    Example: agentmemory delete mem_abc123
+
+  sync [push|pull|both]                     Sync MEMORY.md with cloud
+    Example: agentmemory sync push
+    Default: push
+
+  help                                       Show this help
+    Aliases: --help, -h
+
+Categories: preferences, projects, people, tasks, facts, decisions, general
+Importance: low, medium, high
+
+Credentials: ~/.openclaw/credentials/agentmemory.json
+Documentation: skills/agentmemory/SKILL.md
+EOF
+    ;;
+  *)
+    echo "Unknown command: $CMD" >&2
+    echo "Run 'agentmemory help' for usage" >&2
+    exit 1
+    ;;
+esac

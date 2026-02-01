@@ -1,0 +1,14 @@
+{
+  "name": "agentmemory",
+  "version": "1.0.0",
+  "description": "Persistent cloud memory for AI agents with semantic search",
+  "type": "skill",
+  "author": "AgentMemory.cloud",
+  "skills": {
+    "agentmemory": {
+      "name": "AgentMemory",
+      "description": "Store and search memories in the cloud with semantic vector search. Never forget important context.",
+      "tags": ["memory", "storage", "search", "persistence", "cloud"]
+    }
+  }
+}
