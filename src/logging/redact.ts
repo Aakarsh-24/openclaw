@@ -47,6 +47,7 @@ function normalizeMode(value?: string): RedactSensitiveMode {
 
 // Cache for warning deduplication - warn once per pattern
 const warnedPatterns = new Set<string>();
+const MAX_WARNED_PATTERNS = 1000;
 
 function parsePattern(raw: string): RegExp | null {
   if (!raw.trim()) {
@@ -66,7 +67,7 @@ function parsePattern(raw: string): RegExp | null {
     // Reject patterns that could cause catastrophic backtracking (ReDoS)
     // Pass compiled RegExp to safeRegex to respect flags (e.g., 'u' for Unicode)
     if (!safeRegex(re)) {
-      if (!warnedPatterns.has(raw)) {
+      if (!warnedPatterns.has(raw) && warnedPatterns.size < MAX_WARNED_PATTERNS) {
         warnedPatterns.add(raw);
         console.warn(`[redact] Rejected potentially unsafe regex pattern: ${raw}`);
       }
