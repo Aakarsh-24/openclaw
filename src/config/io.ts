@@ -313,7 +313,12 @@ export function createConfigIO(overrides: ConfigIoDeps = {}) {
       }
       const error = err as { code?: string };
       if (error?.code === "INVALID_CONFIG") {
-        return {};
+        // Fail closed: do not start with empty config that resets security settings to insecure defaults
+        // This prevents issues like dmPolicy resetting to "pairing" and allowing unauthorized access
+        deps.logger.error(
+          `Config validation failed at ${configPath}. Fix the config errors above and restart.`,
+        );
+        throw err;
       }
       deps.logger.error(`Failed to read config at ${configPath}`, err);
       return {};
