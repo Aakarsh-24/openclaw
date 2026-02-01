@@ -106,21 +106,21 @@ const isTimeoutAbortError = (err: unknown): boolean => {
     return false;
   }
   const error = err as Error;
-  
+
   // Check if it's an AbortError
   if (error.name !== "AbortError" && !error.message?.includes("This operation was aborted")) {
     return false;
   }
-  
+
   // Check if it's likely a timeout (vs intentional abort)
   const message = error.message?.toLowerCase() || "";
   const stack = error.stack?.toLowerCase() || "";
-  
+
   // Look for timeout-related indicators in the error
-  return message.includes("timeout") || 
-         stack.includes("timeout") ||
-         stack.includes("undici") ||
-         stack.includes("getupdates");
+  return message.includes("timeout") ||
+    stack.includes("timeout") ||
+    stack.includes("undici") ||
+    stack.includes("getupdates");
 };
 
 export async function monitorTelegramProvider(opts: MonitorTelegramOpts = {}) {
@@ -198,7 +198,7 @@ export async function monitorTelegramProvider(opts: MonitorTelegramOpts = {}) {
       }
     };
     opts.abortSignal?.addEventListener("abort", stopOnAbort, { once: true });
-    
+
     try {
       // runner.task() returns a promise that resolves when the runner stops
       await runner.task();
@@ -206,26 +206,26 @@ export async function monitorTelegramProvider(opts: MonitorTelegramOpts = {}) {
     } catch (err) {
       // Check if we're actually being aborted vs. a timeout/network error
       const isActualAbort = opts.abortSignal?.aborted === true;
-      
+
       if (isActualAbort) {
         // This is a real abort signal, don't retry
         return;
       }
-      
+
       const isConflict = isGetUpdatesConflict(err);
       const isRecoverable = isRecoverableTelegramNetworkError(err, { context: "polling" });
       const isNetworkError = isNetworkRelatedError(err);
       const isTimeout = isTimeoutAbortError(err);
-      
+
       // Treat timeout AbortErrors as recoverable network errors
       const shouldRetry = isConflict || isRecoverable || isNetworkError || isTimeout;
-      
+
       if (!shouldRetry) {
         throw err;
       }
-      
+
       restartAttempts += 1;
-      
+
       // Prevent infinite retry loops
       if (restartAttempts >= MAX_RESTART_ATTEMPTS) {
         const errMsg = formatErrorMessage(err);
@@ -234,24 +234,24 @@ export async function monitorTelegramProvider(opts: MonitorTelegramOpts = {}) {
         );
         throw err;
       }
-      
+
       let reason = "network error";
       if (isConflict) reason = "getUpdates conflict";
       else if (isTimeout) reason = "request timeout";
-      
+
       const errMsg = formatErrorMessage(err);
       const delayMs = computeBackoff(TELEGRAM_POLL_RESTART_POLICY, restartAttempts);
       (opts.runtime?.error ?? console.error)(
         `Telegram ${reason}: ${errMsg}; retrying in ${formatDurationMs(delayMs)} (attempt ${restartAttempts}/${MAX_RESTART_ATTEMPTS}).`,
       );
-      
+
       // Stop the current runner before retrying
       try {
         await runner.stop();
       } catch {
         // Ignore runner stop errors
       }
-      
+
       try {
         await sleepWithAbort(delayMs, opts.abortSignal);
       } catch (sleepErr) {
