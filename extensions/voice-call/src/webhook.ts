@@ -133,6 +133,28 @@ export class VoiceCallWebhookServer {
         if (this.provider.name === "twilio") {
           (this.provider as TwilioProvider).unregisterCallStream(callId);
         }
+
+        // When media stream disconnects, mark the call as ended if still active.
+        // This is a fallback for when Twilio status callbacks aren't received
+        // (e.g., inbound calls where the Twilio console isn't configured to send
+        // status callbacks). Without this, calls remain stuck in non-terminal
+        // states (like "speaking" or "listening"), blocking new calls due to the
+        // maxConcurrentCalls limit.
+        const call = this.manager.getCallByProviderCallId(callId);
+        if (call) {
+          const event: NormalizedEvent = {
+            id: `stream-disconnect-${Date.now()}`,
+            type: "call.ended",
+            callId: call.callId,
+            providerCallId: callId,
+            timestamp: Date.now(),
+            reason: "completed",
+          };
+          this.manager.processEvent(event);
+          console.log(
+            `[voice-call] Call ${call.callId} marked as completed (stream disconnect fallback)`,
+          );
+        }
       },
     };
 
