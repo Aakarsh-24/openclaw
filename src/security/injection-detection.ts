@@ -292,5 +292,7 @@ export function isLikelyAttack(content: string): boolean {
   const result = detectSingleMessageAttacks(content);
   // Return true if any high-severity attack type detected
   const highSeverityTypes: AttackType[] = ["authority_spoof", "indirect", "cot_hijack"];
-  return result.attackTypes.some((t) => highSeverityTypes.includes(t)) || result.attackTypes.length >= 2;
+  return (
+    result.attackTypes.some((t) => highSeverityTypes.includes(t)) || result.attackTypes.length >= 2
+  );
 }

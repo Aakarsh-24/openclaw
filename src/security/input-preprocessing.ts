@@ -95,9 +95,7 @@ export function detectEncodedContent(content: string): EncodingDetectionResult {
   // Check for reversed keywords
   if (REVERSED_KEYWORDS.test(content)) {
     encodingTypes.push("reversed");
-    suspiciousKeywords.push(
-      ...extractMatches(content, REVERSED_KEYWORDS).map((w) => `[REV:${w}]`),
-    );
+    suspiciousKeywords.push(...extractMatches(content, REVERSED_KEYWORDS).map((w) => `[REV:${w}]`));
   }
 
   // Check for homoglyphs
