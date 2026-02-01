@@ -1,0 +1,11 @@
+{
+  "id": "shell-audit",
+  "name": "Shell Audit",
+  "description": "Logs every shell command executed via the exec tool.",
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "enabled": { "type": "boolean" }
+    }
+  }
+}

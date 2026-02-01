@@ -1,0 +1,7 @@
+{
+  "name": "shell-audit",
+  "version": "1.0.0",
+  "description": "Logs every shell command executed via the exec tool.",
+  "type": "module",
+  "main": "index.js"
+}
