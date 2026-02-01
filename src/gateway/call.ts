@@ -16,6 +16,7 @@ import {
   type GatewayClientName,
 } from "../utils/message-channel.js";
 import { GatewayClient } from "./client.js";
+import type { GatewayClientOptions } from "./client.js";
 import { PROTOCOL_VERSION } from "./protocol/index.js";
 
 export type CallGatewayOptions = {
@@ -41,6 +42,7 @@ export type CallGatewayOptions = {
    * Does not affect config loading; callers still control auth via opts.token/password/env/config.
    */
   configPath?: string;
+  onEvent?: GatewayClientOptions["onEvent"];
 };
 
 export type GatewayConnectionDetails = {
@@ -220,6 +222,7 @@ export async function callGateway<T = Record<string, unknown>>(
       deviceIdentity: loadOrCreateDeviceIdentity(),
       minProtocol: opts.minProtocol ?? PROTOCOL_VERSION,
       maxProtocol: opts.maxProtocol ?? PROTOCOL_VERSION,
+      onEvent: opts.onEvent,
       onHelloOk: async () => {
         try {
           const result = await client.request<T>(opts.method, opts.params, {

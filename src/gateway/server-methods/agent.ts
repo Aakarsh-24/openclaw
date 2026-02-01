@@ -27,6 +27,7 @@ import {
 } from "../../utils/message-channel.js";
 import { resolveAssistantIdentity } from "../assistant-identity.js";
 import { parseMessageWithAttachments } from "../chat-attachments.js";
+import { normalizeFeedbackLevel } from "../../infra/feedback.js";
 import { resolveAssistantAvatarUrl } from "../control-ui-shared.js";
 import {
   ErrorCodes,
@@ -63,6 +64,7 @@ export const agentHandlers: GatewayRequestHandlers = {
       sessionId?: string;
       sessionKey?: string;
       thinking?: string;
+      feedback?: string;
       deliver?: boolean;
       attachments?: Array<{
         type?: string;
@@ -96,6 +98,19 @@ export const agentHandlers: GatewayRequestHandlers = {
     let resolvedGroupSpace: string | undefined = groupSpaceRaw || undefined;
     let spawnedByValue =
       typeof request.spawnedBy === "string" ? request.spawnedBy.trim() : undefined;
+    const feedbackRaw = typeof request.feedback === "string" ? request.feedback.trim() : "";
+    const feedbackLevel = normalizeFeedbackLevel(feedbackRaw);
+    if (feedbackRaw && !feedbackLevel) {
+      respond(
+        false,
+        undefined,
+        errorShape(
+          ErrorCodes.INVALID_REQUEST,
+          'invalid agent params: feedback must be "silent", "info", or "debug"',
+        ),
+      );
+      return;
+    }
     const cached = context.dedupe.get(`agent:${idem}`);
     if (cached) {
       respond(cached.ok, cached.payload, cached.error, {
@@ -292,7 +307,10 @@ export const agentHandlers: GatewayRequestHandlers = {
         });
         bestEffortDeliver = true;
       }
-      registerAgentRunContext(idem, { sessionKey: requestedSessionKey });
+      registerAgentRunContext(idem, {
+        sessionKey: requestedSessionKey,
+        ...(feedbackLevel ? { feedbackLevel } : {}),
+      });
     }
 
     const runId = idem;
@@ -360,6 +378,7 @@ export const agentHandlers: GatewayRequestHandlers = {
         sessionId: resolvedSessionId,
         sessionKey: requestedSessionKey,
         thinking: request.thinking,
+        feedback: feedbackLevel,
         deliver,
         deliveryTargetMode,
         channel: resolvedChannel,

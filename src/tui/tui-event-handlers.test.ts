@@ -44,19 +44,22 @@ describe("tui-event-handlers: handleAgentEvent", () => {
     };
     const tui = { requestRender: vi.fn() };
     const setActivityStatus = vi.fn();
+    const setStatusDetail = vi.fn();
 
-    return { chatLog, tui, state, setActivityStatus };
+    return { chatLog, tui, state, setActivityStatus, setStatusDetail };
   };
 
   it("processes tool events when runId matches activeChatRunId (even if sessionId differs)", () => {
     const state = makeState({ currentSessionId: "session-xyz", activeChatRunId: "run-123" });
-    const { chatLog, tui, setActivityStatus } = makeContext(state);
+    const { chatLog, tui, setActivityStatus, setStatusDetail } = makeContext(state);
     const { handleAgentEvent } = createEventHandlers({
       // Casts are fine here: TUI runtime shape is larger than we need in unit tests.
       chatLog: chatLog as any,
       tui: tui as any,
       state,
       setActivityStatus,
+      setStatusDetail,
+      feedbackLevel: "info",
     });
 
     const evt: AgentEvent = {
@@ -78,12 +81,14 @@ describe("tui-event-handlers: handleAgentEvent", () => {
 
   it("ignores tool events when runId does not match activeChatRunId", () => {
     const state = makeState({ activeChatRunId: "run-1" });
-    const { chatLog, tui, setActivityStatus } = makeContext(state);
+    const { chatLog, tui, setActivityStatus, setStatusDetail } = makeContext(state);
     const { handleAgentEvent } = createEventHandlers({
       chatLog: chatLog as any,
       tui: tui as any,
       state,
       setActivityStatus,
+      setStatusDetail,
+      feedbackLevel: "info",
     });
 
     const evt: AgentEvent = {
@@ -101,12 +106,14 @@ describe("tui-event-handlers: handleAgentEvent", () => {
 
   it("processes lifecycle events when runId matches activeChatRunId", () => {
     const state = makeState({ activeChatRunId: "run-9" });
-    const { tui, setActivityStatus } = makeContext(state);
+    const { tui, setActivityStatus, setStatusDetail } = makeContext(state);
     const { handleAgentEvent } = createEventHandlers({
       chatLog: { startTool: vi.fn(), updateToolResult: vi.fn() } as any,
       tui: tui as any,
       state,
       setActivityStatus,
+      setStatusDetail,
+      feedbackLevel: "info",
     });
 
     const evt: AgentEvent = {
@@ -123,12 +130,14 @@ describe("tui-event-handlers: handleAgentEvent", () => {
 
   it("captures runId from chat events when activeChatRunId is unset", () => {
     const state = makeState({ activeChatRunId: null });
-    const { chatLog, tui, setActivityStatus } = makeContext(state);
+    const { chatLog, tui, setActivityStatus, setStatusDetail } = makeContext(state);
     const { handleChatEvent, handleAgentEvent } = createEventHandlers({
       chatLog: chatLog as any,
       tui: tui as any,
       state,
       setActivityStatus,
+      setStatusDetail,
+      feedbackLevel: "info",
     });
 
     const chatEvt: ChatEvent = {
@@ -155,12 +164,14 @@ describe("tui-event-handlers: handleAgentEvent", () => {
 
   it("clears run mapping when the session changes", () => {
     const state = makeState({ activeChatRunId: null });
-    const { chatLog, tui, setActivityStatus } = makeContext(state);
+    const { chatLog, tui, setActivityStatus, setStatusDetail } = makeContext(state);
     const { handleChatEvent, handleAgentEvent } = createEventHandlers({
       chatLog: chatLog as any,
       tui: tui as any,
       state,
       setActivityStatus,
+      setStatusDetail,
+      feedbackLevel: "info",
     });
 
     handleChatEvent({
@@ -186,12 +197,14 @@ describe("tui-event-handlers: handleAgentEvent", () => {
 
   it("ignores lifecycle updates for non-active runs in the same session", () => {
     const state = makeState({ activeChatRunId: "run-active" });
-    const { chatLog, tui, setActivityStatus } = makeContext(state);
+    const { chatLog, tui, setActivityStatus, setStatusDetail } = makeContext(state);
     const { handleChatEvent, handleAgentEvent } = createEventHandlers({
       chatLog: chatLog as any,
       tui: tui as any,
       state,
       setActivityStatus,
+      setStatusDetail,
+      feedbackLevel: "info",
     });
 
     handleChatEvent({

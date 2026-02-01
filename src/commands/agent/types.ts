@@ -40,6 +40,8 @@ export type AgentCommandOpts = {
   thinking?: string;
   thinkingOnce?: string;
   verbose?: string;
+  /** UI feedback verbosity (silent|info|debug). */
+  feedback?: string;
   json?: boolean;
   timeout?: string;
   deliver?: boolean;

@@ -20,6 +20,7 @@ export type ChatSendOptions = {
   sessionKey: string;
   message: string;
   thinking?: string;
+  feedback?: string;
   deliver?: boolean;
   timeoutMs?: number;
 };
@@ -158,6 +159,7 @@ export class GatewayChatClient {
       sessionKey: opts.sessionKey,
       message: opts.message,
       thinking: opts.thinking,
+      feedback: opts.feedback,
       deliver: opts.deliver,
       timeoutMs: opts.timeoutMs,
       idempotencyKey: runId,

@@ -27,6 +27,7 @@ export function registerAgentCommands(program: Command, args: { agentChannelOpti
     .option("--agent <id>", "Agent id (overrides routing bindings)")
     .option("--thinking <level>", "Thinking level: off | minimal | low | medium | high")
     .option("--verbose <on|off>", "Persist agent verbose level for the session")
+    .option("--feedback <level>", "Feedback level: silent | info | debug")
     .option(
       "--channel <channel>",
       `Delivery channel: ${args.agentChannelOptions} (default: ${DEFAULT_CHAT_CHANNEL})`,

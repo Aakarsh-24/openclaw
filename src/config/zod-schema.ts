@@ -169,6 +169,7 @@ export const OpenClawSchema = z
     ui: z
       .object({
         seamColor: HexColorSchema.optional(),
+        feedback: z.union([z.literal("silent"), z.literal("info"), z.literal("debug")]).optional(),
         assistant: z
           .object({
             name: z.string().max(50).optional(),

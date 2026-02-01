@@ -33,6 +33,8 @@ import { createLocalShellRunner } from "./tui-local-shell.js";
 import { createOverlayHandlers } from "./tui-overlays.js";
 import { createSessionActions } from "./tui-session-actions.js";
 import { buildWaitingStatusMessage, defaultWaitingPhrases } from "./tui-waiting.js";
+import { normalizeFeedbackLevel, resolveFeedbackLevel } from "../infra/feedback.js";
+import { buildWaitingStatusMessage, defaultWaitingPhrases } from "./tui-waiting.js";
 
 export { resolveFinalAssistantText } from "./tui-formatters.js";
 export type { TuiOptions } from "./tui-types.js";
@@ -79,6 +81,14 @@ export function createEditorSubmitHandler(params: {
 
 export async function runTui(opts: TuiOptions) {
   const config = loadConfig();
+  const feedbackOverride = normalizeFeedbackLevel(opts.feedback);
+  if (opts.feedback && !feedbackOverride) {
+    throw new Error('Invalid feedback level. Use "silent", "info", or "debug".');
+  }
+  const feedbackLevel = resolveFeedbackLevel(
+    opts.feedback,
+    normalizeFeedbackLevel(config.ui?.feedback),
+  );
   const initialSessionInput = (opts.session ?? "").trim();
   let sessionScope: SessionScope = (config.session?.scope ?? "per-sender") as SessionScope;
   let sessionMainKey = normalizeMainKey(config.session?.mainKey);
@@ -107,6 +117,7 @@ export async function runTui(opts: TuiOptions) {
   let statusTimer: NodeJS.Timeout | null = null;
   let statusStartedAt: number | null = null;
   let lastActivityStatus = activityStatus;
+  let statusDetail: string | null = null;
 
   const state: TuiStateAccess = {
     get agentDefaultId() {
@@ -354,22 +365,23 @@ export async function runTui(opts: TuiOptions) {
       return;
     }
     const elapsed = formatElapsed(statusStartedAt);
+    const detail = statusDetail ? ` - ${statusDetail}` : "";
 
     if (activityStatus === "waiting") {
       waitingTick++;
       statusLoader.setMessage(
-        buildWaitingStatusMessage({
+        `${buildWaitingStatusMessage({
           theme,
           tick: waitingTick,
           elapsed,
           connectionStatus,
           phrases: waitingPhrase ? [waitingPhrase] : undefined,
-        }),
+        })}${detail}`,
       );
       return;
     }
 
-    statusLoader.setMessage(`${activityStatus} • ${elapsed} | ${connectionStatus}`);
+    statusLoader.setMessage(`${activityStatus}${detail} • ${elapsed} | ${connectionStatus}`);
   };
 
   const startStatusTimer = () => {
@@ -466,6 +478,19 @@ export async function runTui(opts: TuiOptions) {
 
   const setActivityStatus = (text: string) => {
     activityStatus = text;
+    if (!busyStates.has(text)) {
+      statusDetail = null;
+    }
+    renderStatus();
+  };
+
+  const setStatusDetail = (text: string | null) => {
+    const next = text?.trim() ?? "";
+    const normalized = next ? next : null;
+    if (statusDetail === normalized) {
+      return;
+    }
+    statusDetail = normalized;
     renderStatus();
   };
 
@@ -531,6 +556,8 @@ export async function runTui(opts: TuiOptions) {
     tui,
     state,
     setActivityStatus,
+    setStatusDetail,
+    feedbackLevel,
     refreshSessionInfo,
   });
 
@@ -542,6 +569,7 @@ export async function runTui(opts: TuiOptions) {
       opts,
       state,
       deliverDefault,
+      feedbackLevel,
       openOverlay,
       closeOverlay,
       refreshSessionInfo,

@@ -14,6 +14,8 @@ import {
   extractShortModelName,
   type ResponsePrefixContext,
 } from "../../auto-reply/reply/response-prefix-template.js";
+import { registerAgentRunContext } from "../../infra/agent-events.js";
+import { normalizeFeedbackLevel } from "../../infra/feedback.js";
 import { resolveSendPolicy } from "../../sessions/send-policy.js";
 import { INTERNAL_MESSAGE_CHANNEL } from "../../utils/message-channel.js";
 import {
@@ -315,6 +317,7 @@ export const chatHandlers: GatewayRequestHandlers = {
       sessionKey: string;
       message: string;
       thinking?: string;
+      feedback?: string;
       deliver?: boolean;
       attachments?: Array<{
         type?: string;
@@ -369,6 +372,19 @@ export const chatHandlers: GatewayRequestHandlers = {
       }
     }
     const { cfg, entry } = loadSessionEntry(p.sessionKey);
+    const feedbackRaw = typeof p.feedback === "string" ? p.feedback.trim() : "";
+    const feedbackLevel = normalizeFeedbackLevel(feedbackRaw);
+    if (feedbackRaw && !feedbackLevel) {
+      respond(
+        false,
+        undefined,
+        errorShape(
+          ErrorCodes.INVALID_REQUEST,
+          'invalid chat.send params: feedback must be "silent", "info", or "debug"',
+        ),
+      );
+      return;
+    }
     const timeoutMs = resolveAgentTimeoutMs({
       cfg,
       overrideMs: p.timeoutMs,
@@ -436,6 +452,12 @@ export const chatHandlers: GatewayRequestHandlers = {
         startedAtMs: now,
         expiresAtMs: resolveChatRunExpiresAtMs({ now, timeoutMs }),
       });
+      if (feedbackLevel) {
+        registerAgentRunContext(clientRunId, {
+          sessionKey: p.sessionKey,
+          feedbackLevel,
+        });
+      }
 
       const ackPayload = {
         runId: clientRunId,

@@ -20,6 +20,7 @@ describe("tui command handlers", () => {
         sessionInfo: {},
       } as never,
       deliverDefault: false,
+      feedbackLevel: "info",
       openOverlay: vi.fn(),
       closeOverlay: vi.fn(),
       refreshSessionInfo: vi.fn(),

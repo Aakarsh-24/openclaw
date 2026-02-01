@@ -67,6 +67,8 @@ export type OpenClawConfig = {
   ui?: {
     /** Accent color for OpenClaw UI chrome (hex). */
     seamColor?: string;
+    /** Feedback level for CLI/TUI status updates. */
+    feedback?: "silent" | "info" | "debug";
     assistant?: {
       /** Assistant display name for UI surfaces. */
       name?: string;

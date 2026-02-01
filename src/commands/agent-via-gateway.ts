@@ -3,7 +3,7 @@ import type { RuntimeEnv } from "../runtime.js";
 import { listAgentIds } from "../agents/agent-scope.js";
 import { DEFAULT_CHAT_CHANNEL } from "../channels/registry.js";
 import { formatCliCommand } from "../cli/command-format.js";
-import { withProgress } from "../cli/progress.js";
+import { withProgress, type ProgressReporter } from "../cli/progress.js";
 import { loadConfig } from "../config/config.js";
 import { callGateway, randomIdempotencyKey } from "../gateway/call.js";
 import { normalizeAgentId } from "../routing/session-key.js";
@@ -12,6 +12,13 @@ import {
   GATEWAY_CLIENT_NAMES,
   normalizeMessageChannel,
 } from "../utils/message-channel.js";
+import { type AgentEventPayload, onAgentEvent } from "../infra/agent-events.js";
+import { formatAgentFeedbackLabel } from "../infra/agent-feedback.js";
+import {
+  normalizeFeedbackLevel,
+  resolveFeedbackLevel,
+  type FeedbackLevel,
+} from "../infra/feedback.js";
 import { agentCommand } from "./agent.js";
 import { resolveSessionKeyForRequest } from "./agent/session.js";
 
@@ -38,6 +45,7 @@ export type AgentCliOpts = {
   sessionId?: string;
   thinking?: string;
   verbose?: string;
+  feedback?: string;
   json?: boolean;
   timeout?: string;
   deliver?: boolean;
@@ -51,6 +59,29 @@ export type AgentCliOpts = {
   extraSystemPrompt?: string;
   local?: boolean;
 };
+
+function resolveCliFeedbackLevel(opts: AgentCliOpts, cfg: ReturnType<typeof loadConfig>) {
+  const explicit = normalizeFeedbackLevel(opts.feedback);
+  if (opts.feedback && !explicit) {
+    throw new Error('Invalid feedback level. Use "silent", "info", or "debug".');
+  }
+  const configLevel = normalizeFeedbackLevel(cfg.ui?.feedback);
+  return resolveFeedbackLevel(opts.feedback, configLevel);
+}
+
+function createFeedbackLabelUpdater(progress: ProgressReporter, level: FeedbackLevel) {
+  if (level === "silent") {
+    return (_label?: string) => {};
+  }
+  let lastLabel = "";
+  return (label?: string) => {
+    if (!label || label === lastLabel) {
+      return;
+    }
+    lastLabel = label;
+    progress.setLabel(label);
+  };
+}
 
 function parseTimeoutSeconds(opts: { cfg: ReturnType<typeof loadConfig>; timeout?: string }) {
   const raw =
@@ -105,6 +136,7 @@ export async function agentViaGatewayCommand(opts: AgentCliOpts, runtime: Runtim
   }
   const timeoutSeconds = parseTimeoutSeconds({ cfg, timeout: opts.timeout });
   const gatewayTimeoutMs = Math.max(10_000, (timeoutSeconds + 30) * 1000);
+  const feedbackLevel = resolveCliFeedbackLevel(opts, cfg);
 
   const sessionKey = resolveSessionKeyForRequest({
     cfg,
@@ -122,8 +154,16 @@ export async function agentViaGatewayCommand(opts: AgentCliOpts, runtime: Runtim
       indeterminate: true,
       enabled: opts.json !== true,
     },
-    async () =>
-      await callGateway<GatewayAgentResponse>({
+    async (progress) => {
+      const updateLabel = createFeedbackLabelUpdater(progress, feedbackLevel);
+      const handleAgentPayload = (payload: AgentEventPayload) => {
+        if (payload.runId !== idempotencyKey) {
+          return;
+        }
+        const label = formatAgentFeedbackLabel(payload, feedbackLevel);
+        updateLabel(label);
+      };
+      return await callGateway<GatewayAgentResponse>({
         method: "agent",
         params: {
           message: body,
@@ -133,6 +173,7 @@ export async function agentViaGatewayCommand(opts: AgentCliOpts, runtime: Runtim
           sessionId: opts.sessionId,
           sessionKey,
           thinking: opts.thinking,
+          feedback: feedbackLevel === "silent" ? undefined : feedbackLevel,
           deliver: Boolean(opts.deliver),
           channel,
           replyChannel: opts.replyChannel,
@@ -146,7 +187,17 @@ export async function agentViaGatewayCommand(opts: AgentCliOpts, runtime: Runtim
         timeoutMs: gatewayTimeoutMs,
         clientName: GATEWAY_CLIENT_NAMES.CLI,
         mode: GATEWAY_CLIENT_MODES.CLI,
-      }),
+        onEvent: (evt) => {
+          if (!evt || evt.event !== "agent" || feedbackLevel === "silent") {
+            return;
+          }
+          const payload = evt.payload as AgentEventPayload;
+          if (payload && typeof payload === "object") {
+            handleAgentPayload(payload);
+          }
+        },
+      });
+    },
   );
 
   if (opts.json) {
@@ -173,19 +224,65 @@ export async function agentViaGatewayCommand(opts: AgentCliOpts, runtime: Runtim
 }
 
 export async function agentCliCommand(opts: AgentCliOpts, runtime: RuntimeEnv, deps?: CliDeps) {
+  const cfg = loadConfig();
+  const feedbackLevel = resolveCliFeedbackLevel(opts, cfg);
+  const runId = opts.runId?.trim() || randomIdempotencyKey();
   const localOpts = {
     ...opts,
     agentId: opts.agent,
     replyAccountId: opts.replyAccount,
+    runId,
   };
   if (opts.local === true) {
-    return await agentCommand(localOpts, runtime, deps);
+    return await withProgress(
+      {
+        label: "Waiting for agent reply…",
+        indeterminate: true,
+        enabled: opts.json !== true,
+      },
+      async (progress) => {
+        const updateLabel = createFeedbackLabelUpdater(progress, feedbackLevel);
+        const stop = onAgentEvent((evt) => {
+          if (evt.runId !== runId) {
+            return;
+          }
+          const label = formatAgentFeedbackLabel(evt, feedbackLevel);
+          updateLabel(label);
+        });
+        try {
+          return await agentCommand(localOpts, runtime, deps);
+        } finally {
+          stop();
+        }
+      },
+    );
   }
 
   try {
     return await agentViaGatewayCommand(opts, runtime);
   } catch (err) {
     runtime.error?.(`Gateway agent failed; falling back to embedded: ${String(err)}`);
-    return await agentCommand(localOpts, runtime, deps);
+    return await withProgress(
+      {
+        label: "Waiting for agent reply…",
+        indeterminate: true,
+        enabled: opts.json !== true,
+      },
+      async (progress) => {
+        const updateLabel = createFeedbackLabelUpdater(progress, feedbackLevel);
+        const stop = onAgentEvent((evt) => {
+          if (evt.runId !== runId) {
+            return;
+          }
+          const label = formatAgentFeedbackLabel(evt, feedbackLevel);
+          updateLabel(label);
+        });
+        try {
+          return await agentCommand(localOpts, runtime, deps);
+        } finally {
+          stop();
+        }
+      },
+    );
   }
 }

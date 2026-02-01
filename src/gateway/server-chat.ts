@@ -1,6 +1,7 @@
 import { normalizeVerboseLevel } from "../auto-reply/thinking.js";
 import { loadConfig } from "../config/config.js";
 import { type AgentEventPayload, getAgentRunContext } from "../infra/agent-events.js";
+import { normalizeFeedbackLevel } from "../infra/feedback.js";
 import { resolveHeartbeatVisibility } from "../infra/heartbeat-visibility.js";
 import { loadSessionEntry } from "./session-utils.js";
 import { formatForLog } from "./ws-log.js";
@@ -215,6 +216,10 @@ export function createAgentEventHandler({
 
   const shouldEmitToolEvents = (runId: string, sessionKey?: string) => {
     const runContext = getAgentRunContext(runId);
+    const runFeedback = normalizeFeedbackLevel(runContext?.feedbackLevel);
+    if (runFeedback && runFeedback !== "silent") {
+      return true;
+    }
     const runVerbose = normalizeVerboseLevel(runContext?.verboseLevel);
     if (runVerbose) {
       return runVerbose === "on";

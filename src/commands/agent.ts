@@ -55,6 +55,7 @@ import { applyVerboseOverride } from "../sessions/level-overrides.js";
 import { applyModelOverrideToSessionEntry } from "../sessions/model-overrides.js";
 import { resolveSendPolicy } from "../sessions/send-policy.js";
 import { resolveMessageChannel } from "../utils/message-channel.js";
+import { normalizeFeedbackLevel } from "../infra/feedback.js";
 import { deliverAgentCommandResult } from "./agent/delivery.js";
 import { resolveAgentRunContext } from "./agent/run-context.js";
 import { updateSessionStoreAfterAgentRun } from "./agent/session-store.js";
@@ -121,6 +122,10 @@ export async function agentCommand(
   if (opts.verbose && !verboseOverride) {
     throw new Error('Invalid verbose level. Use "on", "full", or "off".');
   }
+  const feedbackOverride = normalizeFeedbackLevel(opts.feedback);
+  if (opts.feedback && !feedbackOverride) {
+    throw new Error('Invalid feedback level. Use "silent", "info", or "debug".');
+  }
 
   const timeoutSecondsRaw =
     opts.timeout !== undefined ? Number.parseInt(String(opts.timeout), 10) : undefined;
@@ -182,6 +187,7 @@ export async function agentCommand(
       registerAgentRunContext(runId, {
         sessionKey,
         verboseLevel: resolvedVerboseLevel,
+        ...(feedbackOverride ? { feedbackLevel: feedbackOverride } : {}),
       });
     }
 

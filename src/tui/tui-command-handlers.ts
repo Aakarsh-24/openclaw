@@ -21,6 +21,7 @@ import {
   createSettingsList,
 } from "./components/selectors.js";
 import { formatStatusSummary } from "./tui-status-summary.js";
+import type { FeedbackLevel } from "../infra/feedback.js";
 
 type CommandHandlerContext = {
   client: GatewayChatClient;
@@ -29,6 +30,7 @@ type CommandHandlerContext = {
   opts: TuiOptions;
   state: TuiStateAccess;
   deliverDefault: boolean;
+  feedbackLevel: FeedbackLevel;
   openOverlay: (component: Component) => void;
   closeOverlay: () => void;
   refreshSessionInfo: () => Promise<void>;
@@ -48,6 +50,7 @@ export function createCommandHandlers(context: CommandHandlerContext) {
     opts,
     state,
     deliverDefault,
+    feedbackLevel,
     openOverlay,
     closeOverlay,
     refreshSessionInfo,
@@ -453,6 +456,7 @@ export function createCommandHandlers(context: CommandHandlerContext) {
         sessionKey: state.currentSessionKey,
         message: text,
         thinking: opts.thinking,
+        feedback: feedbackLevel === "silent" ? undefined : feedbackLevel,
         deliver: deliverDefault,
         timeoutMs: opts.timeoutMs,
       });

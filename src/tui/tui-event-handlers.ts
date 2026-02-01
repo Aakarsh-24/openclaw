@@ -3,17 +3,29 @@ import type { ChatLog } from "./components/chat-log.js";
 import type { AgentEvent, ChatEvent, TuiStateAccess } from "./tui-types.js";
 import { asString, extractTextFromMessage, isCommandMessage } from "./tui-formatters.js";
 import { TuiStreamAssembler } from "./tui-stream-assembler.js";
+import { formatAgentFeedbackLabel } from "../infra/agent-feedback.js";
+import type { FeedbackLevel } from "../infra/feedback.js";
 
 type EventHandlerContext = {
   chatLog: ChatLog;
   tui: TUI;
   state: TuiStateAccess;
   setActivityStatus: (text: string) => void;
+  setStatusDetail: (text: string | null) => void;
+  feedbackLevel: FeedbackLevel;
   refreshSessionInfo?: () => Promise<void>;
 };
 
 export function createEventHandlers(context: EventHandlerContext) {
-  const { chatLog, tui, state, setActivityStatus, refreshSessionInfo } = context;
+  const {
+    chatLog,
+    tui,
+    state,
+    setActivityStatus,
+    setStatusDetail,
+    feedbackLevel,
+    refreshSessionInfo,
+  } = context;
   const finalizedRuns = new Map<string, number>();
   const sessionRuns = new Map<string, number>();
   let streamAssembler = new TuiStreamAssembler();
@@ -153,6 +165,13 @@ export function createEventHandlers(context: EventHandlerContext) {
     if (!isActiveRun && !sessionRuns.has(evt.runId)) {
       return;
     }
+    const detail = formatAgentFeedbackLabel(evt, feedbackLevel, {
+      includeLifecycle: false,
+      includeAssistant: false,
+    });
+    if (detail) {
+      setStatusDetail(detail);
+    }
     if (evt.stream === "tool") {
       const data = evt.data ?? {};
       const phase = asString(data.phase, "");
@@ -182,6 +201,7 @@ export function createEventHandlers(context: EventHandlerContext) {
       const phase = typeof evt.data?.phase === "string" ? evt.data.phase : "";
       if (phase === "start") {
         setActivityStatus("running");
+        setStatusDetail(null);
       }
       if (phase === "end") {
         setActivityStatus("idle");
