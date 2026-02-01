@@ -1,8 +1,8 @@
 import type { WebClient as SlackWebClient } from "@slack/web-api";
 import type { FetchLike } from "../../media/fetch.js";
 import type { SlackFile } from "../types.js";
-import { fetchRemoteMedia } from "../../media/fetch.js";
 import { logWarn } from "../../logger.js";
+import { fetchRemoteMedia } from "../../media/fetch.js";
 import { saveMediaBuffer } from "../../media/store.js";
 
 /**
@@ -79,7 +79,9 @@ export async function resolveSlackMedia(params: {
         fetchImpl,
         filePathHint: file.name,
       });
-      if (fetched.buffer.byteLength > params.maxBytes) continue;
+      if (fetched.buffer.byteLength > params.maxBytes) {
+        continue;
+      }
 
       // Guard: reject if we received HTML instead of expected media.
       // This happens when Slack auth fails and returns a login page.
