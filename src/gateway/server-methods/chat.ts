@@ -96,7 +96,11 @@ function getLastEntryId(transcriptPath: string): string | null {
     // ignore read/stat errors
   } finally {
     if (fd !== undefined) {
-      try { fs.closeSync(fd); } catch { /* ignore */ }
+      try {
+        fs.closeSync(fd);
+      } catch {
+        /* ignore */
+      }
     }
   }
   return null;
