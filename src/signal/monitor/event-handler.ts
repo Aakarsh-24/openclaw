@@ -516,7 +516,8 @@ export function createSignalEventHandler(deps: SignalEventHandlerDeps) {
       const validAttachments = attachments.filter((a) => a?.id);
 
       // Send "processing images" message for multiple attachments
-      if (validAttachments.length > 1) {
+      // Guard: only send if we have a valid target (groupId must be truthy for groups)
+      if (validAttachments.length > 1 && (!isGroup || groupId)) {
         const target = isGroup ? `group:${groupId}` : `signal:${senderRecipient}`;
         try {
           await sendMessageSignal(target, `Processing ${validAttachments.length} images...`, {
@@ -576,10 +577,10 @@ export function createSignalEventHandler(deps: SignalEventHandlerDeps) {
           placeholder += ` <media:${additionalKind ?? "attachment"}>`;
         }
       }
-    } else if (attachments.length) {
+    } else if (mediaPaths.length) {
       placeholder = "<media:attachment>";
-      if (attachments.length > 1) {
-        placeholder += ` +${attachments.length - 1} more`;
+      if (mediaPaths.length > 1) {
+        placeholder += ` +${mediaPaths.length - 1} more`;
       }
     }
 
