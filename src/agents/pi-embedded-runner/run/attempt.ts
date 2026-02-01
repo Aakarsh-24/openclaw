@@ -13,7 +13,11 @@ import type { EmbeddedRunAttemptParams, EmbeddedRunAttemptResult } from "./types
 import { resolveHeartbeatPrompt } from "../../../auto-reply/heartbeat.js";
 import { resolveChannelCapabilities } from "../../../config/channel-capabilities.js";
 import { getMachineDisplayName } from "../../../infra/machine-name.js";
-import { initializeGlobalInterceptors } from "../../../interceptors/global.js";
+import {
+  initializeGlobalInterceptors,
+  getGlobalInterceptorRegistry,
+} from "../../../interceptors/global.js";
+import { trigger } from "../../../interceptors/trigger.js";
 import { MAX_IMAGE_BYTES } from "../../../media/constants.js";
 import { getGlobalHookRunner } from "../../../plugins/hook-runner-global.js";
 import { isSubagentSessionKey } from "../../../routing/session-key.js";
@@ -142,6 +146,55 @@ export async function runEmbeddedAttempt(
 ): Promise<EmbeddedRunAttemptResult> {
   // Ensure the global interceptor registry exists (idempotent).
   initializeGlobalInterceptors();
+
+  // --- message.before / params.before interceptors ---
+  const interceptorRegistry = getGlobalInterceptorRegistry();
+  const agentId = params.sessionKey?.split(":")[0] ?? "main";
+
+  let interceptedPrompt = params.prompt;
+  let interceptorMetadata: Record<string, unknown> = {};
+  if (interceptorRegistry) {
+    const msgOut = await trigger(
+      interceptorRegistry,
+      "message.before",
+      {
+        agentId,
+        sessionKey: params.sessionKey,
+        provider: params.provider,
+        model: params.modelId,
+      },
+      {
+        message: params.prompt,
+        metadata: {},
+      },
+    );
+    interceptedPrompt = msgOut.message;
+    interceptorMetadata = msgOut.metadata;
+  }
+
+  let effectiveThinkLevel = params.thinkLevel;
+  let effectiveReasoningLevel = params.reasoningLevel;
+  if (interceptorRegistry) {
+    const pOut = await trigger(
+      interceptorRegistry,
+      "params.before",
+      {
+        agentId,
+        sessionKey: params.sessionKey,
+        message: interceptedPrompt,
+        metadata: interceptorMetadata,
+      },
+      {
+        provider: params.provider,
+        model: params.modelId,
+        thinkLevel: params.thinkLevel,
+        reasoningLevel: params.reasoningLevel,
+      },
+    );
+    effectiveThinkLevel = (pOut.thinkLevel as typeof params.thinkLevel) ?? effectiveThinkLevel;
+    effectiveReasoningLevel =
+      (pOut.reasoningLevel as typeof params.reasoningLevel) ?? effectiveReasoningLevel;
+  }
 
   const resolvedWorkspace = resolveUserPath(params.workspaceDir);
   const prevCwd = process.cwd();
@@ -348,8 +401,8 @@ export async function runEmbeddedAttempt(
 
     const appendPrompt = buildEmbeddedSystemPrompt({
       workspaceDir: effectiveWorkspace,
-      defaultThinkLevel: params.thinkLevel,
-      reasoningLevel: params.reasoningLevel ?? "off",
+      defaultThinkLevel: effectiveThinkLevel,
+      reasoningLevel: effectiveReasoningLevel ?? "off",
       extraSystemPrompt: params.extraSystemPrompt,
       ownerNumbers: params.ownerNumbers,
       reasoningTagHint,
@@ -476,7 +529,7 @@ export async function runEmbeddedAttempt(
         authStorage: params.authStorage,
         modelRegistry: params.modelRegistry,
         model: params.model,
-        thinkingLevel: mapThinkingLevel(params.thinkLevel),
+        thinkingLevel: mapThinkingLevel(effectiveThinkLevel),
         tools: builtInTools,
         customTools: allCustomTools,
         sessionManager,
@@ -620,7 +673,7 @@ export async function runEmbeddedAttempt(
         session: activeSession,
         runId: params.runId,
         verboseLevel: params.verboseLevel,
-        reasoningMode: params.reasoningLevel ?? "off",
+        reasoningMode: effectiveReasoningLevel ?? "off",
         toolResultFormat: params.toolResultFormat,
         shouldEmitToolResult: params.shouldEmitToolResult,
         shouldEmitToolOutput: params.shouldEmitToolOutput,
@@ -708,12 +761,12 @@ export async function runEmbeddedAttempt(
         const promptStartedAt = Date.now();
 
         // Run before_agent_start hooks to allow plugins to inject context
-        let effectivePrompt = params.prompt;
+        let effectivePrompt = interceptedPrompt;
         if (hookRunner?.hasHooks("before_agent_start")) {
           try {
             const hookResult = await hookRunner.runBeforeAgentStart(
               {
-                prompt: params.prompt,
+                prompt: interceptedPrompt,
                 messages: activeSession.messages,
               },
               {
@@ -724,7 +777,7 @@ export async function runEmbeddedAttempt(
               },
             );
             if (hookResult?.prependContext) {
-              effectivePrompt = `${hookResult.prependContext}\n\n${params.prompt}`;
+              effectivePrompt = `${hookResult.prependContext}\n\n${interceptedPrompt}`;
               log.debug(
                 `hooks: prepended context to prompt (${hookResult.prependContext.length} chars)`,
               );

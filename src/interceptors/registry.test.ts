@@ -118,4 +118,38 @@ describe("interceptor registry", () => {
       }),
     ).not.toThrow();
   });
+
+  it("agentMatcher filters message.before interceptors", () => {
+    const registry = createInterceptorRegistry();
+    registry.add({
+      id: "coder",
+      name: "message.before",
+      handler: () => {},
+      agentMatcher: /^coder$/,
+    });
+    registry.add({ id: "all", name: "message.before", handler: () => {} });
+
+    expect(registry.get("message.before", "main").map((r) => r.id)).toEqual(["all"]);
+    expect(registry.get("message.before", "coder").map((r) => r.id)).toEqual(["coder", "all"]);
+  });
+
+  it("get filters params.before by name", () => {
+    const registry = createInterceptorRegistry();
+    registry.add({ id: "a", name: "message.before", handler: () => {} });
+    registry.add({ id: "b", name: "params.before", handler: () => {} });
+    expect(registry.get("params.before")).toHaveLength(1);
+    expect(registry.get("params.before")[0].id).toBe("b");
+  });
+
+  it("agentMatcher does not affect tool events", () => {
+    const registry = createInterceptorRegistry();
+    registry.add({
+      id: "with-agent",
+      name: "tool.before",
+      handler: () => {},
+      agentMatcher: /^coder$/,
+    });
+    // tool.before ignores agentMatcher — entry should still appear
+    expect(registry.get("tool.before", "exec")).toHaveLength(1);
+  });
 });

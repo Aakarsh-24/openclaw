@@ -39,14 +39,23 @@ export function createInterceptorRegistry() {
       }
     },
 
-    get(name: InterceptorName, toolName?: string): AnyInterceptorRegistration[] {
+    get(name: InterceptorName, matchContext?: string): AnyInterceptorRegistration[] {
       return entries
         .filter((e) => {
           if (e.name !== name) {
             return false;
           }
-          if (toolName && e.toolMatcher && !e.toolMatcher.test(toolName)) {
-            return false;
+          if (matchContext) {
+            // Tool events use toolMatcher, message/params events use agentMatcher
+            if (name === "tool.before" || name === "tool.after") {
+              if (e.toolMatcher && !e.toolMatcher.test(matchContext)) {
+                return false;
+              }
+            } else {
+              if (e.agentMatcher && !e.agentMatcher.test(matchContext)) {
+                return false;
+              }
+            }
           }
           return true;
         })

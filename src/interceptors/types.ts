@@ -1,6 +1,6 @@
 import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 
-export type InterceptorName = "tool.before" | "tool.after";
+export type InterceptorName = "tool.before" | "tool.after" | "message.before" | "params.before";
 
 /**
  * Known normalized tool names from tool-policy.ts.
@@ -65,14 +65,45 @@ export type ToolAfterOutput = {
   result: AgentToolResult<unknown>;
 };
 
+export type MessageBeforeInput = {
+  agentId: string;
+  sessionKey?: string;
+  provider: string;
+  model: string;
+};
+
+export type MessageBeforeOutput = {
+  message: string;
+  metadata: Record<string, unknown>;
+};
+
+export type ParamsBeforeInput = {
+  agentId: string;
+  sessionKey?: string;
+  message: string;
+  metadata: Record<string, unknown>;
+};
+
+export type ParamsBeforeOutput = {
+  provider: string;
+  model: string;
+  thinkLevel?: string;
+  reasoningLevel?: string;
+  temperature?: number;
+};
+
 export type InterceptorInputMap = {
   "tool.before": ToolBeforeInput;
   "tool.after": ToolAfterInput;
+  "message.before": MessageBeforeInput;
+  "params.before": ParamsBeforeInput;
 };
 
 export type InterceptorOutputMap = {
   "tool.before": ToolBeforeOutput;
   "tool.after": ToolAfterOutput;
+  "message.before": MessageBeforeOutput;
+  "params.before": ParamsBeforeOutput;
 };
 
 export type InterceptorHandler<I, O> = (input: Readonly<I>, output: O) => Promise<void> | void;
@@ -83,4 +114,5 @@ export type InterceptorRegistration<N extends InterceptorName = InterceptorName>
   handler: InterceptorHandler<InterceptorInputMap[N], InterceptorOutputMap[N]>;
   priority?: number;
   toolMatcher?: RegExp;
+  agentMatcher?: RegExp;
 };

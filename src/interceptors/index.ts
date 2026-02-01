@@ -16,4 +16,8 @@ export type {
   ToolBeforeOutput,
   ToolAfterInput,
   ToolAfterOutput,
+  MessageBeforeInput,
+  MessageBeforeOutput,
+  ParamsBeforeInput,
+  ParamsBeforeOutput,
 } from "./types.js";

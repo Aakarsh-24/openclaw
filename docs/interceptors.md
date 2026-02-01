@@ -1,9 +1,11 @@
 # Interceptors
 
-Interceptors let you hook into the tool execution pipeline to mutate arguments before a tool runs (`tool.before`) and transform results after it completes (`tool.after`). They are independent from hooks and plugins, though plugins will typically use them.
+Interceptors let you hook into the agent execution pipeline at multiple points: mutate messages before the agent processes them (`message.before`), adjust LLM parameters dynamically (`params.before`), mutate tool arguments before execution (`tool.before`), and transform results after completion (`tool.after`). They are independent from hooks and plugins, though plugins will typically use them.
 
 Common uses:
 
+- Enrich or classify incoming messages before the agent sees them
+- Dynamically adjust thinking level or reasoning based on message content
 - Inject default arguments into specific tools
 - Block dangerous tool calls based on custom logic
 - Redact sensitive data from tool results
@@ -12,10 +14,13 @@ Common uses:
 
 ## How It Works
 
-Every tool call flows through the interceptor pipeline:
+Every agent run flows through the interceptor pipeline:
 
 ```
-User prompt
+User message arrives
+  -> message.before interceptors (can mutate message text, set metadata tags)
+  -> params.before interceptors (can override thinkLevel, reasoningLevel; reads metadata)
+  -> Session created with effective parameters
   -> Agent decides to call a tool
     -> tool.before interceptors (can mutate args or block)
       -> Tool executes
@@ -52,6 +57,8 @@ The full set is defined in `src/interceptors/types.ts` as `KNOWN_TOOL_NAMES`.
 
 | Name | When it runs | What it can do |
 |------|-------------|----------------|
+| `message.before` | Before the agent processes a message | Mutate message text, set metadata tags |
+| `params.before` | After message.before, before session creation | Override thinkLevel, reasoningLevel, temperature |
 | `tool.before` | Before the tool executes | Mutate args, block execution |
 | `tool.after` | After the tool executes | Mutate the result |
 
@@ -68,11 +75,62 @@ const registration: InterceptorRegistration<"tool.before"> = {
   id: "my-arg-injector",         // unique identifier
   name: "tool.before",           // which hook point
   priority: 10,                  // higher runs first (default: 0)
-  toolMatcher: /^exec$/,         // optional regex filter on tool name
+  toolMatcher: /^exec$/,         // optional regex filter on tool name (tool events)
+  agentMatcher: /^coder$/,       // optional regex filter on agent ID (message/params events)
   handler: (input, output) => {
     // input is read-only context
     // output is mutable — modify it in place
   },
+};
+```
+
+- `toolMatcher` applies to `tool.before` / `tool.after` — filters by normalized tool name
+- `agentMatcher` applies to `message.before` / `params.before` — filters by agent ID
+
+### message.before
+
+**Input** (read-only):
+
+```typescript
+type MessageBeforeInput = {
+  agentId: string;       // resolved agent ID
+  sessionKey?: string;   // session key
+  provider: string;      // e.g. "anthropic", "openrouter"
+  model: string;         // e.g. "claude-3-5-sonnet"
+};
+```
+
+**Output** (mutable):
+
+```typescript
+type MessageBeforeOutput = {
+  message: string;                       // the message text — mutate to change what the agent sees
+  metadata: Record<string, unknown>;     // metadata bag — set tags for params.before to read
+};
+```
+
+### params.before
+
+**Input** (read-only):
+
+```typescript
+type ParamsBeforeInput = {
+  agentId: string;                       // resolved agent ID
+  sessionKey?: string;                   // session key
+  message: string;                       // message text (possibly mutated by message.before)
+  metadata: Record<string, unknown>;     // metadata from message.before interceptors
+};
+```
+
+**Output** (mutable):
+
+```typescript
+type ParamsBeforeOutput = {
+  provider: string;         // current provider (read-only context in v1)
+  model: string;            // current model (read-only context in v1)
+  thinkLevel?: string;      // override thinking level ("off" | "low" | "medium" | "high")
+  reasoningLevel?: string;  // override reasoning level ("off" | "on")
+  temperature?: number;     // override temperature (reserved for future use)
 };
 ```
 
@@ -116,6 +174,35 @@ type ToolAfterOutput = {
   result: AgentToolResult<unknown>;  // the tool result — replace or mutate
 };
 ```
+
+## Inter-Interceptor Communication
+
+The `metadata` bag on `MessageBeforeOutput` is passed through to `ParamsBeforeInput`. This enables interceptors to communicate across events:
+
+```typescript
+// 1. message.before: classify the message
+registry.add({
+  id: "classifier",
+  name: "message.before",
+  handler: (_input, output) => {
+    const isComplex = output.message.length > 500 || output.message.includes("debug");
+    output.metadata.complexity = isComplex ? "high" : "low";
+  },
+});
+
+// 2. params.before: adjust thinking based on classification
+registry.add({
+  id: "think-adjuster",
+  name: "params.before",
+  handler: (input, output) => {
+    if (input.metadata.complexity === "high") {
+      output.thinkLevel = "high";
+    }
+  },
+});
+```
+
+You could also use `message.before` with an async handler that calls a lightweight LLM to classify the request, tags the metadata, and then `params.before` reads those tags to route to different models or adjust parameters.
 
 ## Built-in Interceptors
 
@@ -371,7 +458,7 @@ const registry = createInterceptorRegistry();
 |--------|-------------|
 | `add(reg)` | Register an interceptor (validates `toolMatcher`) |
 | `remove(id)` | Remove by ID |
-| `get(name, toolName?)` | Get matching interceptors, sorted by priority |
+| `get(name, matchContext?)` | Get matching interceptors, sorted by priority. Context is toolName for tool events, agentId for message/params events |
 | `list()` | List all registered interceptors |
 | `clear()` | Remove all interceptors |
 
@@ -410,8 +497,8 @@ resetGlobalInterceptors();
 
 ### Integration Points
 
+- `src/agents/pi-embedded-runner/run/attempt.ts` — Fires `message.before` and `params.before` early in `runEmbeddedAttempt()`, before session creation. Also calls `initializeGlobalInterceptors()`.
 - `src/agents/pi-tool-definition-adapter.ts` — Wraps every tool's `execute()` with the `tool.before`/`tool.after` pipeline
-- `src/agents/pi-embedded-runner/run/attempt.ts` — Calls `initializeGlobalInterceptors()` at the start of each run
 
 ### Initialization Flow
 
@@ -423,7 +510,12 @@ Gateway startup
      -> Registers builtin:command-safety-guard
      -> Registers builtin:security-audit
   -> Plugins call registry.add() to register custom interceptors
-  -> Tools created via toToolDefinitions() read the global registry
+
+Each agent run:
+  -> message.before interceptors (mutate prompt, set metadata)
+  -> params.before interceptors (override thinkLevel, reasoningLevel)
+  -> createAgentSession() with effective parameters
+  -> Agent prompts the LLM
   -> Each tool.execute() runs: tool.before -> real execute -> tool.after
 ```
 
