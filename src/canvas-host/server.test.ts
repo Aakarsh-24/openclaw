@@ -237,7 +237,9 @@ describe("canvas host", () => {
       const res = await fetch(`http://127.0.0.1:${server.port}/__openclaw__/a2ui/`);
       const html = await res.text();
       // 503 when A2UI assets not found (e.g. bundle not built or path resolution differs in CI)
-      if (res.status === 503) return;
+      if (res.status === 503) {
+        return;
+      }
       expect(res.status).toBe(200);
       expect(html).toContain("openclaw-a2ui-host");
       expect(html).toContain("openclawCanvasA2UIAction");
@@ -246,7 +248,9 @@ describe("canvas host", () => {
         `http://127.0.0.1:${server.port}/__openclaw__/a2ui/a2ui.bundle.js`,
       );
       const js = await bundleRes.text();
-      if (bundleRes.status === 503) return;
+      if (bundleRes.status === 503) {
+        return;
+      }
       expect(bundleRes.status).toBe(200);
       expect(js).toContain("openclawA2UI");
     } finally {

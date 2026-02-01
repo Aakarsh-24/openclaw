@@ -76,11 +76,15 @@ function parseRealIp(realIp?: string): string | undefined {
  */
 function ipv4ToNumber(ip: string): number | null {
   const parts = ip.split(".");
-  if (parts.length !== 4) return null;
+  if (parts.length !== 4) {
+    return null;
+  }
   let result = 0;
   for (const part of parts) {
     const num = parseInt(part, 10);
-    if (Number.isNaN(num) || num < 0 || num > 255) return null;
+    if (Number.isNaN(num) || num < 0 || num > 255) {
+      return null;
+    }
     result = (result << 8) | num;
   }
   return result >>> 0; // Convert to unsigned 32-bit
@@ -93,7 +97,9 @@ function ipv4ToNumber(ip: string): number | null {
 function isIpInCidr(ip: string, cidr: string): boolean {
   const normalizedIp = normalizeIp(ip);
   const normalizedCidr = normalizeIp(cidr.split("/")[0]);
-  if (!normalizedIp || !normalizedCidr) return false;
+  if (!normalizedIp || !normalizedCidr) {
+    return false;
+  }
 
   // Check if it's CIDR notation
   const slashIndex = cidr.indexOf("/");
@@ -111,7 +117,9 @@ function isIpInCidr(ip: string, cidr: string): boolean {
 
   const ipNum = ipv4ToNumber(normalizedIp);
   const cidrNum = ipv4ToNumber(normalizedCidr);
-  if (ipNum === null || cidrNum === null) return false;
+  if (ipNum === null || cidrNum === null) {
+    return false;
+  }
 
   // Create mask: e.g., /8 -> 0xFF000000
   const mask = prefixLength === 0 ? 0 : (0xffffffff << (32 - prefixLength)) >>> 0;
@@ -121,7 +129,9 @@ function isIpInCidr(ip: string, cidr: string): boolean {
 
 export function isTrustedProxyAddress(ip: string | undefined, trustedProxies?: string[]): boolean {
   const normalized = normalizeIp(ip);
-  if (!normalized || !trustedProxies || trustedProxies.length === 0) return false;
+  if (!normalized || !trustedProxies || trustedProxies.length === 0) {
+    return false;
+  }
   return trustedProxies.some((proxy) => isIpInCidr(normalized, proxy));
 }
 
