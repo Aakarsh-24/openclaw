@@ -158,11 +158,15 @@ export const buildTelegramMessageContext = async ({
   const isGroup = msg.chat.type === "group" || msg.chat.type === "supergroup";
   const messageThreadId = (msg as { message_thread_id?: number }).message_thread_id;
   const isForum = (msg.chat as { is_forum?: boolean }).is_forum === true;
-  const resolvedThreadId = resolveTelegramForumThreadId({
-    isForum,
-    messageThreadId,
-  });
-  const replyThreadId = isGroup ? resolvedThreadId : messageThreadId;
+
+  // Thread routing:
+  // - Forum groups: resolve forum topic id (defaults to General topic=1 when missing)
+  // - Private chats with topics: use raw message_thread_id
+  const resolvedThreadId = isGroup
+    ? resolveTelegramForumThreadId({ isForum, messageThreadId })
+    : messageThreadId;
+
+  const replyThreadId = resolvedThreadId;
   const { groupConfig, topicConfig } = resolveTelegramGroupConfig(chatId, resolvedThreadId);
   const peerId = isGroup ? buildTelegramGroupPeerId(chatId, resolvedThreadId) : String(chatId);
   const route = resolveAgentRoute({
