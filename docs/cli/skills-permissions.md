@@ -238,12 +238,12 @@ Configure skill loading behavior in `~/.openclaw/openclaw.json`:
 
 ### Manifest Requirement Modes
 
-| Mode | No Manifest | Above Risk Threshold | Behavior |
-|------|-------------|---------------------|----------|
-| **allow** | Load | Load | Log warnings only |
-| **warn** | Load | Load | Log warnings (current default) |
-| **prompt** | Prompt | Prompt | Require user confirmation in CLI |
-| **deny** | Block | Block | Refuse to load |
+| Mode       | No Manifest | Above Risk Threshold | Behavior                         |
+| ---------- | ----------- | -------------------- | -------------------------------- |
+| **allow**  | Load        | Load                 | Log warnings only                |
+| **warn**   | Load        | Load                 | Log warnings (current default)   |
+| **prompt** | Prompt      | Prompt               | Require user confirmation in CLI |
+| **deny**   | Block       | Block                | Refuse to load                   |
 
 ### Auto-load Risk Threshold
 
