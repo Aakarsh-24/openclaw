@@ -36,7 +36,6 @@ describeLanceDB("@lancedb/lancedb native module", () => {
     // 1. Docker build did not compile the native module (missing build tools)
     // 2. The .node binary is not included in the image (missing COPY in Dockerfile)
     // 3. The module has incompatible binary dependencies
-    
     try {
       const lancedb = await import("@lancedb/lancedb");
       expect(lancedb).toBeDefined();
@@ -54,20 +53,18 @@ describeLanceDB("@lancedb/lancedb native module", () => {
   test("connect function is available", async () => {
     // Verify that the core lancedb.connect() function is accessible
     // This is the main API entry point for the memory extension
-    
     const lancedb = await import("@lancedb/lancedb");
     const connect = lancedb.default?.connect || lancedb.connect;
-    
+
     expect(typeof connect).toBe("function");
   });
 
   test("module has required methods", async () => {
     // Verify that essential LanceDB API methods are available
     // This ensures the native binding is complete and not corrupted
-    
     const lancedb = await import("@lancedb/lancedb");
     const api = lancedb.default || lancedb;
-    
+
     expect(typeof api.connect).toBe("function");
   });
 });

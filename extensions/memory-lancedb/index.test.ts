@@ -47,108 +47,108 @@ describe("memory plugin e2e", () => {
     expect(memoryPlugin.register).toBeInstanceOf(Function);
   });
 
-   test("config schema parses valid config", async () => {
-     const { default: memoryPlugin } = await import("./index.js");
+  test("config schema parses valid config", async () => {
+    const { default: memoryPlugin } = await import("./index.js");
 
-     const config = memoryPlugin.configSchema?.parse?.({
-       embedding: {
-         apiKey: OPENAI_API_KEY,
-         model: "text-embedding-3-small",
-       },
-       dbPath,
-       autoCapture: true,
-       autoRecall: true,
-     });
+    const config = memoryPlugin.configSchema?.parse?.({
+      embedding: {
+        apiKey: OPENAI_API_KEY,
+        model: "text-embedding-3-small",
+      },
+      dbPath,
+      autoCapture: true,
+      autoRecall: true,
+    });
 
-     expect(config).toBeDefined();
-     expect(config?.embedding?.apiKey).toBe(OPENAI_API_KEY);
-     expect(config?.embedding?.provider).toBe("openai");
-     expect(config?.embedding?.model).toBe("text-embedding-3-small");
-     expect(config?.dbPath).toBe(dbPath);
-   });
+    expect(config).toBeDefined();
+    expect(config?.embedding?.apiKey).toBe(OPENAI_API_KEY);
+    expect(config?.embedding?.provider).toBe("openai");
+    expect(config?.embedding?.model).toBe("text-embedding-3-small");
+    expect(config?.dbPath).toBe(dbPath);
+  });
 
-   test("config schema auto-detects Google provider from gemini model", async () => {
-     const { default: memoryPlugin } = await import("./index.js");
+  test("config schema auto-detects Google provider from gemini model", async () => {
+    const { default: memoryPlugin } = await import("./index.js");
 
-     const config = memoryPlugin.configSchema?.parse?.({
-       embedding: {
-         apiKey: GOOGLE_API_KEY,
-         model: "gemini-embedding-001",
-       },
-       dbPath,
-     });
+    const config = memoryPlugin.configSchema?.parse?.({
+      embedding: {
+        apiKey: GOOGLE_API_KEY,
+        model: "gemini-embedding-001",
+      },
+      dbPath,
+    });
 
-     expect(config).toBeDefined();
-     expect(config?.embedding?.provider).toBe("google");
-     expect(config?.embedding?.model).toBe("gemini-embedding-001");
-   });
+    expect(config).toBeDefined();
+    expect(config?.embedding?.provider).toBe("google");
+    expect(config?.embedding?.model).toBe("gemini-embedding-001");
+  });
 
-   test("config schema respects explicit provider override", async () => {
-     const { default: memoryPlugin } = await import("./index.js");
+  test("config schema respects explicit provider override", async () => {
+    const { default: memoryPlugin } = await import("./index.js");
 
-     // Explicitly set provider to google even without gemini model
-     const config = memoryPlugin.configSchema?.parse?.({
-       embedding: {
-         apiKey: GOOGLE_API_KEY,
-         provider: "google",
-         model: "text-embedding-3-small",
-       },
-       dbPath,
-     });
+    // Explicitly set provider to google even without gemini model
+    const config = memoryPlugin.configSchema?.parse?.({
+      embedding: {
+        apiKey: GOOGLE_API_KEY,
+        provider: "google",
+        model: "text-embedding-3-small",
+      },
+      dbPath,
+    });
 
-     expect(config).toBeDefined();
-     expect(config?.embedding?.provider).toBe("google");
-   });
+    expect(config).toBeDefined();
+    expect(config?.embedding?.provider).toBe("google");
+  });
 
-   test("config schema validates embedding dimensions for supported models", async () => {
-     const { default: memoryPlugin } = await import("./index.js");
+  test("config schema validates embedding dimensions for supported models", async () => {
+    const { default: memoryPlugin } = await import("./index.js");
 
-     // Test OpenAI models
-     const openaiSmall = memoryPlugin.configSchema?.parse?.({
-       embedding: {
-         apiKey: OPENAI_API_KEY,
-         model: "text-embedding-3-small",
-       },
-       dbPath,
-     });
-     expect(openaiSmall?.embedding?.model).toBe("text-embedding-3-small");
+    // Test OpenAI models
+    const openaiSmall = memoryPlugin.configSchema?.parse?.({
+      embedding: {
+        apiKey: OPENAI_API_KEY,
+        model: "text-embedding-3-small",
+      },
+      dbPath,
+    });
+    expect(openaiSmall?.embedding?.model).toBe("text-embedding-3-small");
 
-     const openaiLarge = memoryPlugin.configSchema?.parse?.({
-       embedding: {
-         apiKey: OPENAI_API_KEY,
-         model: "text-embedding-3-large",
-       },
-       dbPath,
-     });
-     expect(openaiLarge?.embedding?.model).toBe("text-embedding-3-large");
+    const openaiLarge = memoryPlugin.configSchema?.parse?.({
+      embedding: {
+        apiKey: OPENAI_API_KEY,
+        model: "text-embedding-3-large",
+      },
+      dbPath,
+    });
+    expect(openaiLarge?.embedding?.model).toBe("text-embedding-3-large");
 
-     // Test Google Gemini model
-     const gemini = memoryPlugin.configSchema?.parse?.({
-       embedding: {
-         apiKey: GOOGLE_API_KEY,
-         model: "gemini-embedding-001",
-       },
-       dbPath,
-     });
-     expect(gemini?.embedding?.model).toBe("gemini-embedding-001");
-   });
+    // Test Google Gemini model
+    const gemini = memoryPlugin.configSchema?.parse?.({
+      embedding: {
+        apiKey: GOOGLE_API_KEY,
+        model: "gemini-embedding-001",
+      },
+      dbPath,
+    });
+    expect(gemini?.embedding?.model).toBe("gemini-embedding-001");
+  });
 
-   test("config schema rejects unsupported models", async () => {
-     const { default: memoryPlugin } = await import("./index.js");
+  test("config schema rejects unsupported models", async () => {
+    const { default: memoryPlugin } = await import("./index.js");
 
-     expect(() => {
-       memoryPlugin.configSchema?.parse?.({
-         embedding: {
-           apiKey: OPENAI_API_KEY,
-           model: "unsupported-model",
-         },
-         dbPath,
-       });
-     }).toThrow("Unsupported embedding model");
-   });
+    expect(() => {
+      memoryPlugin.configSchema?.parse?.({
+        embedding: {
+          apiKey: OPENAI_API_KEY,
+          model: "unsupported-model",
+        },
+        dbPath,
+      });
+    }).toThrow("Unsupported embedding model");
+  });
 
-   test("config schema resolves env vars", async () => {
-     const { default: memoryPlugin } = await import("./index.js");
+  test("config schema resolves env vars", async () => {
+    const { default: memoryPlugin } = await import("./index.js");
 
     // Set a test env var
     process.env.TEST_MEMORY_API_KEY = "test-key-123";
