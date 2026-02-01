@@ -66,6 +66,8 @@ Payload:
   "deliver": true,
   "channel": "last",
   "to": "+15551234567",
+  "agentId": "work",
+  "accountId": "acct_abc123",
   "model": "openai/gpt-5.2-mini",
   "thinking": "low",
   "timeoutSeconds": 120
@@ -79,6 +81,8 @@ Payload:
 - `deliver` optional (boolean): If `true`, the agent's response will be sent to the messaging channel. Defaults to `true`. Responses that are only heartbeat acknowledgments are automatically skipped.
 - `channel` optional (string): The messaging channel for delivery. One of: `last`, `whatsapp`, `telegram`, `discord`, `slack`, `mattermost` (plugin), `signal`, `imessage`, `msteams`. Defaults to `last`.
 - `to` optional (string): The recipient identifier for the channel (e.g., phone number for WhatsApp/Signal, chat ID for Telegram, channel ID for Discord/Slack/Mattermost (plugin), conversation ID for MS Teams). Defaults to the last recipient in the main session.
+- `agentId` optional (string): Target a specific agent by ID. When set, the hook runs against that agent's configuration and session namespace instead of the default agent.
+- `accountId` optional (string): Target a specific account by ID. When set, the hook uses that account's credentials and settings.
 - `model` optional (string): Model override (e.g., `anthropic/claude-3-5-sonnet` or an alias). Must be in the allowed model list if restricted.
 - `thinking` optional (string): Thinking level override (e.g., `low`, `medium`, `high`).
 - `timeoutSeconds` optional (number): Maximum duration for the agent run in seconds.
