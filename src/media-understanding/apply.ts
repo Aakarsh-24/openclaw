@@ -190,18 +190,27 @@ function decodeTextSample(buffer?: Buffer): string {
 }
 
 function guessDelimitedMime(text: string): string | undefined {
-  if (!text) {
-    return undefined;
-  }
+  if (!text) return undefined;
+
   const line = text.split(/\r?\n/)[0] ?? "";
   const tabs = (line.match(/\t/g) ?? []).length;
   const commas = (line.match(/,/g) ?? []).length;
-  if (commas > 0) {
+
+  // Only commas → CSV
+  if (commas > 0 && tabs === 0) {
     return "text/csv";
   }
-  if (tabs > 0) {
+
+  // Only tabs → TSV
+  if (tabs > 0 && commas === 0) {
     return "text/tab-separated-values";
   }
+
+  // Both present → ambiguous, keep old behavior (comma wins)
+  if (commas > 0 && tabs > 0) {
+    return "text/csv";
+  }
+
   return undefined;
 }
 
@@ -253,16 +262,16 @@ async function extractFileBlocks(params: {
     }
     const nameHint = bufferResult?.fileName ?? attachment.path ?? attachment.url;
     const forcedTextMimeResolved = forcedTextMime ?? resolveTextMimeFromName(nameHint ?? "");
+    const rawMime = bufferResult?.mime ?? attachment.mime;
+    if (!forcedTextMimeResolved && kind === "audio" && rawMime?.startsWith("audio/")) {
+      continue;
+    }
     const utf16Charset = resolveUtf16Charset(bufferResult?.buffer);
     const textSample = decodeTextSample(bufferResult?.buffer);
     const textLike = Boolean(utf16Charset) || looksLikeUtf8Text(bufferResult?.buffer);
-    if (!forcedTextMimeResolved && kind === "audio" && !textLike) {
-      continue;
-    }
     const guessedDelimited = textLike ? guessDelimitedMime(textSample) : undefined;
     const textHint =
       forcedTextMimeResolved ?? guessedDelimited ?? (textLike ? "text/plain" : undefined);
-    const rawMime = bufferResult?.mime ?? attachment.mime;
     const mimeType = textHint ?? normalizeMimeType(rawMime);
     // Log when MIME type is overridden from non-text to text for auditability
     if (textHint && rawMime && !rawMime.startsWith("text/")) {
