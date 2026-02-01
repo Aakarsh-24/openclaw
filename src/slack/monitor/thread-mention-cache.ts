@@ -1,10 +1,11 @@
 /**
- * Bounded cache that tracks threads where the bot was explicitly mentioned
+ * Bounded FIFO cache that tracks threads where the bot was explicitly mentioned
  * in the root message. Used to enable implicit-mention (auto-follow) for
  * subsequent thread replies so users don't have to re-mention the bot.
  *
  * Entries expire after {@link THREAD_MENTION_TTL_MS} and the map is capped
- * at {@link THREAD_MENTION_MAX_ENTRIES} to prevent unbounded growth.
+ * at {@link THREAD_MENTION_MAX_ENTRIES} (evicting oldest-first) to prevent
+ * unbounded growth.
  */
 
 const THREAD_MENTION_MAX_ENTRIES = 1000;
@@ -21,7 +22,7 @@ function cacheKey(channelId: string, threadTs: string): string {
   return `${channelId}:${threadTs}`;
 }
 
-/** Evict the oldest entries when the cache exceeds the max size. */
+/** Evict the oldest (FIFO) entries when the cache exceeds the max size. */
 function evictIfNeeded(): void {
   if (cache.size <= THREAD_MENTION_MAX_ENTRIES) {
     return;

@@ -227,7 +227,7 @@ export async function prepareSlackMessage(params: {
   // Track threads where bot was mentioned in the root message so subsequent
   // replies are treated as implicit mentions (auto-follow).
   if (wasMentioned && !isDirectMessage && !isThreadReply && message.ts) {
-    recordThreadMention(message.channel, message.ts);
+    recordThreadMention(message.channel, message.thread_ts ?? message.ts);
   }
 
   const threadRootMentioned = Boolean(
