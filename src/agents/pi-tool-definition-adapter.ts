@@ -55,6 +55,8 @@ export function toToolDefinitions(
         let effectiveParams = params;
 
         // Run before_tool_call plugin hooks — may modify params or block execution.
+        // Fetched per-call because the hook runner is a global singleton that may be
+        // initialised after toToolDefinitions() creates these closures (lazy startup).
         const hookRunner = getGlobalHookRunner();
         if (hookRunner?.hasHooks("before_tool_call")) {
           try {
