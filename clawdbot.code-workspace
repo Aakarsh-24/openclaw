@@ -1,0 +1,181 @@
+{
+  "folders": [
+    {
+      "name": "OpenClaw",
+      "path": "."
+    },
+    {
+      "name": "Apps · Android",
+      "path": "apps/android"
+    },
+    {
+      "name": "Apps · iOS",
+      "path": "apps/ios"
+    },
+    {
+      "name": "Apps · macOS",
+      "path": "apps/macos"
+    },
+    {
+      "name": "Apps · Shared",
+      "path": "apps/shared"
+    },
+    {
+      "name": "Docs",
+      "path": "docs"
+    },
+    {
+      "name": "Extensions · bluebubbles",
+      "path": "extensions/bluebubbles"
+    },
+    {
+      "name": "Extensions · copilot-proxy",
+      "path": "extensions/copilot-proxy"
+    },
+    {
+      "name": "Extensions · diagnostics-otel",
+      "path": "extensions/diagnostics-otel"
+    },
+    {
+      "name": "Extensions · discord",
+      "path": "extensions/discord"
+    },
+    {
+      "name": "Extensions · google-antigravity-auth",
+      "path": "extensions/google-antigravity-auth"
+    },
+    {
+      "name": "Extensions · google-gemini-cli-auth",
+      "path": "extensions/google-gemini-cli-auth"
+    },
+    {
+      "name": "Extensions · googlechat",
+      "path": "extensions/googlechat"
+    },
+    {
+      "name": "Extensions · imessage",
+      "path": "extensions/imessage"
+    },
+    {
+      "name": "Extensions · line",
+      "path": "extensions/line"
+    },
+    {
+      "name": "Extensions · llm-task",
+      "path": "extensions/llm-task"
+    },
+    {
+      "name": "Extensions · lobster",
+      "path": "extensions/lobster"
+    },
+    {
+      "name": "Extensions · matrix",
+      "path": "extensions/matrix"
+    },
+    {
+      "name": "Extensions · mattermost",
+      "path": "extensions/mattermost"
+    },
+    {
+      "name": "Extensions · memory-core",
+      "path": "extensions/memory-core"
+    },
+    {
+      "name": "Extensions · memory-lancedb",
+      "path": "extensions/memory-lancedb"
+    },
+    {
+      "name": "Extensions · minimax-portal-auth",
+      "path": "extensions/minimax-portal-auth"
+    },
+    {
+      "name": "Extensions · msteams",
+      "path": "extensions/msteams"
+    },
+    {
+      "name": "Extensions · nextcloud-talk",
+      "path": "extensions/nextcloud-talk"
+    },
+    {
+      "name": "Extensions · nostr",
+      "path": "extensions/nostr"
+    },
+    {
+      "name": "Extensions · open-prose",
+      "path": "extensions/open-prose"
+    },
+    {
+      "name": "Extensions · qwen-portal-auth",
+      "path": "extensions/qwen-portal-auth"
+    },
+    {
+      "name": "Extensions · signal",
+      "path": "extensions/signal"
+    },
+    {
+      "name": "Extensions · slack",
+      "path": "extensions/slack"
+    },
+    {
+      "name": "Extensions · telegram",
+      "path": "extensions/telegram"
+    },
+    {
+      "name": "Extensions · tlon",
+      "path": "extensions/tlon"
+    },
+    {
+      "name": "Extensions · twitch",
+      "path": "extensions/twitch"
+    },
+    {
+      "name": "Extensions · voice-call",
+      "path": "extensions/voice-call"
+    },
+    {
+      "name": "Extensions · whatsapp",
+      "path": "extensions/whatsapp"
+    },
+    {
+      "name": "Extensions · zalo",
+      "path": "extensions/zalo"
+    },
+    {
+      "name": "Extensions · zalouser",
+      "path": "extensions/zalouser"
+    },
+    {
+      "name": "Packages · clawdbot",
+      "path": "packages/clawdbot"
+    },
+    {
+      "name": "Packages · moltbot",
+      "path": "packages/moltbot"
+    },
+    {
+      "name": "Scripts",
+      "path": "scripts"
+    },
+    {
+      "name": "Skills",
+      "path": "skills"
+    },
+    {
+      "name": "Source",
+      "path": "src"
+    },
+    {
+      "name": "Swabble",
+      "path": "Swabble"
+    },
+    {
+      "name": "UI",
+      "path": "ui"
+    },
+    {
+      "name": "Vendor",
+      "path": "vendor"
+    }
+  ],
+  "settings": {}
+}
