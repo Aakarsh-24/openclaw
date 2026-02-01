@@ -106,7 +106,10 @@ export function createSignalEventHandler(deps: SignalEventHandlerDeps) {
         .join(" ");
       const quotePrefix = quoteMeta ? `(replying to ${quoteMeta})` : "(replying to)";
       // Format: > (replying to Author id:123) quoted text\nactual message
-      const quotedText = entry.quoteContext.text.split("\n").map((line) => `> ${line}`).join("\n");
+      const quotedText = entry.quoteContext.text
+        .split("\n")
+        .map((line) => `> ${line}`)
+        .join("\n");
       effectiveBody = `${quotePrefix}\n${quotedText}\n\n${entry.bodyText}`;
     }
 
@@ -587,8 +590,8 @@ export function createSignalEventHandler(deps: SignalEventHandlerDeps) {
     const quote = dataMessage.quote;
     if (quote?.text?.trim()) {
       const quoteAuthorDisplay = quote.author
-        ? normalizeE164(quote.author) ?? quote.author
-        : quote.authorUuid ?? undefined;
+        ? (normalizeE164(quote.author) ?? quote.author)
+        : (quote.authorUuid ?? undefined);
       quoteContext = {
         text: quote.text.trim(),
         authorDisplay: quoteAuthorDisplay,
