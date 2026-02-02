@@ -55,7 +55,7 @@ function resolveRequestUrl(input: RequestInfo | URL): string {
     return input.url;
   }
 
-  throw new Error(`Unable to resolve request URL from input: ${JSON.stringify(input, null, 2)}`);
+  throw new Error(`Unable to resolve request URL from input: ${JSON.stringify(input, null, 2)}`)
 }
 
 function createSlackMediaFetch(token: string): FetchLike {
