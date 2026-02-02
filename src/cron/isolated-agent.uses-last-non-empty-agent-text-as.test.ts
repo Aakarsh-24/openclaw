@@ -582,7 +582,7 @@ describe("runCronIsolatedAgentTurn", () => {
     });
   });
 
-  it("starts a fresh session id for each cron run", async () => {
+  it("preserves session id across cron runs to avoid fragmenting transcripts", async () => {
     await withTempHome(async (home) => {
       const storePath = await writeSessionStore(home);
       const deps: CliDeps = {
@@ -625,7 +625,8 @@ describe("runCronIsolatedAgentTurn", () => {
 
       expect(first?.sessionId).toBeDefined();
       expect(second?.sessionId).toBeDefined();
-      expect(second?.sessionId).not.toBe(first?.sessionId);
+      // SessionId should be preserved across runs to avoid fragmenting transcripts
+      expect(second?.sessionId).toBe(first?.sessionId);
     });
   });
 });
