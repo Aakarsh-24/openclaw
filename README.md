@@ -1,6 +1,6 @@
 # 🦞 OpenClaw — Personal AI Assistant
 
-English | [简体中文](README.zh-CN.md)
+[简体中文](README.zh-CN.md)
 
 <p align="center">
     <picture>
