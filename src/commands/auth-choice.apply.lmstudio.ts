@@ -6,6 +6,7 @@ const DEFAULT_LMSTUDIO_BASE_URL = "http://127.0.0.1:1234";
 const DEFAULT_LMSTUDIO_API = "openai-responses";
 const DEFAULT_CONTEXT_WINDOW = 8192;
 const DEFAULT_MAX_TOKENS = 8192;
+const DEFAULT_MODEL_INPUT = ["text"] satisfies Array<"text" | "image">;
 
 function normalizeLmStudioBaseUrl(raw: string): string | null {
   const trimmed = raw.trim();
@@ -49,7 +50,7 @@ function upsertLmStudioProviderModel(cfg: OpenClawConfig, modelId: string): Open
           id: modelId,
           name: modelId,
           reasoning: false,
-          input: ["text"],
+          input: DEFAULT_MODEL_INPUT,
           cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
           contextWindow: DEFAULT_CONTEXT_WINDOW,
           maxTokens: DEFAULT_MAX_TOKENS,
@@ -82,9 +83,11 @@ export async function applyAuthChoiceLmStudio(
 
   const existingProvider = params.config.models?.providers?.lmstudio;
   const baseUrlDefault = existingProvider?.baseUrl ?? DEFAULT_LMSTUDIO_BASE_URL;
+  const baseUrlDefaultNormalized =
+    normalizeLmStudioBaseUrl(baseUrlDefault) ?? `${DEFAULT_LMSTUDIO_BASE_URL}/v1`;
   const baseUrlInput = await params.prompter.text({
     message: "LM Studio base URL (host:port or full URL)",
-    initialValue: baseUrlDefault,
+    initialValue: baseUrlDefaultNormalized,
     placeholder: `${DEFAULT_LMSTUDIO_BASE_URL}/v1`,
     validate: (value) =>
       normalizeLmStudioBaseUrl(String(value ?? "")) ? undefined : "Enter a valid host:port or URL",
