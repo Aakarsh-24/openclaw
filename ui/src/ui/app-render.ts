@@ -23,7 +23,7 @@ import { parseAgentSessionKey } from "../../../src/routing/session-key.js";
 import { refreshChatAvatar } from "./app-chat";
 import { renderChatControls, renderTab, renderThemeToggle } from "./app-render.helpers";
 import { loadChannels } from "./controllers/channels";
-import { loadChatHistory } from "./controllers/chat";
+import { loadChatHistory, patchChatModel } from "./controllers/chat";
 import {
   applyConfig,
   loadConfig,
@@ -113,6 +113,7 @@ export function renderApp(state: AppViewState) {
   const showThinking = state.onboarding ? false : state.settings.chatShowThinking;
   const assistantAvatarUrl = resolveAssistantAvatarUrl(state);
   const chatAvatarUrl = state.chatAvatarUrl ?? assistantAvatarUrl ?? null;
+  const activeSession = state.sessionsResult?.sessions?.find((s) => s.key === state.sessionKey);
 
   return html`
     <div class="shell ${isChat ? "shell--chat" : ""} ${chatFocus ? "shell--chat-focus" : ""} ${state.settings.navCollapsed ? "shell--nav-collapsed" : ""} ${state.onboarding ? "shell--onboarding" : ""}">
@@ -480,10 +481,17 @@ export function renderApp(state: AppViewState) {
                 disabledReason: chatDisabledReason,
                 error: state.lastError,
                 sessions: state.sessionsResult,
+                availableModels: state.debugModels,
+                currentModel: activeSession?.model,
                 focusMode: chatFocus,
                 onRefresh: () => {
                   state.resetToolStream();
                   return Promise.all([loadChatHistory(state), refreshChatAvatar(state)]);
+                },
+                onModelChange: (model) => {
+                  void patchChatModel(state, model).then((ok) => {
+                    if (ok) void loadChatHistory(state);
+                  });
                 },
                 onToggleFocusMode: () => {
                   if (state.onboarding) return;
@@ -501,6 +509,10 @@ export function renderApp(state: AppViewState) {
                 onAbort: () => void state.handleAbortChat(),
                 onQueueRemove: (id) => state.removeQueuedMessage(id),
                 onNewSession: () => state.handleSendChat("/new", { restoreDraft: true }),
+                // Model picker dialog
+                modelPickerOpen: state.modelPickerOpen,
+                onOpenModelPicker: () => (state.modelPickerOpen = true),
+                onCloseModelPicker: () => (state.modelPickerOpen = false),
                 // Sidebar props for tool output viewing
                 sidebarOpen: state.sidebarOpen,
                 sidebarContent: state.sidebarContent,

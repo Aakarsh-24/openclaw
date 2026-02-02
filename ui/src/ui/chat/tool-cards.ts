@@ -3,13 +3,14 @@ import type { ToolCard } from "../types/chat-types";
 import { icons } from "../icons";
 import { formatToolDetail, resolveToolDisplay } from "../tool-display";
 import { TOOL_INLINE_THRESHOLD } from "./constants";
-import { extractTextCached } from "./message-extract";
-import { isToolResultMessage } from "./message-normalizer";
+import { extractRawText } from "./message-extract";
+import { isToolResultMessage, normalizeMessage } from "./message-normalizer";
 import { formatToolOutputForSidebar, getTruncatedPreview } from "./tool-helpers";
 
 export function extractToolCards(message: unknown): ToolCard[] {
   const m = message as Record<string, unknown>;
   const content = normalizeContent(m.content);
+  const normalized = normalizeMessage(message);
   const cards: ToolCard[] = [];
 
   for (const item of content) {
@@ -31,7 +32,7 @@ export function extractToolCards(message: unknown): ToolCard[] {
     if (kind !== "toolresult" && kind !== "tool_result") continue;
     const text = extractToolText(item);
     const name = typeof item.name === "string" ? item.name : "tool";
-    cards.push({ kind: "result", name, text });
+    cards.push({ kind: "result", name, text, durationMs: normalized.durationMs });
   }
 
   if (isToolResultMessage(message) && !cards.some((card) => card.kind === "result")) {
@@ -39,8 +40,8 @@ export function extractToolCards(message: unknown): ToolCard[] {
       (typeof m.toolName === "string" && m.toolName) ||
       (typeof m.tool_name === "string" && m.tool_name) ||
       "tool";
-    const text = extractTextCached(message) ?? undefined;
-    cards.push({ kind: "result", name, text });
+    const text = extractRawText(message) ?? undefined;
+    cards.push({ kind: "result", name, text, durationMs: normalized.durationMs });
   }
 
   return cards;
@@ -65,10 +66,18 @@ export function renderToolCardSidebar(card: ToolCard, onOpenSidebar?: (content: 
       }
     : undefined;
 
-  const isShort = hasText && (card.text?.length ?? 0) <= TOOL_INLINE_THRESHOLD;
+  const textLength = card.text?.length ?? 0;
+  const isShort = hasText && textLength <= TOOL_INLINE_THRESHOLD;
   const showCollapsed = hasText && !isShort;
   const showInline = hasText && isShort;
   const isEmpty = !hasText;
+
+  const durationText =
+    card.durationMs != null
+      ? card.durationMs < 1000
+        ? `${card.durationMs}ms`
+        : `${(card.durationMs / 1000).toFixed(1)}s`
+      : "";
 
   return html`
     <div
@@ -90,6 +99,7 @@ export function renderToolCardSidebar(card: ToolCard, onOpenSidebar?: (content: 
         <div class="chat-tool-card__title">
           <span class="chat-tool-card__icon">${icons[display.icon]}</span>
           <span>${display.label}</span>
+          ${durationText ? html`<span class="chat-tool-card__duration">• ${durationText}</span>` : nothing}
         </div>
         ${
           canClick
@@ -111,7 +121,11 @@ export function renderToolCardSidebar(card: ToolCard, onOpenSidebar?: (content: 
           ? html`<div class="chat-tool-card__preview mono">${getTruncatedPreview(card.text!)}</div>`
           : nothing
       }
-      ${showInline ? html`<div class="chat-tool-card__inline mono">${card.text}</div>` : nothing}
+      ${
+        showInline
+          ? html`<div class="chat-tool-card__inline-output mono"><pre><code>${card.text}</code></pre></div>`
+          : nothing
+      }
     </div>
   `;
 }

@@ -153,6 +153,20 @@ export async function abortChatRun(state: ChatState): Promise<boolean> {
   }
 }
 
+export async function patchChatModel(state: ChatState, model: string): Promise<boolean> {
+  if (!state.client || !state.connected) return false;
+  try {
+    await state.client.request("sessions.patch", {
+      key: state.sessionKey,
+      model,
+    });
+    return true;
+  } catch (err) {
+    state.lastError = String(err);
+    return false;
+  }
+}
+
 export function handleChatEvent(state: ChatState, payload?: ChatEventPayload) {
   if (!payload) return null;
   if (payload.sessionKey !== state.sessionKey) return null;
@@ -173,6 +187,7 @@ export function handleChatEvent(state: ChatState, payload?: ChatEventPayload) {
       }
     }
   } else if (payload.state === "final") {
+    // Clear streaming state; loadChatHistory will fetch the final message
     state.chatStream = null;
     state.chatRunId = null;
     state.chatStreamStartedAt = null;

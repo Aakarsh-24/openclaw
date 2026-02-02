@@ -384,6 +384,69 @@
   border-color: rgba(16, 24, 40, 0.15);
 }
 
+/* Model Switcher Button Styling */
+.chat-compose__meta {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 4px;
+}
+
+.chat-model-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+  transition:
+    border-color 150ms ease-out,
+    background 150ms ease-out;
+}
+
+.chat-model-button:hover {
+  border-color: var(--border-strong);
+  background: var(--bg-hover);
+}
+
+.chat-model-button__label {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.chat-model-button__value {
+  font-weight: 500;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-model-button__provider {
+  font-size: 10px;
+  color: var(--muted);
+  background: var(--secondary);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.chat-model-button__icon {
+  display: flex;
+  align-items: center;
+  color: var(--muted);
+}
+
+.chat-model-button__icon svg {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2px;
+}
+
 @media (max-width: 640px) {
   .chat-session {
     min-width: 140px;

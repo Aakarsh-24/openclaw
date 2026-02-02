@@ -52,7 +52,11 @@ export function normalizeMessage(message: unknown): NormalizedMessage {
   const timestamp = typeof m.timestamp === "number" ? m.timestamp : Date.now();
   const id = typeof m.id === "string" ? m.id : undefined;
 
-  return { role, content, timestamp, id };
+  // Extract metadata if available
+  const details = (m.details as Record<string, unknown>) || {};
+  const durationMs = typeof details.durationMs === "number" ? details.durationMs : undefined;
+
+  return { role, content, timestamp, id, durationMs };
 }
 
 /**
@@ -77,10 +81,31 @@ export function normalizeRoleForGrouping(role: string): string {
 }
 
 /**
- * Check if a message is a tool result message based on its role.
+ * Check if a message is a tool result message based on its role or properties.
  */
 export function isToolResultMessage(message: unknown): boolean {
+  if (!message || typeof message !== "object") return false;
   const m = message as Record<string, unknown>;
   const role = typeof m.role === "string" ? m.role.toLowerCase() : "";
-  return role === "toolresult" || role === "tool_result";
+
+  // Explicit tool roles
+  if (role === "tool" || role === "toolresult" || role === "tool_result" || role === "function") {
+    return true;
+  }
+
+  // Gateway shapes for tool results
+  if (typeof m.toolCallId === "string" || typeof m.tool_call_id === "string") {
+    return true;
+  }
+
+  // Content array containing tool results
+  if (Array.isArray(m.content)) {
+    return m.content.some((item) => {
+      const x = item as Record<string, unknown>;
+      const t = String(x.type ?? "").toLowerCase();
+      return t === "toolresult" || t === "tool_result";
+    });
+  }
+
+  return false;
 }

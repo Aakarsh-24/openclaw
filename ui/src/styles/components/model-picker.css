@@ -1,0 +1,238 @@
+/* Model Picker Dialog */
+.model-picker-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  animation: model-picker-fade-in 150ms ease-out;
+}
+
+@keyframes model-picker-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.model-picker-dialog {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
+  width: 90%;
+  max-width: 480px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  animation: model-picker-slide-up 200ms ease-out;
+}
+
+@keyframes model-picker-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.model-picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.model-picker-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.model-picker-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  border-radius: 6px;
+  cursor: pointer;
+  transition:
+    background 150ms,
+    color 150ms;
+}
+
+.model-picker-close:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.model-picker-close svg {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2px;
+}
+
+.model-picker-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 0;
+}
+
+.model-picker-provider {
+  margin-bottom: 8px;
+}
+
+.model-picker-provider:last-child {
+  margin-bottom: 0;
+}
+
+.model-picker-provider-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 20px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.model-picker-provider-icon {
+  font-size: 14px;
+}
+
+.model-picker-provider-name {
+  flex: 1;
+}
+
+.model-picker-provider-count {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted);
+  background: var(--secondary);
+  padding: 2px 6px;
+  border-radius: 10px;
+}
+
+.model-picker-models {
+  display: flex;
+  flex-direction: column;
+}
+
+.model-picker-model {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 20px;
+  margin: 0 8px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 150ms;
+}
+
+.model-picker-model:hover {
+  background: var(--bg-hover);
+}
+
+.model-picker-model--selected {
+  background: var(--accent-subtle);
+}
+
+.model-picker-model--selected:hover {
+  background: var(--accent-subtle);
+  filter: brightness(1.1);
+}
+
+.model-picker-model-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.model-picker-model-name {
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.model-picker-model-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.model-picker-model-check svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2px;
+}
+
+.model-picker-model-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.model-picker-model-context {
+  font-size: 11px;
+  color: var(--muted);
+  background: var(--secondary);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.model-picker-model-badge {
+  font-size: 14px;
+}
+
+.model-picker-footer {
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.model-picker-current strong {
+  color: var(--text);
+  font-weight: 500;
+}
+
+/* Light theme adjustments */
+:root[data-theme="light"] .model-picker-backdrop {
+  background: rgba(0, 0, 0, 0.4);
+}
+
+:root[data-theme="light"] .model-picker-dialog {
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.15);
+}

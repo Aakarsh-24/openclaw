@@ -218,12 +218,7 @@ function renderGroupedMessage(
 ) {
   const m = message as Record<string, unknown>;
   const role = typeof m.role === "string" ? m.role : "unknown";
-  const isToolResult =
-    isToolResultMessage(message) ||
-    role.toLowerCase() === "toolresult" ||
-    role.toLowerCase() === "tool_result" ||
-    typeof m.toolCallId === "string" ||
-    typeof m.tool_call_id === "string";
+  const isToolResult = isToolResultMessage(message);
 
   const toolCards = extractToolCards(message);
   const hasToolCards = toolCards.length > 0;
@@ -264,12 +259,13 @@ function renderGroupedMessage(
             )}</div>`
           : nothing
       }
+      ${isToolResult ? toolCards.map((card) => renderToolCardSidebar(card, onOpenSidebar)) : nothing}
       ${
         markdown
           ? html`<div class="chat-text">${unsafeHTML(toSanitizedMarkdownHtml(markdown))}</div>`
           : nothing
       }
-      ${toolCards.map((card) => renderToolCardSidebar(card, onOpenSidebar))}
+      ${!isToolResult ? toolCards.map((card) => renderToolCardSidebar(card, onOpenSidebar)) : nothing}
     </div>
   `;
 }

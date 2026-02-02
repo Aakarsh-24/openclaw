@@ -131,6 +131,8 @@ export class OpenClawApp extends LitElement {
   @state() sidebarContent: string | null = null;
   @state() sidebarError: string | null = null;
   @state() splitRatio = this.settings.splitRatio;
+  // Model picker dialog state
+  @state() modelPickerOpen = false;
 
   @state() nodesLoading = false;
   @state() nodes: Array<Record<string, unknown>> = [];
@@ -220,7 +222,13 @@ export class OpenClawApp extends LitElement {
   @state() debugLoading = false;
   @state() debugStatus: StatusSummary | null = null;
   @state() debugHealth: HealthSnapshot | null = null;
-  @state() debugModels: unknown[] = [];
+  @state() debugModels: Array<{
+    id: string;
+    name?: string;
+    provider?: string;
+    contextWindow?: number;
+    reasoning?: boolean;
+  }> = [];
   @state() debugHeartbeat: unknown | null = null;
   @state() debugCallMethod = "";
   @state() debugCallParams = "{}";

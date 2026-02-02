@@ -9,9 +9,32 @@
   transition:
     border-color 150ms ease-out,
     background 150ms ease-out;
-  /* Fixed max-height to ensure cards don't expand too much */
-  max-height: 120px;
-  overflow: hidden;
+  /* Allow cards to expand for inline output, but avoid dominating the viewport */
+  max-height: 400px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.chat-tool-card__inline-output {
+  margin-top: 8px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  padding: 8px;
+  font-size: 11px;
+  overflow-x: auto;
+  border: 1px solid var(--border-subtle);
+}
+
+.chat-tool-card__inline-output pre {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.chat-tool-card__duration {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: normal;
 }
 
 .chat-tool-card:hover {

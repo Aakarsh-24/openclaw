@@ -32,6 +32,7 @@ export type NormalizedMessage = {
   content: MessageContentItem[];
   timestamp: number;
   id?: string;
+  durationMs?: number;
 };
 
 /** Tool card representation for tool calls and results */
@@ -40,4 +41,5 @@ export type ToolCard = {
   name: string;
   args?: unknown;
   text?: string;
+  durationMs?: number;
 };
