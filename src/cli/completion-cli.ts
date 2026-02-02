@@ -1,5 +1,6 @@
 import { Command, Option } from "commander";
 import fs from "node:fs/promises";
+import fsSync from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { getSubCliEntries, registerSubCliByName } from "./program/register.subclis.js";
@@ -14,6 +15,7 @@ export function registerCompletionCli(program: Command) {
         .default("zsh"),
     )
     .option("-i, --install", "Install completion script to shell profile")
+    .option("-r, --remove", "Remove installed completion from shell profile")
     .option("-y, --yes", "Skip confirmation (non-interactive)", false)
     .action(async (options) => {
       const shell = options.shell;
@@ -21,14 +23,17 @@ export function registerCompletionCli(program: Command) {
       const entries = getSubCliEntries();
       for (const entry of entries) {
         // Skip completion command itself to avoid cycle if we were to add it to the list
-        if (entry.name === "completion") {
-          continue;
-        }
+        if (entry.name === "completion") continue;
         await registerSubCliByName(program, entry.name);
       }
 
       if (options.install) {
         await installCompletion(shell, Boolean(options.yes), program.name());
+        return;
+      }
+
+      if (options.remove) {
+        await uninstallCompletion(shell, program.name());
         return;
       }
 
@@ -49,31 +54,16 @@ export function registerCompletionCli(program: Command) {
 
 export async function installCompletion(shell: string, yes: boolean, binName = "openclaw") {
   const home = process.env.HOME || os.homedir();
-  let profilePath = "";
-  let sourceLine = "";
-
-  if (shell === "zsh") {
-    profilePath = path.join(home, ".zshrc");
-    sourceLine = `source <(${binName} completion --shell zsh)`;
-  } else if (shell === "bash") {
-    // Try .bashrc first, then .bash_profile
-    profilePath = path.join(home, ".bashrc");
-    try {
-      await fs.access(profilePath);
-    } catch {
-      profilePath = path.join(home, ".bash_profile");
-    }
-    sourceLine = `source <(${binName} completion --shell bash)`;
-  } else if (shell === "fish") {
-    profilePath = path.join(home, ".config", "fish", "config.fish");
-    sourceLine = `${binName} completion --shell fish | source`;
-  } else {
+  const profileInfo = getProfilePathAndSourceLine(shell, home, binName);
+  if (!profileInfo) {
     console.error(`Automated installation not supported for ${shell} yet.`);
     return;
   }
 
+  const { profilePath, sourceLine } = profileInfo;
+
   try {
-    // Check if profile exists
+    // Ensure directory exists and create a profile file if missing
     try {
       await fs.access(profilePath);
     } catch {
@@ -85,24 +75,139 @@ export async function installCompletion(shell: string, yes: boolean, binName = "
     }
 
     const content = await fs.readFile(profilePath, "utf-8");
-    if (content.includes(`${binName} completion`)) {
-      if (!yes) {
-        console.log(`Completion already installed in ${profilePath}`);
-      }
+    if (content.includes(`${binName} completion`) || content.includes("# OpenClaw Completion")) {
+      if (!yes) console.log(`Completion already installed in ${profilePath}`);
       return;
     }
 
     if (!yes) {
-      // Simple confirmation could go here if we had a prompter,
-      // but for now we assume --yes or manual invocation implies consent or we print info.
-      // Since we don't have a prompter passed in here easily without adding deps, we'll log.
       console.log(`Installing completion to ${profilePath}...`);
     }
 
-    await fs.appendFile(profilePath, `\n# OpenClaw Completion\n${sourceLine}\n`);
-    console.log(`Completion installed. Restart your shell or run: source ${profilePath}`);
+    // Backup existing profile before modifying
+    try {
+      if (fsSync.existsSync(profilePath)) {
+        const bak = `${profilePath}.openclaw.bak.${Date.now()}`;
+        await fs.copyFile(profilePath, bak);
+        if (!yes) console.log(`Backed up existing profile to ${bak}`);
+      }
+    } catch (err) {
+      if (!yes) console.warn(`Failed to backup profile: ${String(err)}`);
+    }
+
+    const marker = `# OpenClaw Completion`;
+    await fs.appendFile(profilePath, `\n${marker}\n# Added by openclaw on ${new Date().toISOString()}\n${sourceLine}\n`);
+
+    if (shell === "powershell") {
+      console.log(`Completion installed. Restart PowerShell or run: . ${profilePath}`);
+    } else {
+      console.log(`Completion installed. Restart your shell or run: source ${profilePath}`);
+    }
   } catch (err) {
     console.error(`Failed to install completion: ${err as string}`);
+  }
+}
+
+function getProfilePathAndSourceLine(shell: string, home: string, binName = "openclaw") {
+  if (shell === "zsh") {
+    return {
+      profilePath: path.join(home, ".zshrc"),
+      sourceLine: `source <(${binName} completion --shell zsh)`,
+    };
+  }
+
+  if (shell === "bash") {
+    // Prefer .bashrc, fallback to .bash_profile
+    const bashRc = path.join(home, ".bashrc");
+    const bashProfile = path.join(home, ".bash_profile");
+    try {
+      fsSync.accessSync(bashRc);
+      return { profilePath: bashRc, sourceLine: `source <(${binName} completion --shell bash)` };
+    } catch {
+      return { profilePath: bashProfile, sourceLine: `source <(${binName} completion --shell bash)` };
+    }
+  }
+
+  if (shell === "fish") {
+    return {
+      profilePath: path.join(home, ".config", "fish", "config.fish"),
+      sourceLine: `${binName} completion --shell fish | source`,
+    };
+  }
+
+  if (shell === "powershell") {
+    // Windows PowerShell vs PowerShell Core
+    const pwshProfile = path.join(home, "Documents", "PowerShell", "Microsoft.PowerShell_profile.ps1");
+    const winpsProfile = path.join(home, "Documents", "WindowsPowerShell", "Microsoft.PowerShell_profile.ps1");
+    if (fsSync.existsSync(pwshProfile)) {
+      return { profilePath: pwshProfile, sourceLine: `Invoke-Expression (& "${binName}" completion --shell powershell)` };
+    }
+    // Use pwsh path by default if it doesn't exist (create later when needed)
+    return { profilePath: pwshProfile, sourceLine: `Invoke-Expression (& "${binName}" completion --shell powershell)` };
+  }
+
+  return null;
+}
+
+export async function uninstallCompletion(shell: string, binName = "openclaw") {
+  const home = process.env.HOME || os.homedir();
+  const profileInfo = getProfilePathAndSourceLine(shell, home, binName);
+  if (!profileInfo) {
+    console.error(`Automated uninstall not supported for ${shell} yet.`);
+    return;
+  }
+
+  const { profilePath } = profileInfo;
+
+  try {
+    if (!fsSync.existsSync(profilePath)) {
+      console.log(`Profile not found at ${profilePath}. Nothing to remove.`);
+      return;
+    }
+
+    const content = await fs.readFile(profilePath, "utf-8");
+    if (!content.includes("# OpenClaw Completion") && !content.includes(`${binName} completion`)) {
+      console.log(`No OpenClaw completion installed in ${profilePath}`);
+      return;
+    }
+
+    // Backup before modifying
+    try {
+      const bak = `${profilePath}.openclaw.uninstall.bak.${Date.now()}`;
+      await fs.copyFile(profilePath, bak);
+      console.log(`Backed up existing profile to ${bak}`);
+    } catch (err) {
+      console.warn(`Failed to backup profile: ${String(err)}`);
+    }
+
+    const lines = content.split("\n");
+    const out: string[] = [];
+    let skip = false;
+    for (const line of lines) {
+      if (line.trim() === "# OpenClaw Completion") {
+        skip = true;
+        continue;
+      }
+      if (skip) {
+        // If we've removed the marker and the following lines, stop skipping on blank or unrelated lines
+        if (line.trim() === "") {
+          skip = false;
+          continue;
+        }
+        // Skip known patterns
+        if (line.includes(`${binName} completion`) || line.includes("Invoke-Expression (&") || line.includes("# Added by openclaw")) {
+          continue;
+        }
+        // If it's none of the above, stop skipping and keep line
+        skip = false;
+      }
+      if (!skip) out.push(line);
+    }
+
+    await fs.writeFile(profilePath, out.join("\n"), "utf-8");
+    console.log(`OpenClaw completion removed from ${profilePath}`);
+  } catch (err) {
+    console.error(`Failed to uninstall completion: ${String(err)}`);
   }
 }
 
@@ -322,9 +427,7 @@ function generateFishCompletion(program: Command): string {
   const visit = (cmd: Command, parents: string[]) => {
     const cmdName = cmd.name();
     const fullPath = [...parents];
-    if (parents.length > 0) {
-      fullPath.push(cmdName);
-    } // Only push if not root, or consistent root handling
+    if (parents.length > 0) fullPath.push(cmdName); // Only push if not root, or consistent root handling
 
     // Fish uses 'seen_subcommand_from' to determine context.
     // For root: complete -c openclaw -n "__fish_use_subcommand" -a "subcmd" -d "desc"
@@ -345,12 +448,8 @@ function generateFishCompletion(program: Command): string {
           ?.replace(/^-/, "");
         const desc = opt.description.replace(/'/g, "'\\''");
         let line = `complete -c ${rootCmd} -n "__fish_use_subcommand"`;
-        if (short) {
-          line += ` -s ${short}`;
-        }
-        if (long) {
-          line += ` -l ${long}`;
-        }
+        if (short) line += ` -s ${short}`;
+        if (long) line += ` -l ${long}`;
         line += ` -d '${desc}'\n`;
         script += line;
       }
@@ -378,12 +477,8 @@ function generateFishCompletion(program: Command): string {
           ?.replace(/^-/, "");
         const desc = opt.description.replace(/'/g, "'\\''");
         let line = `complete -c ${rootCmd} -n "__fish_seen_subcommand_from ${cmdName}"`;
-        if (short) {
-          line += ` -s ${short}`;
-        }
-        if (long) {
-          line += ` -l ${long}`;
-        }
+        if (short) line += ` -s ${short}`;
+        if (long) line += ` -l ${long}`;
         line += ` -d '${desc}'\n`;
         script += line;
       }

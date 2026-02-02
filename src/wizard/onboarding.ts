@@ -472,7 +472,8 @@ export async function runOnboardingWizard(
   });
 
   if (installShell) {
-    const shell = process.env.SHELL?.split("/").pop() || "zsh";
+    // Prefer PowerShell on Windows by default; otherwise use SHELL environment
+    const shell = process.platform === "win32" ? "powershell" : process.env.SHELL?.split("/").pop() || "zsh";
     // We pass 'yes=true' to skip any double-confirmation inside the helper,
     // as the wizard prompt above serves as confirmation.
     await installCompletion(shell, true);

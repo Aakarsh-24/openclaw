@@ -18,6 +18,12 @@ const modelRegistryState = {
   available: [] as Array<Record<string, unknown>>,
 };
 
+const discoverAuthStorage = vi.fn(() => ({ mocked: true }));
+const discoverModels = vi.fn(() => ({
+  getAll: () => modelRegistryState.models,
+  getAvailable: () => modelRegistryState.available,
+}));
+
 vi.mock("../config/config.js", () => ({
   CONFIG_PATH: "/tmp/openclaw.json",
   STATE_DIR: "/tmp/openclaw-state",

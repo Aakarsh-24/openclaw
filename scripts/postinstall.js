@@ -358,4 +358,5 @@ export {
   detectPackageManager,
   parsePatch,
   shouldApplyPnpmPatchedDependenciesFallback,
+  trySetupCompletion,
 };
