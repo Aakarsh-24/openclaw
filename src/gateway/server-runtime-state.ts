@@ -28,6 +28,7 @@ export async function createGatewayRuntimeState(params: {
   controlUiEnabled: boolean;
   controlUiBasePath: string;
   openAiChatCompletionsEnabled: boolean;
+  openAiChatCompletionsConfig?: import("../config/types.gateway.js").GatewayHttpChatCompletionsConfig;
   openResponsesEnabled: boolean;
   openResponsesConfig?: import("../config/types.gateway.js").GatewayHttpResponsesConfig;
   resolvedAuth: ResolvedGatewayAuth;
@@ -113,6 +114,7 @@ export async function createGatewayRuntimeState(params: {
       controlUiEnabled: params.controlUiEnabled,
       controlUiBasePath: params.controlUiBasePath,
       openAiChatCompletionsEnabled: params.openAiChatCompletionsEnabled,
+      openAiChatCompletionsConfig: params.openAiChatCompletionsConfig,
       openResponsesEnabled: params.openResponsesEnabled,
       openResponsesConfig: params.openResponsesConfig,
       handleHooksRequest,
