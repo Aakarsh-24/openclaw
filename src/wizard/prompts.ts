@@ -33,6 +33,13 @@ export type WizardProgress = {
   stop: (message?: string) => void;
 };
 
+export type WizardSearchSelectParams<T = string> = {
+  message: string;
+  options: Array<WizardSelectOption<T>>;
+  initialValue?: T;
+  searchPlaceholder?: string;
+};
+
 export type WizardPrompter = {
   intro: (title: string) => Promise<void>;
   outro: (message: string) => Promise<void>;
@@ -42,6 +49,7 @@ export type WizardPrompter = {
   text: (params: WizardTextParams) => Promise<string>;
   confirm: (params: WizardConfirmParams) => Promise<boolean>;
   progress: (label: string) => WizardProgress;
+  searchSelect?: <T>(params: WizardSearchSelectParams<T>) => Promise<T>;
 };
 
 export class WizardCancelledError extends Error {
