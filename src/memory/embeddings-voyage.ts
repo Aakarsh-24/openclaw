@@ -1,5 +1,5 @@
-import { requireApiKey, resolveApiKeyForProvider } from "../agents/model-auth.js";
 import type { EmbeddingProvider, EmbeddingProviderOptions } from "./embeddings.js";
+import { requireApiKey, resolveApiKeyForProvider } from "../agents/model-auth.js";
 
 export type VoyageEmbeddingClient = {
   baseUrl: string;
@@ -12,8 +12,12 @@ const DEFAULT_VOYAGE_BASE_URL = "https://api.voyageai.com/v1";
 
 export function normalizeVoyageModel(model: string): string {
   const trimmed = model.trim();
-  if (!trimmed) return DEFAULT_VOYAGE_EMBEDDING_MODEL;
-  if (trimmed.startsWith("voyage/")) return trimmed.slice("voyage/".length);
+  if (!trimmed) {
+    return DEFAULT_VOYAGE_EMBEDDING_MODEL;
+  }
+  if (trimmed.startsWith("voyage/")) {
+    return trimmed.slice("voyage/".length);
+  }
   return trimmed;
 }
 
@@ -24,7 +28,9 @@ export async function createVoyageEmbeddingProvider(
   const url = `${client.baseUrl.replace(/\/$/, "")}/embeddings`;
 
   const embed = async (input: string[]): Promise<number[][]> => {
-    if (input.length === 0) return [];
+    if (input.length === 0) {
+      return [];
+    }
     const res = await fetch(url, {
       method: "POST",
       headers: client.headers,
