@@ -76,6 +76,7 @@ export type CommandOptions = {
   input?: string;
   env?: NodeJS.ProcessEnv;
   windowsVerbatimArguments?: boolean;
+  shell?: boolean;
 };
 
 export async function runCommandWithTimeout(
@@ -85,7 +86,7 @@ export async function runCommandWithTimeout(
   const options: CommandOptions =
     typeof optionsOrTimeout === "number" ? { timeoutMs: optionsOrTimeout } : optionsOrTimeout;
   const { timeoutMs, cwd, input, env } = options;
-  const { windowsVerbatimArguments } = options;
+  const { windowsVerbatimArguments, shell } = options;
   const hasInput = input !== undefined;
 
   const shouldSuppressNpmFund = (() => {
@@ -111,11 +112,18 @@ export async function runCommandWithTimeout(
   }
 
   const stdio = resolveCommandStdio({ hasInput, preferInherit: true });
-  const child = spawn(resolveCommand(argv[0]), argv.slice(1), {
+  // On Windows, use shell mode for spawning .cmd files to avoid EINVAL errors
+  const resolvedCommand = resolveCommand(argv[0]);
+  const needsShell =
+    shell !== undefined
+      ? shell
+      : process.platform === "win32" && path.extname(resolvedCommand) === ".cmd";
+  const child = spawn(resolvedCommand, argv.slice(1), {
     stdio,
     cwd,
     env: resolvedEnv,
     windowsVerbatimArguments,
+    shell: needsShell,
   });
   // Spawn with inherited stdin (TTY) so tools like `pi` stay interactive when needed.
   return await new Promise((resolve, reject) => {
