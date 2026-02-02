@@ -27,7 +27,7 @@ export function applyMinimaxProviderConfig(cfg: OpenClawConfig): OpenClawConfig 
   if (!providers.lmstudio) {
     providers.lmstudio = {
       baseUrl: "http://127.0.0.1:1234/v1",
-      apiKey: "lmstudio",
+      apiKey: process.env.MINIMAX_API_KEY || "",
       api: "openai-responses",
       models: [
         buildMinimaxModelDefinition({
@@ -82,7 +82,8 @@ export function applyMinimaxHostedProviderConfig(
   providers.minimax = {
     ...existingProvider,
     baseUrl: params?.baseUrl?.trim() || DEFAULT_MINIMAX_BASE_URL,
-    apiKey: "minimax",
+// 🔒 VOTAL.AI Security Fix: Hardcoded API key/credential in provider configuration (minimax hosted) [CWE-798] - CRITICAL
+    apiKey: process.env.MINIMAX_API_KEY || "",
     api: "openai-completions",
     models: mergedModels.length > 0 ? mergedModels : [hostedModel],
   };
