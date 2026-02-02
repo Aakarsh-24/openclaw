@@ -4,6 +4,10 @@ Docs: https://docs.openclaw.ai
 
 ## 2026.2.2
 
+### Changes
+
+- Tools: add HTTP/HTTPS proxy support for web_search and web_fetch via environment variables (HTTP_PROXY/HTTPS_PROXY).
+
 ### Fixes
 
 - Plugins: validate plugin/hook install paths and reject traversal-like names.
