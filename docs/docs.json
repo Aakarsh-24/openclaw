@@ -710,6 +710,10 @@
       "destination": "/tools/subagents"
     },
     {
+      "source": "/sessions-stop",
+      "destination": "/tools/sessions-stop"
+    },
+    {
       "source": "/tailscale",
       "destination": "/gateway/tailscale"
     },
@@ -1075,6 +1079,7 @@
               "tools/thinking",
               "tools/agent-send",
               "tools/subagents",
+              "tools/sessions-stop",
               "multi-agent-sandbox-tools",
               "tools/reactions",
               "tools/skills",
