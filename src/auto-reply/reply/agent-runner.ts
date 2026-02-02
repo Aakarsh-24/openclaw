@@ -244,9 +244,8 @@ export async function runReplyAgent(params: {
     if (!prevEntry) {
       return false;
     }
-    const prevSessionId = cleanupTranscripts ? prevEntry.sessionId : undefined;
+    const prevSessionId = prevEntry.sessionId;
     const nextSessionId = crypto.randomUUID();
-    const runId = opts?.runId ?? crypto.randomUUID();
     const nextEntry: SessionEntry = {
       ...prevEntry,
       sessionId: nextSessionId,
@@ -292,14 +291,14 @@ export async function runReplyAgent(params: {
       }
     }
 
-    // Lifecycle hooks: Session Ended / Reset / Start
+    // Lifecycle hooks: Session Ended / Reset
+    // Note: session:start will be emitted later in the response block to avoid duplicates
+
     // 1. Session Ended (for the OLD session)
-    if (prevSessionId) {
-      const hookEvent = createInternalHookEvent("session", "ended", sessionKey, {
-        sessionId: prevSessionId,
-      });
-      await triggerInternalHook(hookEvent);
-    }
+    const hookEvent = createInternalHookEvent("session", "ended", sessionKey, {
+      sessionId: prevSessionId,
+    });
+    await triggerInternalHook(hookEvent);
 
     // 2. Session Reset (Transition)
     const resetEvent = createInternalHookEvent("session", "reset", sessionKey, {
@@ -307,12 +306,6 @@ export async function runReplyAgent(params: {
       newSessionId: nextSessionId,
     });
     await triggerInternalHook(resetEvent);
-
-    // 3. Session Start (for the NEW session)
-    const startEvent = createInternalHookEvent("session", "start", sessionKey, {
-      sessionId: nextSessionId,
-    });
-    await triggerInternalHook(startEvent);
 
     return true;
   };
@@ -530,14 +523,24 @@ export async function runReplyAgent(params: {
         finalPayloads = [{ text: `🧹 Auto-compaction complete${suffix}.` }, ...finalPayloads];
       }
     }
-    if (verboseEnabled && activeIsNewSession) {
-      finalPayloads = [{ text: `🧭 New session: ${followupRun.run.sessionId}` }, ...finalPayloads];
-      // Lifecycle hook: Session Start (Initial)
-      const hookEvent = createInternalHookEvent("session", "start", sessionKey ?? "", {
+
+    // Lifecycle hook: Session Start
+    // Emit unconditionally for new sessions (both initial and after reset)
+    if (activeIsNewSession && sessionKey) {
+      const hookEvent = createInternalHookEvent("session", "start", sessionKey, {
         sessionId: followupRun.run.sessionId,
       });
       await triggerInternalHook(hookEvent);
+
+      // Prepend verbose hint after hook emission
+      if (verboseEnabled) {
+        finalPayloads = [
+          { text: `🧭 New session: ${followupRun.run.sessionId}` },
+          ...finalPayloads,
+        ];
+      }
     }
+
     if (responseUsageLine) {
       finalPayloads = appendUsageLine(finalPayloads, responseUsageLine);
     }
@@ -545,10 +548,20 @@ export async function runReplyAgent(params: {
     // Lifecycle hook: Turn End
     // Capture the final exchange for memory indexing
     // We only emit if there is actual content involved (input or output).
-    const assistantOutput = (finalPayloads as ReplyPayload[])
-      .map((p) => p.text)
-      .filter(Boolean)
-      .join("\n");
+    // Extract output from text and non-text payloads (audio, media, etc.)
+    const outputParts: string[] = [];
+    const payloads = finalPayloads as ReplyPayload[];
+    for (const p of payloads) {
+      if (p.text) {
+        outputParts.push(p.text);
+      } else if (p.mediaUrl) {
+        outputParts.push(`[media: ${p.mediaUrl}]`);
+      } else if (p.mediaUrls && p.mediaUrls.length > 0) {
+        outputParts.push(`[media: ${p.mediaUrls.join(", ")}]`);
+      }
+    }
+    const assistantOutput = outputParts.join("\n");
+
     if (commandBody || assistantOutput) {
       const hookEvent = createInternalHookEvent("agent", "reply", sessionKey ?? "", {
         sessionId: followupRun.run.sessionId,
