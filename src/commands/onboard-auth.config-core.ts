@@ -17,6 +17,7 @@ import {
   VERCEL_AI_GATEWAY_DEFAULT_MODEL_REF,
   XIAOMI_DEFAULT_MODEL_REF,
   ZAI_DEFAULT_MODEL_REF,
+  AIMLAPI_DEFAULT_MODEL_REF,
 } from "./onboard-auth.credentials.js";
 import {
   buildMoonshotModelDefinition,
@@ -59,6 +60,25 @@ export function applyOpenrouterProviderConfig(cfg: OpenClawConfig): OpenClawConf
   models[OPENROUTER_DEFAULT_MODEL_REF] = {
     ...models[OPENROUTER_DEFAULT_MODEL_REF],
     alias: models[OPENROUTER_DEFAULT_MODEL_REF]?.alias ?? "OpenRouter",
+  };
+
+  return {
+    ...cfg,
+    agents: {
+      ...cfg.agents,
+      defaults: {
+        ...cfg.agents?.defaults,
+        models,
+      },
+    },
+  };
+}
+
+export function applyAimlapiProviderConfig(cfg: OpenClawConfig): OpenClawConfig {
+  const models = { ...cfg.agents?.defaults?.models };
+  models[AIMLAPI_DEFAULT_MODEL_REF] = {
+    ...models[AIMLAPI_DEFAULT_MODEL_REF],
+    alias: models[AIMLAPI_DEFAULT_MODEL_REF]?.alias ?? "Aimlapi",
   };
 
   return {
@@ -130,6 +150,28 @@ export function applyOpenrouterConfig(cfg: OpenClawConfig): OpenClawConfig {
               }
             : undefined),
           primary: OPENROUTER_DEFAULT_MODEL_REF,
+        },
+      },
+    },
+  };
+}
+
+export function applyAimlapiConfig(cfg: OpenClawConfig): OpenClawConfig {
+  const next = applyAimlapiProviderConfig(cfg);
+  const existingModel = next.agents?.defaults?.model;
+  return {
+    ...next,
+    agents: {
+      ...next.agents,
+      defaults: {
+        ...next.agents?.defaults,
+        model: {
+          ...(existingModel && "fallbacks" in (existingModel as Record<string, unknown>)
+            ? {
+                fallbacks: (existingModel as { fallbacks?: string[] }).fallbacks,
+              }
+            : undefined),
+          primary: AIMLAPI_DEFAULT_MODEL_REF,
         },
       },
     },
