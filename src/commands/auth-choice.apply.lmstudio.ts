@@ -58,7 +58,7 @@ function upsertLmStudioProviderModel(cfg: OpenClawConfig, modelId: string): Open
       ];
 
   providers.lmstudio = {
-    ...(existingProvider ?? {}),
+    ...(existingProvider ? { ...existingProvider } : {}),
     baseUrl: existingProvider?.baseUrl ?? `${DEFAULT_LMSTUDIO_BASE_URL}/v1`,
     apiKey: existingProvider?.apiKey ?? "lmstudio",
     api: existingProvider?.api ?? DEFAULT_LMSTUDIO_API,
@@ -110,7 +110,9 @@ export async function applyAuthChoiceLmStudio(
     initialValue: modelDefault,
     placeholder: "openai/gpt-oss-20b",
     validate: (value) =>
-      normalizeLmStudioModelId(String(value ?? "")) ? undefined : "Use vendor/model (e.g. openai/gpt-oss-20b)",
+      normalizeLmStudioModelId(String(value ?? ""))
+        ? undefined
+        : "Use vendor/model (e.g. openai/gpt-oss-20b)",
   });
   const modelId = normalizeLmStudioModelId(String(modelInput)) as string;
   const modelRef = `lmstudio/${modelId}`;
