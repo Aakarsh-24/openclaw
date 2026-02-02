@@ -35,6 +35,10 @@ export async function runExec(
   args: string[],
   opts: number | { timeoutMs?: number; maxBuffer?: number } = 10_000,
 ): Promise<{ stdout: string; stderr: string }> {
+  const cmd = command != null ? String(command).trim() : "";
+  if (!cmd) {
+    throw new Error("runExec: command is required.");
+  }
   const options =
     typeof opts === "number"
       ? { timeout: opts, encoding: "utf8" as const }
@@ -44,7 +48,7 @@ export async function runExec(
           encoding: "utf8" as const,
         };
   try {
-    const { stdout, stderr } = await execFileAsync(resolveCommand(command), args, options);
+    const { stdout, stderr } = await execFileAsync(resolveCommand(cmd), args, options);
     if (shouldLogVerbose()) {
       if (stdout.trim()) {
         logDebug(stdout.trim());
@@ -56,7 +60,7 @@ export async function runExec(
     return { stdout, stderr };
   } catch (err) {
     if (shouldLogVerbose()) {
-      logError(danger(`Command failed: ${command} ${args.join(" ")}`));
+      logError(danger(`Command failed: ${cmd} ${args.join(" ")}`));
     }
     throw err;
   }
@@ -82,6 +86,9 @@ export async function runCommandWithTimeout(
   argv: string[],
   optionsOrTimeout: number | CommandOptions,
 ): Promise<SpawnResult> {
+  if (argv.length === 0) {
+    throw new Error("runCommandWithTimeout: argv must contain at least one element (command).");
+  }
   const options: CommandOptions =
     typeof optionsOrTimeout === "number" ? { timeoutMs: optionsOrTimeout } : optionsOrTimeout;
   const { timeoutMs, cwd, input, env } = options;

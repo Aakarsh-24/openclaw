@@ -1,7 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { runCommandWithTimeout } from "./exec.js";
+import { runExec, runCommandWithTimeout } from "./exec.js";
+
+describe("runExec", () => {
+  it("throws when command is empty", async () => {
+    await expect(runExec("", [], 5_000)).rejects.toThrow("runExec: command is required.");
+    await expect(runExec("   ", [], 5_000)).rejects.toThrow("runExec: command is required.");
+  });
+});
 
 describe("runCommandWithTimeout", () => {
+  it("throws when argv is empty", async () => {
+    await expect(runCommandWithTimeout([], { timeoutMs: 5_000 })).rejects.toThrow(
+      "runCommandWithTimeout: argv must contain at least one element (command).",
+    );
+  });
+
   it("passes env overrides to child", async () => {
     const result = await runCommandWithTimeout(
       [process.execPath, "-e", 'process.stdout.write(process.env.OPENCLAW_TEST_ENV ?? "")'],
