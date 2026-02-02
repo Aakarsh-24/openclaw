@@ -84,7 +84,7 @@ Think of a cron job as: **when** to run + **what** to do.
 
 3. **Choose the payload**
    - Main session → `payload.kind = "systemEvent"`
-   - Isolated session → `payload.kind = "agentTurn"`
+   - Isolated session → `payload.kind = "agentTurn"` or `payload.kind = "script"`
 
 Optional: `deleteAfterRun: true` removes successful one-shot jobs from the store.
 
@@ -145,10 +145,11 @@ your main chat history.
 
 ### Payload shapes (what runs)
 
-Two payload kinds are supported:
+Three payload kinds are supported:
 
 - `systemEvent`: main-session only, routed through the heartbeat prompt.
 - `agentTurn`: isolated-session only, runs a dedicated agent turn.
+- `script`: isolated-session only, runs a shell command first to decide whether to proceed.
 
 Common `agentTurn` fields:
 
@@ -159,6 +160,39 @@ Common `agentTurn` fields:
 - `channel`: `last` or a specific channel.
 - `to`: channel-specific target (phone/chat/channel id).
 - `bestEffortDeliver`: avoid failing the job if delivery fails.
+
+#### Script resolver (`payload.kind = "script"`)
+
+Script payloads run a shell command before spawning an agent session.
+The script's stdout must be a JSON object:
+
+```json
+{ "run": true, "message": "Context for the agent turn" }
+```
+
+| Field      | Type    | Required | Description                                                |
+| ---------- | ------- | -------- | ---------------------------------------------------------- |
+| `run`      | boolean | yes      | `true` to proceed with agent turn, `false` to skip         |
+| `reason`   | string  | no       | Why the script declined (logged on skip)                   |
+| `message`  | string  | no       | Prompt text for the agent turn (required when `run: true`) |
+| `model`    | string  | no       | Override the model for this run                            |
+| `thinking` | string  | no       | Override the thinking level for this run                   |
+
+If `run` is `false`, the job is marked "skipped" with the `reason` and no tokens are consumed.
+If `run` is `true` but `message` is empty, the job is also skipped.
+
+Script payload fields:
+
+- `command`: required shell command to execute.
+- `timeout`: script timeout in seconds (default: 30).
+- `model` / `thinking`: fallback overrides if the script doesn't provide them.
+- `timeoutSeconds`, `deliver`, `channel`, `to`, `bestEffortDeliver`: same as `agentTurn`.
+
+Use cases:
+
+- **Trigger-file patterns**: check for a file, URL, or external condition before running.
+- **Cost control**: avoid burning tokens on a schedule when there's nothing to do.
+- **Dynamic prompts**: the script can tailor the agent message based on external state.
 
 Isolation options (only for `session=isolated`):
 
@@ -258,11 +292,31 @@ Recurring, isolated job with delivery:
 }
 ```
 
+Script resolver job (isolated, runs shell command first):
+
+```json
+{
+  "name": "Deploy checker",
+  "schedule": { "kind": "every", "everyMs": 300000 },
+  "sessionTarget": "isolated",
+  "payload": {
+    "kind": "script",
+    "command": "bash /opt/scripts/check-deploys.sh",
+    "timeout": 10,
+    "model": "anthropic/claude-haiku-4-5",
+    "deliver": true,
+    "channel": "slack",
+    "to": "channel:C1234567890"
+  }
+}
+```
+
 Notes:
 
 - `schedule.kind`: `at` (`atMs`), `every` (`everyMs`), or `cron` (`expr`, optional `tz`).
 - `atMs` and `everyMs` are epoch milliseconds.
 - `sessionTarget` must be `"main"` or `"isolated"` and must match `payload.kind`.
+- `script` payloads require `sessionTarget: "isolated"`.
 - Optional fields: `agentId`, `description`, `enabled`, `deleteAfterRun`, `isolation`.
 - `wakeMode` defaults to `"next-heartbeat"` when omitted.
 
@@ -367,6 +421,18 @@ openclaw cron add \
   --deliver \
   --channel telegram \
   --to "-1001234567890:topic:123"
+```
+
+Script resolver (run agent only when a condition is met):
+
+```bash
+openclaw cron add \
+  --name "Deploy checker" \
+  --every 5m \
+  --session isolated \
+  --script "bash /opt/scripts/check-deploys.sh" \
+  --script-timeout 10 \
+  --model "haiku"
 ```
 
 Isolated job with model and thinking override:

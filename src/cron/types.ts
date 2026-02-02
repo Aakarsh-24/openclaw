@@ -24,6 +24,22 @@ export type CronPayload =
       channel?: CronMessageChannel;
       to?: string;
       bestEffortDeliver?: boolean;
+    }
+  | {
+      kind: "script";
+      /** Shell command to run. Must output JSON to stdout. */
+      command: string;
+      /** Timeout in seconds for the script (default: 30). */
+      timeout?: number;
+      /** Default agentTurn fields (used when script doesn't override). */
+      model?: string;
+      thinking?: string;
+      timeoutSeconds?: number;
+      allowUnsafeExternalContent?: boolean;
+      deliver?: boolean;
+      channel?: CronMessageChannel;
+      to?: string;
+      bestEffortDeliver?: boolean;
     };
 
 export type CronPayloadPatch =
@@ -31,6 +47,19 @@ export type CronPayloadPatch =
   | {
       kind: "agentTurn";
       message?: string;
+      model?: string;
+      thinking?: string;
+      timeoutSeconds?: number;
+      allowUnsafeExternalContent?: boolean;
+      deliver?: boolean;
+      channel?: CronMessageChannel;
+      to?: string;
+      bestEffortDeliver?: boolean;
+    }
+  | {
+      kind: "script";
+      command?: string;
+      timeout?: number;
       model?: string;
       thinking?: string;
       timeoutSeconds?: number;

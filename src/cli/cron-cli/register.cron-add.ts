@@ -77,6 +77,8 @@ export function registerCronAddCommand(cron: Command) {
       .option("--tz <iana>", "Timezone for cron expressions (IANA)", "")
       .option("--system-event <text>", "System event payload (main session)")
       .option("--message <text>", "Agent message payload")
+      .option("--script <command>", "Shell command for script resolver payload")
+      .option("--script-timeout <seconds>", "Timeout for script resolver (default: 30)")
       .option("--thinking <level>", "Thinking level for agent jobs (off|minimal|low|medium|high)")
       .option("--model <model>", "Model override for agent jobs (provider/model or alias)")
       .option("--timeout-seconds <n>", "Timeout seconds for agent jobs")
@@ -150,14 +152,39 @@ export function registerCronAddCommand(cron: Command) {
           const payload = (() => {
             const systemEvent = typeof opts.systemEvent === "string" ? opts.systemEvent.trim() : "";
             const message = typeof opts.message === "string" ? opts.message.trim() : "";
-            const chosen = [Boolean(systemEvent), Boolean(message)].filter(Boolean).length;
+            const script = typeof opts.script === "string" ? opts.script.trim() : "";
+            const chosen = [Boolean(systemEvent), Boolean(message), Boolean(script)].filter(
+              Boolean,
+            ).length;
             if (chosen !== 1) {
-              throw new Error("Choose exactly one payload: --system-event or --message");
+              throw new Error("Choose exactly one payload: --system-event, --message, or --script");
             }
             if (systemEvent) {
               return { kind: "systemEvent" as const, text: systemEvent };
             }
             const timeoutSeconds = parsePositiveIntOrUndefined(opts.timeoutSeconds);
+            const scriptTimeout = parsePositiveIntOrUndefined(opts.scriptTimeout);
+            if (script) {
+              return {
+                kind: "script" as const,
+                command: script,
+                timeout: scriptTimeout ?? 30,
+                model:
+                  typeof opts.model === "string" && opts.model.trim()
+                    ? opts.model.trim()
+                    : undefined,
+                thinking:
+                  typeof opts.thinking === "string" && opts.thinking.trim()
+                    ? opts.thinking.trim()
+                    : undefined,
+                timeoutSeconds:
+                  timeoutSeconds && Number.isFinite(timeoutSeconds) ? timeoutSeconds : undefined,
+                deliver: opts.deliver ? true : undefined,
+                channel: typeof opts.channel === "string" ? opts.channel : "last",
+                to: typeof opts.to === "string" && opts.to.trim() ? opts.to.trim() : undefined,
+                bestEffortDeliver: opts.bestEffortDeliver ? true : undefined,
+              };
+            }
             return {
               kind: "agentTurn" as const,
               message,
@@ -179,8 +206,12 @@ export function registerCronAddCommand(cron: Command) {
           if (sessionTarget === "main" && payload.kind !== "systemEvent") {
             throw new Error("Main jobs require --system-event (systemEvent).");
           }
-          if (sessionTarget === "isolated" && payload.kind !== "agentTurn") {
-            throw new Error("Isolated jobs require --message (agentTurn).");
+          if (
+            sessionTarget === "isolated" &&
+            payload.kind !== "agentTurn" &&
+            payload.kind !== "script"
+          ) {
+            throw new Error("Isolated jobs require --message (agentTurn) or --script (script).");
           }
 
           const isolation =

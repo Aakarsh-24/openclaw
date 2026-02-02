@@ -21,8 +21,12 @@ export function assertSupportedJobSpec(job: Pick<CronJob, "sessionTarget" | "pay
   if (job.sessionTarget === "main" && job.payload.kind !== "systemEvent") {
     throw new Error('main cron jobs require payload.kind="systemEvent"');
   }
-  if (job.sessionTarget === "isolated" && job.payload.kind !== "agentTurn") {
-    throw new Error('isolated cron jobs require payload.kind="agentTurn"');
+  if (
+    job.sessionTarget === "isolated" &&
+    job.payload.kind !== "agentTurn" &&
+    job.payload.kind !== "script"
+  ) {
+    throw new Error('isolated cron jobs require payload.kind="agentTurn" or "script"');
   }
 }
 
@@ -162,36 +166,68 @@ function mergeCronPayload(existing: CronPayload, patch: CronPayloadPatch): CronP
     return { kind: "systemEvent", text };
   }
 
-  if (existing.kind !== "agentTurn") {
-    return buildPayloadFromPatch(patch);
+  if (existing.kind === "agentTurn" && patch.kind === "agentTurn") {
+    const next: Extract<CronPayload, { kind: "agentTurn" }> = { ...existing };
+    if (typeof patch.message === "string") {
+      next.message = patch.message;
+    }
+    if (typeof patch.model === "string") {
+      next.model = patch.model;
+    }
+    if (typeof patch.thinking === "string") {
+      next.thinking = patch.thinking;
+    }
+    if (typeof patch.timeoutSeconds === "number") {
+      next.timeoutSeconds = patch.timeoutSeconds;
+    }
+    if (typeof patch.deliver === "boolean") {
+      next.deliver = patch.deliver;
+    }
+    if (typeof patch.channel === "string") {
+      next.channel = patch.channel;
+    }
+    if (typeof patch.to === "string") {
+      next.to = patch.to;
+    }
+    if (typeof patch.bestEffortDeliver === "boolean") {
+      next.bestEffortDeliver = patch.bestEffortDeliver;
+    }
+    return next;
   }
 
-  const next: Extract<CronPayload, { kind: "agentTurn" }> = { ...existing };
-  if (typeof patch.message === "string") {
-    next.message = patch.message;
+  if (existing.kind === "script" && patch.kind === "script") {
+    const next: Extract<CronPayload, { kind: "script" }> = { ...existing };
+    if (typeof patch.command === "string") {
+      next.command = patch.command;
+    }
+    if (typeof patch.timeout === "number") {
+      next.timeout = patch.timeout;
+    }
+    if (typeof patch.model === "string") {
+      next.model = patch.model;
+    }
+    if (typeof patch.thinking === "string") {
+      next.thinking = patch.thinking;
+    }
+    if (typeof patch.timeoutSeconds === "number") {
+      next.timeoutSeconds = patch.timeoutSeconds;
+    }
+    if (typeof patch.deliver === "boolean") {
+      next.deliver = patch.deliver;
+    }
+    if (typeof patch.channel === "string") {
+      next.channel = patch.channel;
+    }
+    if (typeof patch.to === "string") {
+      next.to = patch.to;
+    }
+    if (typeof patch.bestEffortDeliver === "boolean") {
+      next.bestEffortDeliver = patch.bestEffortDeliver;
+    }
+    return next;
   }
-  if (typeof patch.model === "string") {
-    next.model = patch.model;
-  }
-  if (typeof patch.thinking === "string") {
-    next.thinking = patch.thinking;
-  }
-  if (typeof patch.timeoutSeconds === "number") {
-    next.timeoutSeconds = patch.timeoutSeconds;
-  }
-  if (typeof patch.deliver === "boolean") {
-    next.deliver = patch.deliver;
-  }
-  if (typeof patch.channel === "string") {
-    next.channel = patch.channel;
-  }
-  if (typeof patch.to === "string") {
-    next.to = patch.to;
-  }
-  if (typeof patch.bestEffortDeliver === "boolean") {
-    next.bestEffortDeliver = patch.bestEffortDeliver;
-  }
-  return next;
+
+  return buildPayloadFromPatch(patch);
 }
 
 function buildPayloadFromPatch(patch: CronPayloadPatch): CronPayload {
@@ -200,6 +236,24 @@ function buildPayloadFromPatch(patch: CronPayloadPatch): CronPayload {
       throw new Error('cron.update payload.kind="systemEvent" requires text');
     }
     return { kind: "systemEvent", text: patch.text };
+  }
+
+  if (patch.kind === "script") {
+    if (typeof patch.command !== "string" || patch.command.length === 0) {
+      throw new Error('cron.update payload.kind="script" requires command');
+    }
+    return {
+      kind: "script",
+      command: patch.command,
+      timeout: patch.timeout,
+      model: patch.model,
+      thinking: patch.thinking,
+      timeoutSeconds: patch.timeoutSeconds,
+      deliver: patch.deliver,
+      channel: patch.channel,
+      to: patch.to,
+      bestEffortDeliver: patch.bestEffortDeliver,
+    };
   }
 
   if (typeof patch.message !== "string" || patch.message.length === 0) {

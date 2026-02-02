@@ -43,6 +43,8 @@ export function registerCronEditCommand(cron: Command) {
       .option("--tz <iana>", "Timezone for cron expressions (IANA)")
       .option("--system-event <text>", "Set systemEvent payload")
       .option("--message <text>", "Set agentTurn payload message")
+      .option("--script <command>", "Set script resolver payload command")
+      .option("--script-timeout <seconds>", "Set script resolver timeout")
       .option("--thinking <level>", "Thinking level for agent jobs")
       .option("--model <model>", "Model override for agent jobs")
       .option("--timeout-seconds <n>", "Timeout seconds for agent jobs")
@@ -61,14 +63,14 @@ export function registerCronEditCommand(cron: Command) {
       .option("--post-prefix <prefix>", "Prefix for summary system event")
       .action(async (id, opts) => {
         try {
-          if (opts.session === "main" && opts.message) {
+          if (opts.session === "main" && (opts.message || opts.script)) {
             throw new Error(
-              "Main jobs cannot use --message; use --system-event or --session isolated.",
+              "Main jobs cannot use --message or --script; use --system-event or --session isolated.",
             );
           }
           if (opts.session === "isolated" && opts.systemEvent) {
             throw new Error(
-              "Isolated jobs cannot use --system-event; use --message or --session main.",
+              "Isolated jobs cannot use --system-event; use --message, --script, or --session main.",
             );
           }
           if (opts.session === "main" && typeof opts.postPrefix === "string") {
@@ -141,6 +143,8 @@ export function registerCronEditCommand(cron: Command) {
           }
 
           const hasSystemEventPatch = typeof opts.systemEvent === "string";
+          const hasScriptPatch =
+            typeof opts.script === "string" || typeof opts.scriptTimeout === "string";
           const model =
             typeof opts.model === "string" && opts.model.trim() ? opts.model.trim() : undefined;
           const thinking =
@@ -151,6 +155,10 @@ export function registerCronEditCommand(cron: Command) {
             ? Number.parseInt(String(opts.timeoutSeconds), 10)
             : undefined;
           const hasTimeoutSeconds = Boolean(timeoutSeconds && Number.isFinite(timeoutSeconds));
+          const scriptTimeout = opts.scriptTimeout
+            ? Number.parseInt(String(opts.scriptTimeout), 10)
+            : undefined;
+          const hasScriptTimeout = Boolean(scriptTimeout && Number.isFinite(scriptTimeout));
           const hasAgentTurnPatch =
             typeof opts.message === "string" ||
             Boolean(model) ||
@@ -160,7 +168,10 @@ export function registerCronEditCommand(cron: Command) {
             typeof opts.channel === "string" ||
             typeof opts.to === "string" ||
             typeof opts.bestEffortDeliver === "boolean";
-          if (hasSystemEventPatch && hasAgentTurnPatch) {
+          const payloadChanges = [hasSystemEventPatch, hasScriptPatch, hasAgentTurnPatch].filter(
+            Boolean,
+          ).length;
+          if (payloadChanges > 1) {
             throw new Error("Choose at most one payload change");
           }
           if (hasSystemEventPatch) {
@@ -168,6 +179,23 @@ export function registerCronEditCommand(cron: Command) {
               kind: "systemEvent",
               text: String(opts.systemEvent),
             };
+          } else if (hasScriptPatch) {
+            const payload: Record<string, unknown> = { kind: "script" };
+            assignIf(payload, "command", String(opts.script), typeof opts.script === "string");
+            assignIf(payload, "timeout", scriptTimeout, hasScriptTimeout);
+            assignIf(payload, "model", model, Boolean(model));
+            assignIf(payload, "thinking", thinking, Boolean(thinking));
+            assignIf(payload, "timeoutSeconds", timeoutSeconds, hasTimeoutSeconds);
+            assignIf(payload, "deliver", opts.deliver, typeof opts.deliver === "boolean");
+            assignIf(payload, "channel", opts.channel, typeof opts.channel === "string");
+            assignIf(payload, "to", opts.to, typeof opts.to === "string");
+            assignIf(
+              payload,
+              "bestEffortDeliver",
+              opts.bestEffortDeliver,
+              typeof opts.bestEffortDeliver === "boolean",
+            );
+            patch.payload = payload;
           } else if (hasAgentTurnPatch) {
             const payload: Record<string, unknown> = { kind: "agentTurn" };
             assignIf(payload, "message", String(opts.message), typeof opts.message === "string");

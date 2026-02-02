@@ -1,9 +1,53 @@
+import { exec as execCb } from "node:child_process";
+import { promisify } from "node:util";
 import type { HeartbeatRunResult } from "../../infra/heartbeat-wake.js";
-import type { CronJob } from "../types.js";
+import type { CronJob, CronPayload } from "../types.js";
 import type { CronEvent, CronServiceState } from "./state.js";
 import { computeJobNextRunAtMs, nextWakeAtMs, resolveJobPayloadTextForMain } from "./jobs.js";
 import { locked } from "./locked.js";
 import { ensureLoaded, persist } from "./store.js";
+
+const execAsync = promisify(execCb);
+
+type ResolverResult = {
+  run: boolean;
+  reason?: string;
+  message?: string;
+  model?: string;
+  thinking?: string;
+};
+
+async function runResolverScript(
+  payload: Extract<CronPayload, { kind: "script" }>,
+): Promise<ResolverResult> {
+  const timeoutMs = (payload.timeout ?? 30) * 1000;
+  try {
+    const { stdout } = await execAsync(payload.command, {
+      timeout: timeoutMs,
+      maxBuffer: 1024 * 1024, // 1MB
+      env: { ...process.env },
+      killSignal: "SIGKILL",
+    });
+    const parsed = JSON.parse(stdout.trim());
+    return {
+      run: Boolean(parsed.run),
+      reason: typeof parsed.reason === "string" ? parsed.reason : undefined,
+      message: typeof parsed.message === "string" ? parsed.message : undefined,
+      model: typeof parsed.model === "string" ? parsed.model : undefined,
+      thinking: typeof parsed.thinking === "string" ? parsed.thinking : undefined,
+    };
+  } catch (err: unknown) {
+    // Ensure the child process is killed on maxBuffer or other errors
+    if (err && typeof err === "object" && "killed" in err && !err.killed && "pid" in err) {
+      try {
+        process.kill(err.pid as number, "SIGKILL");
+      } catch {
+        // already dead
+      }
+    }
+    return { run: false, reason: `resolver script failed: ${String(err)}` };
+  }
+}
 
 const MAX_TIMEOUT_MS = 2 ** 31 - 1;
 
@@ -204,21 +248,59 @@ export async function executeJob(
       return;
     }
 
-    if (job.payload.kind !== "agentTurn") {
-      await finish("skipped", "isolated job requires payload.kind=agentTurn");
-      return;
-    }
-
-    const res = await state.deps.runIsolatedAgentJob({
-      job,
-      message: job.payload.message,
-    });
-    if (res.status === "ok") {
-      await finish("ok", undefined, res.summary, res.outputText);
-    } else if (res.status === "skipped") {
-      await finish("skipped", undefined, res.summary, res.outputText);
+    if (job.payload.kind === "script") {
+      // Run the resolver script
+      const scriptResult = await runResolverScript(job.payload);
+      if (!scriptResult.run) {
+        await finish("skipped", scriptResult.reason ?? "resolver script declined");
+        return;
+      }
+      // Convert to an effective agentTurn payload for the run
+      const effectiveMessage = scriptResult.message ?? "";
+      if (!effectiveMessage.trim()) {
+        await finish("skipped", "resolver script returned empty message");
+        return;
+      }
+      const res = await state.deps.runIsolatedAgentJob({
+        job: {
+          ...job,
+          payload: {
+            kind: "agentTurn",
+            message: effectiveMessage,
+            model: scriptResult.model ?? job.payload.model,
+            thinking: scriptResult.thinking ?? job.payload.thinking,
+            timeoutSeconds: job.payload.timeoutSeconds,
+            allowUnsafeExternalContent: job.payload.allowUnsafeExternalContent,
+            deliver: job.payload.deliver,
+            channel: job.payload.channel,
+            to: job.payload.to,
+            bestEffortDeliver: job.payload.bestEffortDeliver,
+          },
+        },
+        message: effectiveMessage,
+      });
+      if (res.status === "ok") {
+        await finish("ok", undefined, res.summary, res.outputText);
+      } else if (res.status === "skipped") {
+        await finish("skipped", undefined, res.summary, res.outputText);
+      } else {
+        await finish("error", res.error ?? "cron job failed", res.summary, res.outputText);
+      }
+    } else if (job.payload.kind === "agentTurn") {
+      const res = await state.deps.runIsolatedAgentJob({
+        job,
+        message: job.payload.message,
+      });
+      if (res.status === "ok") {
+        await finish("ok", undefined, res.summary, res.outputText);
+      } else if (res.status === "skipped") {
+        await finish("skipped", undefined, res.summary, res.outputText);
+      } else {
+        await finish("error", res.error ?? "cron job failed", res.summary, res.outputText);
+      }
     } else {
-      await finish("error", res.error ?? "cron job failed", res.summary, res.outputText);
+      await finish("skipped", "isolated job requires payload.kind=agentTurn or script");
+      return;
     }
   } catch (err) {
     await finish("error", String(err));
