@@ -1,0 +1,15 @@
+{
+  "name": "openclaw-webhook-tester",
+  "version": "1.0.0",
+  "description": "Webhook event receiver for OpenClaw queue testing",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

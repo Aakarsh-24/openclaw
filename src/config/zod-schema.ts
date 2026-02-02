@@ -6,6 +6,7 @@ import { HexColorSchema, ModelsConfigSchema } from "./zod-schema.core.js";
 import { HookMappingSchema, HooksGmailSchema, InternalHooksSchema } from "./zod-schema.hooks.js";
 import { ChannelsSchema } from "./zod-schema.providers.js";
 import { CommandsSchema, MessagesSchema, SessionSchema } from "./zod-schema.session.js";
+import { MessageQueueConfigSchema } from "./types.queue.js";
 
 const BrowserSnapshotDefaultsSchema = z
   .object({
@@ -528,6 +529,7 @@ export const OpenClawSchema = z
       })
       .strict()
       .optional(),
+    queue: MessageQueueConfigSchema.optional(),
   })
   .strict()
   .superRefine((cfg, ctx) => {
