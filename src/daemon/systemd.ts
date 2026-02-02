@@ -30,12 +30,19 @@ const formatLine = (label: string, value: string) => {
   return `${colorize(rich, theme.muted, `${label}:`)} ${colorize(rich, theme.command, value)}`;
 };
 
+// 🔒 VOTAL.AI Security Fix: Arbitrary file write via environment-controlled systemd unit name (path traversal / path injection) [CWE-22] - CRITICAL
+// 🔒 VOTAL.AI Security Fix: Arbitrary file write via environment-controlled systemd unit name (path traversal / path injection) [CWE-22] - CRITICAL
 function resolveSystemdUnitPathForName(
   env: Record<string, string | undefined>,
   name: string,
 ): string {
   const home = toPosixPath(resolveHomeDir(env));
-  return path.posix.join(home, ".config", "systemd", "user", `${name}.service`);
+  const baseDir = path.posix.join(home, ".config", "systemd", "user");
+  const unitPath = path.posix.resolve(baseDir, `${name}.service`);
+  if (!unitPath.startsWith(baseDir + "/")) {
+    throw new Error("Invalid systemd unit name");
+  }
+  return unitPath;
 }
 
 function resolveSystemdServiceName(env: Record<string, string | undefined>): string {
@@ -375,6 +382,7 @@ export async function readSystemdServiceRuntime(
     lastExitReason: parsed.execMainCode,
   };
 }
+
 export type LegacySystemdUnit = {
   name: string;
   unitPath: string;
