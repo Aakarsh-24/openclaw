@@ -82,6 +82,24 @@ describe("EmbeddedBlockChunker", () => {
     expect(chunker.bufferedText).toBe("KLMNOP");
   });
 
+  it("clamps long paragraphs to maxChars when flushOnParagraph is set", () => {
+    const chunker = new EmbeddedBlockChunker({
+      minChars: 1,
+      maxChars: 10,
+      breakPreference: "paragraph",
+      flushOnParagraph: true,
+    });
+
+    chunker.append("abcdefghijk\n\nRest");
+
+    const chunks: string[] = [];
+    chunker.drain({ force: false, emit: (chunk) => chunks.push(chunk) });
+
+    expect(chunks.every((chunk) => chunk.length <= 10)).toBe(true);
+    expect(chunks).toEqual(["abcdefghij", "k"]);
+    expect(chunker.bufferedText).toBe("Rest");
+  });
+
   it("ignores paragraph breaks inside fences when flushOnParagraph is set", () => {
     const chunker = new EmbeddedBlockChunker({
       minChars: 100,

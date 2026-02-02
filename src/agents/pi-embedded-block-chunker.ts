@@ -108,9 +108,10 @@ export class EmbeddedBlockChunker {
     while (this.#buffer.length > 0) {
       const fenceSpans = parseFenceSpans(this.#buffer);
       const paragraphBreak = findNextParagraphBreak(this.#buffer, fenceSpans);
-      if (!paragraphBreak) {
-        // No paragraph boundary yet. If buffer exceeds maxChars, fall back to
-        // normal break logic to avoid unbounded accumulation.
+      if (!paragraphBreak || paragraphBreak.index > maxChars) {
+        // No paragraph boundary yet (or the next boundary is too far). If the
+        // buffer exceeds maxChars, fall back to normal break logic to avoid
+        // oversized chunks or unbounded accumulation.
         if (this.#buffer.length >= maxChars) {
           const breakResult = this.#pickBreakIndex(this.#buffer, 1);
           if (breakResult.index > 0) {
