@@ -328,6 +328,10 @@ export async function handleDirectiveOnly(params: {
     reasoningChanged =
       directives.reasoningLevel !== prevReasoningLevel && directives.reasoningLevel !== undefined;
   }
+  if (directives.hasReasoningEffortDirective && directives.reasoningEffort) {
+    // Provider-side compute budget (e.g., OpenAI Codex reasoning effort)
+    sessionEntry.modelReasoningEffort = directives.reasoningEffort;
+  }
   if (directives.hasElevatedDirective && directives.elevatedLevel) {
     // Unlike other toggles, elevated defaults can be "on".
     // Persist "off" explicitly so `/elevated off` actually overrides defaults.
@@ -432,6 +436,9 @@ export async function handleDirectiveOnly(params: {
           ? formatDirectiveAck("Reasoning stream enabled (Telegram only).")
           : formatDirectiveAck("Reasoning visibility enabled."),
     );
+  }
+  if (directives.hasReasoningEffortDirective && directives.reasoningEffort) {
+    parts.push(formatDirectiveAck(`Reasoning effort set to ${directives.reasoningEffort}.`));
   }
   if (directives.hasElevatedDirective && directives.elevatedLevel) {
     parts.push(
