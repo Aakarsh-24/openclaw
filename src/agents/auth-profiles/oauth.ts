@@ -15,9 +15,7 @@ import { ensureAuthStoreFile, resolveAuthStorePath } from "./paths.js";
 import { suggestOAuthProfileIdForLegacyDefault } from "./repair.js";
 import { ensureAuthProfileStore, saveAuthProfileStore } from "./store.js";
 
-const OAUTH_PROVIDER_IDS = new Set<OAuthProvider>(
-  getOAuthProviders().map((provider) => provider.id),
-);
+const OAUTH_PROVIDER_IDS: Set<string> = new Set(getOAuthProviders().map((provider) => provider.id));
 
 function isOAuthProvider(provider: string): provider is OAuthProvider {
   // biome-ignore lint/suspicious/noExplicitAny: type guard needs runtime check
