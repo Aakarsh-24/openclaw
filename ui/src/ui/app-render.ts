@@ -584,12 +584,16 @@ export function renderApp(state: AppViewState) {
                 file: state.logsFile,
                 entries: state.logsEntries,
                 filterText: state.logsFilterText,
-                levelFilters: state.logsLevelFilters,
+                levelFilters: state.settings.logsLevelFilters,
                 autoFollow: state.logsAutoFollow,
                 truncated: state.logsTruncated,
                 onFilterTextChange: (next) => (state.logsFilterText = next),
                 onLevelToggle: (level, enabled) => {
-                  state.logsLevelFilters = { ...state.logsLevelFilters, [level]: enabled };
+                  state.settings.logsLevelFilters = { ...state.settings.logsLevelFilters, [level]: enabled };
+                  state.applySettings({
+                    ...state.settings,
+                    logsLevelFilters: state.settings.logsLevelFilters,
+                  });
                 },
                 onToggleAutoFollow: (next) => (state.logsAutoFollow = next),
                 onRefresh: () => loadLogs(state, { reset: true }),

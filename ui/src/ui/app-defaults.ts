@@ -1,15 +1,6 @@
 import type { LogLevel } from "./types";
 import type { CronFormState } from "./ui-types";
 
-export const DEFAULT_LOG_LEVEL_FILTERS: Record<LogLevel, boolean> = {
-  trace: true,
-  debug: true,
-  info: true,
-  warn: true,
-  error: true,
-  fatal: true,
-};
-
 export const DEFAULT_CRON_FORM: CronFormState = {
   name: "",
   description: "",
