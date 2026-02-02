@@ -116,9 +116,7 @@ export const OpenClawSchema = z
             z.literal("trace"),
           ])
           .optional(),
-        consoleStyle: z
-          .union([z.literal("pretty"), z.literal("compact"), z.literal("json")])
-          .optional(),
+        consoleStyle: z.union([z.literal("pretty"), z.literal("compact"), z.literal("json")]).optional(),
         redactSensitive: z.union([z.literal("off"), z.literal("tools")]).optional(),
         redactPatterns: z.array(z.string()).optional(),
       })
@@ -147,9 +145,7 @@ export const OpenClawSchema = z
         snapshotDefaults: BrowserSnapshotDefaultsSchema,
         profiles: z
           .record(
-            z
-              .string()
-              .regex(/^[a-z0-9-]+$/, "Profile names must be alphanumeric with hyphens only"),
+            z.string().regex(/^[a-z0-9-]+$/, "Profile names must be alphanumeric with hyphens only"),
             z
               .object({
                 cdpPort: z.number().int().min(1).max(65535).optional(),
@@ -306,13 +302,7 @@ export const OpenClawSchema = z
         port: z.number().int().positive().optional(),
         mode: z.union([z.literal("local"), z.literal("remote")]).optional(),
         bind: z
-          .union([
-            z.literal("auto"),
-            z.literal("lan"),
-            z.literal("loopback"),
-            z.literal("custom"),
-            z.literal("tailnet"),
-          ])
+          .union([z.literal("auto"), z.literal("lan"), z.literal("loopback"), z.literal("custom"), z.literal("tailnet")])
           .optional(),
         controlUi: z
           .object({
@@ -354,14 +344,7 @@ export const OpenClawSchema = z
           .optional(),
         reload: z
           .object({
-            mode: z
-              .union([
-                z.literal("off"),
-                z.literal("restart"),
-                z.literal("hot"),
-                z.literal("hybrid"),
-              ])
-              .optional(),
+            mode: z.union([z.literal("off"), z.literal("restart"), z.literal("hot"), z.literal("hybrid")]).optional(),
             debounceMs: z.number().int().min(0).optional(),
           })
           .strict()
@@ -431,9 +414,7 @@ export const OpenClawSchema = z
           .object({
             browser: z
               .object({
-                mode: z
-                  .union([z.literal("auto"), z.literal("manual"), z.literal("off")])
-                  .optional(),
+                mode: z.union([z.literal("auto"), z.literal("manual"), z.literal("off")]).optional(),
                 node: z.string().optional(),
               })
               .strict()
@@ -460,9 +441,7 @@ export const OpenClawSchema = z
         install: z
           .object({
             preferBrew: z.boolean().optional(),
-            nodeManager: z
-              .union([z.literal("npm"), z.literal("pnpm"), z.literal("yarn"), z.literal("bun")])
-              .optional(),
+            nodeManager: z.union([z.literal("npm"), z.literal("pnpm"), z.literal("yarn"), z.literal("bun")]).optional(),
           })
           .strict()
           .optional(),
@@ -489,7 +468,16 @@ export const OpenClawSchema = z
         deny: z.array(z.string()).optional(),
         load: z
           .object({
-            paths: z.array(z.string()).optional(),
+            paths: z
+              .array(
+                z
+                  .string()
+                  .regex(
+                    /^\.\/plugins(\/|$)/,
+                    "Plugin paths must be under ./plugins directory",
+                  ),
+              )
+              .optional(),
           })
           .strict()
           .optional(),
@@ -501,6 +489,7 @@ export const OpenClawSchema = z
           .optional(),
         entries: z
           .record(
+// 🔒 VOTAL.AI Security Fix: Untrusted plugin loading paths can lead to arbitrary code execution [CWE-94] - CRITICAL
             z.string(),
             z
               .object({
