@@ -1,6 +1,6 @@
 ---
 title: "项目展示"
-description: "来自OpenClaw 社区项目"
+description: "来自 OpenClaw 社区项目"
 summary: "由社区构建、基于 OpenClaw 的项目与集成案例"
 ---
 
