@@ -616,6 +616,54 @@ describe("applyMediaUnderstanding", () => {
     expect(ctx.Body).toContain("Hi");
   });
 
+  it("skips audio attachments with MP3/MP4 magic headers even if payload is text-like", async () => {
+    const { applyMediaUnderstanding } = await loadApply();
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "openclaw-media-"));
+
+    const cases: Array<{ fileName: string; mediaType: string; bytes: Buffer }> = [
+      {
+        fileName: "voice.mp3",
+        mediaType: "audio/mpeg",
+        bytes: Buffer.concat([Buffer.from("ID3"), Buffer.from("a,b,c\n1,2,3\n")]),
+      },
+      {
+        fileName: "voice.m4a",
+        mediaType: "audio/mp4",
+        bytes: Buffer.concat([
+          // MP4 box size (4) + 'ftyp' (4) + brand (4)
+          Buffer.from([0x00, 0x00, 0x00, 0x18, 0x66, 0x74, 0x79, 0x70, 0x4d, 0x34, 0x41, 0x20]),
+          Buffer.from("a\tb\tc\n1\t2\t3\n"),
+        ]),
+      },
+    ];
+
+    for (const testCase of cases) {
+      const filePath = path.join(dir, testCase.fileName);
+      await fs.writeFile(filePath, testCase.bytes);
+
+      const ctx: MsgContext = {
+        Body: "<media:audio>",
+        MediaPath: filePath,
+        MediaType: testCase.mediaType,
+      };
+      const cfg: OpenClawConfig = {
+        tools: {
+          media: {
+            audio: { enabled: false },
+            image: { enabled: false },
+            video: { enabled: false },
+          },
+        },
+      };
+
+      const result = await applyMediaUnderstanding({ ctx, cfg });
+
+      expect(result.appliedFile).toBe(false);
+      expect(ctx.Body).toBe("<media:audio>");
+      expect(ctx.Body).not.toContain("<file");
+    }
+  });
+
   it("skips binary audio attachments that are not text-like", async () => {
     const { applyMediaUnderstanding } = await loadApply();
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), "openclaw-media-"));

@@ -273,6 +273,61 @@ function looksLikeUtf8Text(buffer?: Buffer): boolean {
   }
 }
 
+function containsAudioMagicHeader(buffer?: Buffer): boolean {
+  if (!buffer || buffer.length === 0) {
+    return false;
+  }
+  // MP3
+  if (buffer.length >= 3 && buffer[0] === 0x49 && buffer[1] === 0x44 && buffer[2] === 0x33) {
+    return true;
+  }
+  // WAV
+  if (
+    buffer.length >= 12 &&
+    buffer[0] === 0x52 &&
+    buffer[1] === 0x49 &&
+    buffer[2] === 0x46 &&
+    buffer[3] === 0x46 &&
+    buffer[8] === 0x57 &&
+    buffer[9] === 0x41 &&
+    buffer[10] === 0x56 &&
+    buffer[11] === 0x45
+  ) {
+    return true;
+  }
+  // Ogg
+  if (
+    buffer.length >= 4 &&
+    buffer[0] === 0x4f &&
+    buffer[1] === 0x67 &&
+    buffer[2] === 0x67 &&
+    buffer[3] === 0x53
+  ) {
+    return true;
+  }
+  // FLAC
+  if (
+    buffer.length >= 4 &&
+    buffer[0] === 0x66 &&
+    buffer[1] === 0x4c &&
+    buffer[2] === 0x61 &&
+    buffer[3] === 0x43
+  ) {
+    return true;
+  }
+  // MP4/M4A container
+  if (
+    buffer.length >= 8 &&
+    buffer[4] === 0x66 &&
+    buffer[5] === 0x74 &&
+    buffer[6] === 0x79 &&
+    buffer[7] === 0x70
+  ) {
+    return true;
+  }
+  return false;
+}
+
 function decodeTextSample(buffer?: Buffer): string {
   if (!buffer || buffer.length === 0) {
     return "";
@@ -364,13 +419,18 @@ async function extractFileBlocks(params: {
     const utf16Charset = resolveUtf16Charset(bufferResult?.buffer);
     const textSample = decodeTextSample(bufferResult?.buffer);
     const textLike = Boolean(utf16Charset) || looksLikeUtf8Text(bufferResult?.buffer);
-    if (!forcedTextMimeResolved && kind === "audio" && !textLike) {
+    const rawMime = bufferResult?.mime ?? attachment.mime;
+
+    const headerSample = bufferResult?.buffer
+      ? bufferResult.buffer.subarray(0, Math.min(16, bufferResult.buffer.length))
+      : undefined;
+    const hasAudioMagicHeader = kind === "audio" && containsAudioMagicHeader(headerSample);
+    if (!forcedTextMimeResolved && kind === "audio" && (!textLike || hasAudioMagicHeader)) {
       continue;
     }
     const guessedDelimited = textLike ? guessDelimitedMime(textSample) : undefined;
     const textHint =
       forcedTextMimeResolved ?? guessedDelimited ?? (textLike ? "text/plain" : undefined);
-    const rawMime = bufferResult?.mime ?? attachment.mime;
     const mimeType = sanitizeMimeType(textHint ?? normalizeMimeType(rawMime));
     // Log when MIME type is overridden from non-text to text for auditability
     if (textHint && rawMime && !rawMime.startsWith("text/")) {
