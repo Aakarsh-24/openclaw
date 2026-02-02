@@ -42,8 +42,8 @@ export function registerCompletionCli(program: Command) {
       } else if (shell === "fish") {
         script = generateFishCompletion(program);
       }
-
-      console.log(script);
+      
+      process.stdout.write(script);
     });
 }
 
