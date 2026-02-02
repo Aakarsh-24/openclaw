@@ -2,6 +2,7 @@ import { html, nothing } from "lit";
 import type { SkillMessageMap } from "../controllers/skills";
 import type { SkillStatusEntry, SkillStatusReport } from "../types";
 import { clampText } from "../format";
+import { icons } from "../icons";
 
 export type SkillsProps = {
   loading: boolean;
@@ -170,12 +171,32 @@ function renderSkill(skill: SkillStatusEntry, props: SkillsProps) {
             ? html`
               <div class="field" style="margin-top: 10px;">
                 <span>API key</span>
-                <input
-                  type="password"
-                  .value=${apiKey}
-                  @input=${(e: Event) =>
-                    props.onEdit(skill.skillKey, (e.target as HTMLInputElement).value)}
-                />
+                <div style="position: relative; display: flex; align-items: stretch;">
+                  <input
+                    type="password"
+                    id="skill-api-key-${skill.skillKey}"
+                    .value=${apiKey}
+                    @input=${(e: Event) =>
+                      props.onEdit(skill.skillKey, (e.target as HTMLInputElement).value)}
+                    style="flex: 1; padding-right: 40px;"
+                  />
+                  <button
+                    type="button"
+                    class="cfg-input__toggle"
+                    style="position: absolute; right: 4px; top: 50%; transform: translateY(-50%);"
+                    title="Toggle visibility"
+                    @click=${() => {
+                      const input = document.getElementById(
+                        `skill-api-key-${skill.skillKey}`,
+                      ) as HTMLInputElement;
+                      if (input) {
+                        input.type = input.type === "password" ? "text" : "password";
+                      }
+                    }}
+                  >
+                    ${icons.eye}
+                  </button>
+                </div>
               </div>
               <button
                 class="btn primary"

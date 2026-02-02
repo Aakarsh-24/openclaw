@@ -3,6 +3,7 @@ import type { GatewayHelloOk } from "../gateway";
 import type { UiSettings } from "../storage";
 import { formatAgo, formatDurationMs } from "../format";
 import { formatNextRun } from "../presenter";
+import { icons } from "../icons";
 
 export type OverviewProps = {
   connected: boolean;
@@ -150,15 +151,35 @@ export function renderOverview(props: OverviewProps) {
           </label>
           <label class="field">
             <span>Password (not stored)</span>
-            <input
-              type="password"
-              .value=${props.password}
-              @input=${(e: Event) => {
-                const v = (e.target as HTMLInputElement).value;
-                props.onPasswordChange(v);
-              }}
-              placeholder="system or shared password"
-            />
+            <div style="position: relative; display: flex; align-items: stretch;">
+              <input
+                type="password"
+                id="overview-password"
+                .value=${props.password}
+                @input=${(e: Event) => {
+                  const v = (e.target as HTMLInputElement).value;
+                  props.onPasswordChange(v);
+                }}
+                placeholder="system or shared password"
+                style="flex: 1; padding-right: 40px;"
+              />
+              <button
+                type="button"
+                class="cfg-input__toggle"
+                style="position: absolute; right: 4px; top: 50%; transform: translateY(-50%);"
+                title="Toggle visibility"
+                @click=${() => {
+                  const input = document.getElementById(
+                    "overview-password",
+                  ) as HTMLInputElement;
+                  if (input) {
+                    input.type = input.type === "password" ? "text" : "password";
+                  }
+                }}
+              >
+                ${icons.eye}
+              </button>
+            </div>
           </label>
           <label class="field">
             <span>Default Session Key</span>

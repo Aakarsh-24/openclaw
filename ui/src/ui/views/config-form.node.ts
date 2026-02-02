@@ -93,6 +93,19 @@ const icons = {
       <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
     </svg>
   `,
+  eye: html`
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    >
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+      <circle cx="12" cy="12" r="3"></circle>
+    </svg>
+  `,
 };
 
 export function renderNode(params: {
@@ -318,12 +331,15 @@ function renderTextInput(params: {
         : "");
   const displayValue = value ?? "";
 
+  const inputId = `cfg-input-${pathKey(path)}`;
+
   return html`
     <div class="cfg-field">
       ${showLabel ? html`<label class="cfg-field__label">${label}</label>` : nothing}
       ${help ? html`<div class="cfg-field__help">${help}</div>` : nothing}
       <div class="cfg-input-wrap">
         <input
+          id=${inputId}
           type=${isSensitive ? "password" : inputType}
           class="cfg-input"
           placeholder=${placeholder}
@@ -350,6 +366,26 @@ function renderTextInput(params: {
             onPatch(path, raw.trim());
           }}
         />
+        ${
+          isSensitive
+            ? html`
+              <button
+                type="button"
+                class="cfg-input__toggle"
+                title="Toggle visibility"
+                ?disabled=${disabled}
+                @click=${() => {
+                  const input = document.getElementById(inputId) as HTMLInputElement;
+                  if (input) {
+                    input.type = input.type === "password" ? "text" : "password";
+                  }
+                }}
+              >
+                ${icons.eye}
+              </button>
+            `
+            : nothing
+        }
         ${
           schema.default !== undefined
             ? html`
