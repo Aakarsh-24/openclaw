@@ -70,12 +70,12 @@ def format_event(event, with_id=False):
         end_dt = datetime.fromisoformat(end.replace('Z', '+00:00'))
         time_str = f"{start_dt.strftime('%I:%M %p')} - {end_dt.strftime('%I:%M %p')}"
     
-    lines = [f"• {event['summary']} ({time_str})"]
+    lines = [f"- {event['summary']} ({time_str})"]
     
     if event.get('location'):
-        lines.append(f"  📍 {event['location']}")
+        lines.append(f"  Location: {event['location']}")
     
     if with_id:
-        lines.append(f"  🆔 {event['id']}")
+        lines.append(f"  ID: {event['id']}")
     
     return '\n'.join(lines)

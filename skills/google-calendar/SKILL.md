@@ -6,17 +6,17 @@ metadata:
     "openclaw":
       {
         "emoji": "📅",
-        "requires": { "bins": ["python3", "gcal"] },
+        "requires": { "bins": ["python3"] },
         "install":
           [
             {
               "id": "pip",
               "kind": "pip",
               "package": "google-api-python-client google-auth-httplib2 google-auth-oauthlib",
-              "label": "Install Google API client libraries",
-            },
-          ],
-      },
+              "label": "Install Google API client libraries"
+            }
+          ]
+      }
   }
 ---
 
@@ -31,12 +31,12 @@ Manage Google Calendar events via API. Requires OAuth authentication (one-time s
 - Create/select a project
 - Enable **Google Calendar API**
 - Create **OAuth 2.0 credentials** (Desktop app)
-- Download `credentials.json`
+- Download `credentials.json` to `scripts/credentials.json`
 
 ### 2. Authenticate
 Run once to authorize:
 ```bash
-python3 scripts/gcal_auth.py
+python3 scripts/gcal.py auth
 ```
 This creates `token.json` for future API calls.
 
@@ -45,46 +45,47 @@ This creates `token.json` for future API calls.
 ### List Events
 ```bash
 # Today's events
-gcal list
+python3 scripts/gcal.py list
 
 # Specific date
-gcal list --date 2026-02-15
+python3 scripts/gcal.py list --date 2026-02-15
 
 # Date range
-gcal list --start 2026-02-01 --end 2026-02-28
+python3 scripts/gcal.py list --start 2026-02-01 --end 2026-02-28
 
 # Specific calendar
-gcal list --calendar "Work"
+python3 scripts/gcal.py list --calendar "Work"
 ```
 
 ### Add Event
 ```bash
 # Quick add (natural language)
-gcal add "Meeting with team tomorrow at 3pm"
+python3 scripts/gcal.py add "Meeting with team tomorrow at 3pm"
 
 # With details
-gcal add --title "Doctor appointment" --date 2026-02-15 --time 14:00 --duration 60
+python3 scripts/gcal.py add --title "Doctor appointment" --date 2026-02-15 --time 14:00 --duration 60
 
 # All-day event
-gcal add --title "Vacation" --date 2026-02-20 --all-day
+python3 scripts/gcal.py add --title "Vacation" --date 2026-02-20 --all-day
 ```
 
 ### Edit Event
 ```bash
-gcal edit <event-id> --title "New title"
-gcal edit <event-id> --date 2026-02-16 --time 10:00
+python3 scripts/gcal.py edit <event-id> --title "New title"
+python3 scripts/gcal.py edit <event-id> --description "Updated description"
+python3 scripts/gcal.py edit <event-id> --location "Conference Room A"
 ```
 
 ### Delete Event
 ```bash
-gcal delete <event-id>
+python3 scripts/gcal.py delete <event-id>
 ```
 
 ## Calendar Management
 
 ### List Calendars
 ```bash
-gcal calendars
+python3 scripts/gcal.py calendars
 ```
 
 ### Calendar Colors
@@ -92,21 +93,18 @@ See [references/calendar-colors.md](references/calendar-colors.md) for available
 
 ## Date/Time Formats
 
-- **Dates:** `2026-02-15`, `tomorrow`, `next monday`
-- **Times:** `14:00`, `2pm`, `2:30 PM`
+- **Dates:** `2026-02-15`, `tomorrow`, `today`, `yesterday`
+- **Times:** `14:00`, `2pm`, `2:30pm`
 - **Durations:** minutes (60 = 1 hour)
 
 ## Output Formats
 
 ```bash
 # JSON (scripting)
-gcal list --json
-
-# Plain text
-gcal list --plain
+python3 scripts/gcal.py list --json
 
 # With IDs (for editing/deleting)
-gcal list --with-ids
+python3 scripts/gcal.py list --with-ids
 ```
 
 ## Testing
@@ -123,5 +121,4 @@ Tests cover:
 
 ## Resources
 
-- [references/api-guide.md](references/api-guide.md) - Full API reference
 - [references/calendar-colors.md](references/calendar-colors.md) - Calendar color IDs

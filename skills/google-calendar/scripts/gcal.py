@@ -10,6 +10,11 @@ import argparse
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+# Ensure script directory is in path for imports
+SCRIPT_DIR = Path(__file__).parent.resolve()
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
 from gcal_utils import parse_date, parse_time, format_event
 
 # Google API imports
@@ -27,8 +32,7 @@ except ImportError:
 # OAuth scopes
 SCOPES = ['https://www.googleapis.com/auth/calendar']
 
-# Paths
-SCRIPT_DIR = Path(__file__).parent
+# Paths (SCRIPT_DIR already defined above for imports)
 CREDENTIALS_PATH = SCRIPT_DIR / 'credentials.json'
 TOKEN_PATH = SCRIPT_DIR / 'token.json'
 
@@ -265,10 +269,10 @@ def main():
     if args.command == 'auth':
         try:
             get_service()
-            print("✓ Authentication successful!")
+            print("[OK] Authentication successful!")
             print(f"Token saved to: {TOKEN_PATH}")
         except Exception as e:
-            print(f"✗ Authentication failed: {e}")
+            print(f"[ERROR] Authentication failed: {e}")
             sys.exit(1)
         return
     
@@ -284,7 +288,7 @@ def main():
         calendars = list_calendars(service)
         for cal in calendars:
             primary = " (primary)" if cal['primary'] else ""
-            print(f"• {cal['summary']}{primary}")
+            print(f"- {cal['summary']}{primary}")
             print(f"  ID: {cal['id']}")
     
     elif args.command == 'list':
@@ -318,7 +322,7 @@ def main():
         if args.text:
             # Quick add
             event = quick_add_event(service, calendar_id, args.text)
-            print(f"✓ Event created: {event.get('summary', 'Untitled')}")
+            print(f"[OK] Event created: {event.get('summary', 'Untitled')}")
             print(f"  ID: {event['id']}")
         else:
             # Structured add
@@ -341,7 +345,7 @@ def main():
             
             event = add_event(service, calendar_id, args.title, start_dt, end_dt,
                             description=args.description or '', location=args.location or '')
-            print(f"✓ Event created: {event['summary']}")
+            print(f"[OK] Event created: {event['summary']}")
             print(f"  ID: {event['id']}")
     
     elif args.command == 'edit':
@@ -361,9 +365,9 @@ def main():
         
         try:
             event = update_event(service, calendar_id, args.event_id, **kwargs)
-            print(f"✓ Event updated: {event['summary']}")
+            print(f"[OK] Event updated: {event['summary']}")
         except HttpError as e:
-            print(f"✗ Update failed: {e}")
+            print(f"[ERROR] Update failed: {e}")
             sys.exit(1)
     
     elif args.command == 'delete':
@@ -371,9 +375,9 @@ def main():
         
         try:
             delete_event(service, calendar_id, args.event_id)
-            print(f"✓ Event deleted")
+            print(f"[OK] Event deleted")
         except HttpError as e:
-            print(f"✗ Delete failed: {e}")
+            print(f"[ERROR] Delete failed: {e}")
             sys.exit(1)
 
 
