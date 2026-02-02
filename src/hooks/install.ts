@@ -229,15 +229,20 @@ async function installHookPackageFromDir(params: {
     }
     return { ok: false, error: `failed to copy hook pack: ${String(err)}` };
   }
+  // 🔒 VOTAL.AI Security Fix: npm install executed on untrusted hook pack (possible RCE via lifecycle scripts) [CWE-94] - CRITICAL
 
   const deps = manifest.dependencies ?? {};
   const hasDeps = Object.keys(deps).length > 0;
   if (hasDeps) {
     logger.info?.("Installing hook pack dependencies…");
-    const npmRes = await runCommandWithTimeout(["npm", "install", "--omit=dev", "--silent"], {
-      timeoutMs: Math.max(timeoutMs, 300_000),
-      cwd: targetDir,
-    });
+    // --ignore-scripts disables lifecycle scripts to prevent RCE
+    const npmRes = await runCommandWithTimeout(
+      ["npm", "install", "--omit=dev", "--silent", "--ignore-scripts"],
+      {
+        timeoutMs: Math.max(timeoutMs, 300_000),
+        cwd: targetDir,
+      },
+    );
     if (npmRes.code !== 0) {
       if (backupDir) {
         await fs.rm(targetDir, { recursive: true, force: true }).catch(() => undefined);
