@@ -67,7 +67,14 @@ class MemoryDB {
   }
 
   private async doInitialize(): Promise<void> {
-    const { connect, makeArrowTable } = await import("@lancedb/lancedb");
+    const m = await import("@lancedb/lancedb");
+    const connect = m.default?.connect || m.connect;
+    if (!connect) {
+      throw new Error(
+        "Failed to resolve 'connect' from @lancedb/lancedb. " +
+        "The module may not be compatible with this version of the plugin."
+      );
+    }
     this.db = await connect(this.dbPath);
     const tables = await this.db.tableNames();
 
