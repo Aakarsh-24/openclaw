@@ -1,10 +1,3 @@
-/**
- * Dynamic loader for hook handlers
- *
- * Loads hook handlers from external modules based on configuration
- * and from directory-based discovery (bundled, managed, workspace)
- */
-
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import type { OpenClawConfig } from "../config/config.js";
@@ -13,59 +6,46 @@ import { resolveHookConfig } from "./config.js";
 import { shouldIncludeHook } from "./config.js";
 import { registerInternalHook } from "./internal-hooks.js";
 import { loadWorkspaceHookEntries } from "./workspace.js";
+import { realpathSync } from "node:fs";
+import { createRequire } from "node:module";
 
-/**
- * Load and register all hook handlers
- *
- * Loads hooks from both:
- * 1. Directory-based discovery (bundled, managed, workspace)
- * 2. Legacy config handlers (backwards compatibility)
- *
- * @param cfg - OpenClaw configuration
- * @param workspaceDir - Workspace directory for hook discovery
- * @returns Number of handlers successfully loaded
- *
- * @example
- * ```ts
- * const config = await loadConfig();
- * const workspaceDir = resolveAgentWorkspaceDir(config, agentId);
- * const count = await loadInternalHooks(config, workspaceDir);
- * console.log(`Loaded ${count} hook handlers`);
- * ```
- */
+const require = createRequire(import.meta.url);
+
 export async function loadInternalHooks(
   cfg: OpenClawConfig,
   workspaceDir: string,
 ): Promise<number> {
-  // Check if hooks are enabled
   if (!cfg.hooks?.internal?.enabled) {
     return 0;
   }
 
   let loadedCount = 0;
 
-  // 1. Load hooks from directories (new system)
   try {
     const hookEntries = loadWorkspaceHookEntries(workspaceDir, { config: cfg });
 
-    // Filter by eligibility
     const eligible = hookEntries.filter((entry) => shouldIncludeHook({ entry, config: cfg }));
 
     for (const entry of eligible) {
       const hookConfig = resolveHookConfig(cfg, entry.hook.name);
 
-      // Skip if explicitly disabled in config
       if (hookConfig?.enabled === false) {
         continue;
       }
-
       try {
-        // Import handler module with cache-busting
-        const url = pathToFileURL(entry.hook.handlerPath).href;
+        const handlerRealPath = realpathSync(entry.hook.handlerPath);
+        const workspaceRealPath = realpathSync(workspaceDir);
+        const rel = path.relative(workspaceRealPath, handlerRealPath);
+        if (rel.startsWith("..") || path.isAbsolute(rel) || rel === "") {
+          console.error(
+            `Hook error: Refusing to load handler outside workspace: ${entry.hook.handlerPath}`,
+          );
+          continue;
+        }
+        const url = pathToFileURL(handlerRealPath).href;
         const cacheBustedUrl = `${url}?t=${Date.now()}`;
         const mod = (await import(cacheBustedUrl)) as Record<string, unknown>;
 
-        // Get handler function (default or named export)
         const exportName = entry.metadata?.export ?? "default";
         const handler = mod[exportName];
 
@@ -76,12 +56,12 @@ export async function loadInternalHooks(
           continue;
         }
 
-        // Register for all events listed in metadata
         const events = entry.metadata?.events ?? [];
         if (events.length === 0) {
           console.warn(`Hook warning: Hook '${entry.hook.name}' has no events defined in metadata`);
           continue;
         }
+// 🔒 VOTAL.AI Security Fix: Untrusted Dynamic Import Allows Arbitrary Code Execution via Hook Handler Path [CWE-94] - CRITICAL
 
         for (const event of events) {
           registerInternalHook(event, handler as InternalHookHandler);
@@ -105,42 +85,37 @@ export async function loadInternalHooks(
     );
   }
 
-  // 2. Load legacy config handlers (backwards compatibility)
-  const handlers = cfg.hooks.internal.handlers ?? [];
+  const handlers = Array.isArray(cfg.hooks?.internal?.handlers) ? cfg.hooks.internal.handlers : [];
   for (const handlerConfig of handlers) {
     try {
-      // 🔒 VOTAL.AI Security Fix: Config-Controlled Module Path Import Enables Local File Execution (Plugin Injection) [CWE-94] - CRITICAL
-      // Only allow npm package names, not paths
       if (
         typeof handlerConfig.module !== "string" ||
         handlerConfig.module.startsWith(".") ||
         handlerConfig.module.startsWith("/") ||
         handlerConfig.module.includes("\\") ||
         handlerConfig.module.includes("/")
-// 🔒 VOTAL.AI Security Fix: Config-Controlled Module Path Import Enables Local File Execution (Plugin Injection) [CWE-94] - CRITICAL
       ) {
-        console.error(`Hook error: Refusing to load handler from non-package module: ${handlerConfig.module}`);
+        console.error(
+          `Hook error: Refusing to load handler from non-package module: ${handlerConfig.module}`,
+        );
         continue;
       }
-      // Use require.resolve to resolve the package as Node.js would
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
       const modulePath = require.resolve(handlerConfig.module);
 
-      // Import the module with cache-busting to ensure fresh reload
       const url = pathToFileURL(modulePath).href;
       const cacheBustedUrl = `${url}?t=${Date.now()}`;
       const mod = (await import(cacheBustedUrl)) as Record<string, unknown>;
 
-      // Get the handler function
       const exportName = handlerConfig.export ?? "default";
       const handler = mod[exportName];
 
       if (typeof handler !== "function") {
-        console.error(`Hook error: Handler '${exportName}' from ${modulePath} is not a function`);
+        console.error(
+          `Hook error: Handler '${exportName}' from ${modulePath} is not a function`,
+        );
         continue;
       }
 
-      // Register the handler
       registerInternalHook(handlerConfig.event, handler as InternalHookHandler);
       console.log(
         `Registered hook (legacy): ${handlerConfig.event} -> ${modulePath}${exportName !== "default" ? `#${exportName}` : ""}`,
