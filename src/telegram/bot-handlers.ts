@@ -164,6 +164,52 @@ export const registerTelegramHandlers = ({
         return;
       }
 
+      // Handle exec approval inline button callbacks
+      const approvalMatch = data.match(/^approve:([^:]+):(allow-once|allow-always|deny)$/);
+      if (approvalMatch) {
+        const [, approvalId, decision] = approvalMatch;
+        const senderId = callback.from?.id ? String(callback.from.id) : "";
+
+        // Import callGateway dynamically to avoid circular deps
+        const { callGateway } = await import("../gateway/call.js");
+        const { GATEWAY_CLIENT_MODES, GATEWAY_CLIENT_NAMES } =
+          await import("../utils/message-channel.js");
+
+        try {
+          await callGateway({
+            method: "exec.approval.resolve",
+            params: { id: approvalId, decision },
+            clientName: GATEWAY_CLIENT_NAMES.GATEWAY_CLIENT,
+            clientDisplayName: `Telegram button (${senderId})`,
+            mode: GATEWAY_CLIENT_MODES.BACKEND,
+          });
+
+          // Edit the original message to show resolution
+          const decisionLabel =
+            decision === "allow-once"
+              ? "allowed once"
+              : decision === "allow-always"
+                ? "allowed always"
+                : "denied";
+
+          await bot.api.editMessageText(
+            callbackMessage.chat.id,
+            callbackMessage.message_id,
+            `✅ Exec approval ${decisionLabel}\nID: \`${approvalId}\``,
+            { reply_markup: { inline_keyboard: [] } },
+          );
+        } catch (err) {
+          const errMsg = String(err);
+          await bot.api.editMessageText(
+            callbackMessage.chat.id,
+            callbackMessage.message_id,
+            `❌ Approval failed: ${errMsg}\nID: \`${approvalId}\``,
+            { reply_markup: { inline_keyboard: [] } },
+          );
+        }
+        return;
+      }
+
       const syntheticMessage: TelegramMessage = {
         ...first.msg,
         text: combinedText,
@@ -400,6 +446,52 @@ export const registerTelegramHandlers = ({
           if (!errStr.includes("message is not modified")) {
             throw editErr;
           }
+        }
+        return;
+      }
+
+      // Handle exec approval inline button callbacks
+      const approvalMatch = data.match(/^approve:([^:]+):(allow-once|allow-always|deny)$/);
+      if (approvalMatch) {
+        const [, approvalId, decision] = approvalMatch;
+        const senderId = callback.from?.id ? String(callback.from.id) : "";
+
+        // Import callGateway dynamically to avoid circular deps
+        const { callGateway } = await import("../gateway/call.js");
+        const { GATEWAY_CLIENT_MODES, GATEWAY_CLIENT_NAMES } =
+          await import("../utils/message-channel.js");
+
+        try {
+          await callGateway({
+            method: "exec.approval.resolve",
+            params: { id: approvalId, decision },
+            clientName: GATEWAY_CLIENT_NAMES.GATEWAY_CLIENT,
+            clientDisplayName: `Telegram button (${senderId})`,
+            mode: GATEWAY_CLIENT_MODES.BACKEND,
+          });
+
+          // Edit the original message to show resolution
+          const decisionLabel =
+            decision === "allow-once"
+              ? "allowed once"
+              : decision === "allow-always"
+                ? "allowed always"
+                : "denied";
+
+          await bot.api.editMessageText(
+            callbackMessage.chat.id,
+            callbackMessage.message_id,
+            `✅ Exec approval ${decisionLabel}\nID: \`${approvalId}\``,
+            { reply_markup: { inline_keyboard: [] } },
+          );
+        } catch (err) {
+          const errMsg = String(err);
+          await bot.api.editMessageText(
+            callbackMessage.chat.id,
+            callbackMessage.message_id,
+            `❌ Approval failed: ${errMsg}\nID: \`${approvalId}\``,
+            { reply_markup: { inline_keyboard: [] } },
+          );
         }
         return;
       }

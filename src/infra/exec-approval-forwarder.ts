@@ -115,28 +115,42 @@ function buildTargetKey(target: ExecApprovalForwardTarget): string {
   return [channel, target.to, accountId, threadId].join(":");
 }
 
-function buildRequestMessage(request: ExecApprovalRequest, nowMs: number) {
-  const lines: string[] = ["🔒 Exec approval required", `ID: ${request.id}`];
-  lines.push(`Command: ${request.request.command}`);
+type ApprovalMessagePayload = {
+  text: string;
+  buttons: Array<Array<{ text: string; callback_data: string }>>;
+};
+
+function buildRequestMessage(request: ExecApprovalRequest, nowMs: number): ApprovalMessagePayload {
+  const lines: string[] = ["🔒 *Exec Approval Required*"];
+  lines.push(`\`${request.request.command}\``);
   if (request.request.cwd) {
-    lines.push(`CWD: ${request.request.cwd}`);
+    lines.push(`📁 ${request.request.cwd}`);
   }
   if (request.request.host) {
-    lines.push(`Host: ${request.request.host}`);
+    lines.push(`🖥️ ${request.request.host}`);
   }
   if (request.request.agentId) {
-    lines.push(`Agent: ${request.request.agentId}`);
+    lines.push(`🤖 ${request.request.agentId}`);
   }
   if (request.request.security) {
-    lines.push(`Security: ${request.request.security}`);
+    lines.push(`⚠️ ${request.request.security}`);
   }
   if (request.request.ask) {
-    lines.push(`Ask: ${request.request.ask}`);
+    lines.push(`💬 ${request.request.ask}`);
   }
   const expiresIn = Math.max(0, Math.round((request.expiresAtMs - nowMs) / 1000));
-  lines.push(`Expires in: ${expiresIn}s`);
-  lines.push("Reply with: /approve <id> allow-once|allow-always|deny");
-  return lines.join("\n");
+  lines.push(`⏱️ ${expiresIn}s`);
+  lines.push(`ID: \`${request.id}\``);
+
+  const buttons = [
+    [
+      { text: "✅ Allow Once", callback_data: `approve:${request.id}:allow-once` },
+      { text: "✅ Always", callback_data: `approve:${request.id}:allow-always` },
+      { text: "❌ Deny", callback_data: `approve:${request.id}:deny` },
+    ],
+  ];
+
+  return { text: lines.join("\n"), buttons };
 }
 
 function decisionLabel(decision: ExecApprovalDecision): string {
@@ -194,6 +208,7 @@ async function deliverToTargets(params: {
   cfg: OpenClawConfig;
   targets: ForwardTarget[];
   text: string;
+  buttons?: Array<Array<{ text: string; callback_data: string }>>;
   deliver: typeof deliverOutboundPayloads;
   shouldSend?: () => boolean;
 }) {
@@ -206,13 +221,20 @@ async function deliverToTargets(params: {
       return;
     }
     try {
+      const payload: {
+        text: string;
+        channelData?: { telegram?: { buttons?: typeof params.buttons } };
+      } = { text: params.text };
+      if (params.buttons && channel === "telegram") {
+        payload.channelData = { telegram: { buttons: params.buttons } };
+      }
       await params.deliver({
         cfg: params.cfg,
         channel,
         to: target.to,
         accountId: target.accountId,
         threadId: target.threadId,
-        payloads: [{ text: params.text }],
+        payloads: [payload],
       });
     } catch (err) {
       log.error(`exec approvals: failed to deliver to ${channel}:${target.to}: ${String(err)}`);
@@ -289,11 +311,12 @@ export function createExecApprovalForwarder(
       return;
     }
 
-    const text = buildRequestMessage(request, nowMs());
+    const { text, buttons } = buildRequestMessage(request, nowMs());
     await deliverToTargets({
       cfg,
       targets,
       text,
+      buttons,
       deliver,
       shouldSend: () => pending.get(request.id) === pendingEntry,
     });
