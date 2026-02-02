@@ -539,8 +539,27 @@ export async function getHealthSnapshot(params?: {
     }
   }
 
+  const hasProbeFailure = Object.values(channels).some((ch) => {
+    if (!ch || !ch.configured) return false;
+    const probe = ch.probe && typeof ch.probe === "object" ? ch.probe : null;
+    if (
+      probe &&
+      typeof (probe as Record<string, unknown>).ok === "boolean" &&
+      (probe as Record<string, unknown>).ok === false
+    )
+      return true;
+    const accounts = (ch as Record<string, unknown>).accounts as
+      | Record<string, Record<string, unknown>>
+      | undefined;
+    if (!accounts || typeof accounts !== "object") return false;
+    return Object.values(accounts).some((acc) => {
+      const p = acc?.probe as Record<string, unknown> | undefined;
+      return p && typeof p.ok === "boolean" && p.ok === false;
+    });
+  });
+
   const summary: HealthSummary = {
-    ok: true,
+    ok: !hasProbeFailure,
     ts: Date.now(),
     durationMs: Date.now() - start,
     channels,
