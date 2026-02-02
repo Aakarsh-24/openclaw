@@ -446,13 +446,17 @@ export class GatewayClient {
         : 30_000;
 
     const p = new Promise<T>((resolve, reject) => {
-      const timer =
-        timeoutMs > 0
-          ? setTimeout(() => {
-              this.pending.delete(id);
-              reject(new Error(`Gateway request timeout (${method})`));
-            }, timeoutMs)
-          : undefined;
+      let timer: NodeJS.Timeout | undefined;
+      if (timeoutMs > 0) {
+        timer = setTimeout(() => {
+          // Timer is firing now; clearing is harmless and makes intent explicit.
+          if (timer) {
+            clearTimeout(timer);
+          }
+          this.pending.delete(id);
+          reject(new Error(`Gateway request timeout (${method})`));
+        }, timeoutMs);
+      }
       this.pending.set(id, {
         resolve: (value) => resolve(value as T),
         reject,
