@@ -358,6 +358,71 @@ function buildSyntheticProvider(): ProviderConfig {
   };
 }
 
+const IO_INTELLIGENCE_BASE_URL = "https://api.intelligence.io.solutions/api/v1";
+const IO_INTELLIGENCE_DEFAULT_MODEL_ID = "zai-org/GLM-4.7";
+const IO_INTELLIGENCE_DEFAULT_CONTEXT_WINDOW = 128000;
+const IO_INTELLIGENCE_DEFAULT_MAX_TOKENS = 8192;
+const IO_INTELLIGENCE_DEFAULT_COST = {
+  input: 0,
+  output: 0,
+  cacheRead: 0,
+  cacheWrite: 0,
+};
+
+export function buildIoIntelligenceProvider(): ProviderConfig {
+  return {
+    baseUrl: IO_INTELLIGENCE_BASE_URL,
+    api: "openai-completions",
+    models: [
+      {
+        id: IO_INTELLIGENCE_DEFAULT_MODEL_ID,
+        name: "GLM 4.7",
+        reasoning: false,
+        input: ["text"],
+        cost: IO_INTELLIGENCE_DEFAULT_COST,
+        contextWindow: IO_INTELLIGENCE_DEFAULT_CONTEXT_WINDOW,
+        maxTokens: IO_INTELLIGENCE_DEFAULT_MAX_TOKENS,
+      },
+      {
+        id: "moonshotai/Kimi-K2-Thinking",
+        name: "Kimi K2 Thinking",
+        reasoning: true,
+        input: ["text"],
+        cost: IO_INTELLIGENCE_DEFAULT_COST,
+        contextWindow: IO_INTELLIGENCE_DEFAULT_CONTEXT_WINDOW,
+        maxTokens: IO_INTELLIGENCE_DEFAULT_MAX_TOKENS,
+      },
+      {
+        id: "moonshotai/Kimi-K2-Instruct-0905",
+        name: "Kimi K2 Instruct",
+        reasoning: false,
+        input: ["text"],
+        cost: IO_INTELLIGENCE_DEFAULT_COST,
+        contextWindow: IO_INTELLIGENCE_DEFAULT_CONTEXT_WINDOW,
+        maxTokens: IO_INTELLIGENCE_DEFAULT_MAX_TOKENS,
+      },
+      {
+        id: "deepseek-ai/DeepSeek-V3.2",
+        name: "DeepSeek V3.2",
+        reasoning: false,
+        input: ["text"],
+        cost: IO_INTELLIGENCE_DEFAULT_COST,
+        contextWindow: IO_INTELLIGENCE_DEFAULT_CONTEXT_WINDOW,
+        maxTokens: IO_INTELLIGENCE_DEFAULT_MAX_TOKENS,
+      },
+      {
+        id: "zai-org/GLM-4.6",
+        name: "GLM 4.6",
+        reasoning: false,
+        input: ["text"],
+        cost: IO_INTELLIGENCE_DEFAULT_COST,
+        contextWindow: IO_INTELLIGENCE_DEFAULT_CONTEXT_WINDOW,
+        maxTokens: IO_INTELLIGENCE_DEFAULT_MAX_TOKENS,
+      },
+    ],
+  };
+}
+
 export function buildXiaomiProvider(): ProviderConfig {
   return {
     baseUrl: XIAOMI_BASE_URL,
@@ -451,6 +516,13 @@ export async function resolveImplicitProviders(params: {
     resolveApiKeyFromProfiles({ provider: "xiaomi", store: authStore });
   if (xiaomiKey) {
     providers.xiaomi = { ...buildXiaomiProvider(), apiKey: xiaomiKey };
+  }
+
+  const ioIntelligenceKey =
+    resolveEnvApiKeyVarName("io-intelligence") ??
+    resolveApiKeyFromProfiles({ provider: "io-intelligence", store: authStore });
+  if (ioIntelligenceKey) {
+    providers["io-intelligence"] = { ...buildIoIntelligenceProvider(), apiKey: ioIntelligenceKey };
   }
 
   // Ollama provider - only add if explicitly configured

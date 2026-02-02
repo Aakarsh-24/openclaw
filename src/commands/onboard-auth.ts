@@ -5,6 +5,8 @@ export {
 export { VENICE_DEFAULT_MODEL_ID, VENICE_DEFAULT_MODEL_REF } from "../agents/venice-models.js";
 export {
   applyAuthProfileConfig,
+  applyIoIntelligenceConfig,
+  applyIoIntelligenceProviderConfig,
   applyKimiCodeConfig,
   applyKimiCodeProviderConfig,
   applyMoonshotConfig,
@@ -35,9 +37,11 @@ export {
   applyOpencodeZenProviderConfig,
 } from "./onboard-auth.config-opencode.js";
 export {
+  IO_INTELLIGENCE_DEFAULT_MODEL_REF,
   OPENROUTER_DEFAULT_MODEL_REF,
   setAnthropicApiKey,
   setGeminiApiKey,
+  setIoIntelligenceApiKey,
   setKimiCodingApiKey,
   setMinimaxApiKey,
   setMoonshotApiKey,
