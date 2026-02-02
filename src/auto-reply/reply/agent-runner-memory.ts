@@ -82,17 +82,13 @@ export async function runMemoryFlushIfNeeded(params: {
 
   if (shouldFlushMemory && params.sessionKey && params.sessionStore && params.storePath) {
     // Lifecycle hook: Memory Flush Start
-    const hookEvent = createInternalHookEvent(
-      "agent",
-      "flush",
-      params.sessionKey,
-      {
-        sessionId: params.followupRun.run.sessionId,
-      }
-    );
-    await triggerInternalHook(hookEvent);
-
     const contextTokensUsed = params.sessionEntry?.contextTokens ?? 0;
+    const hookEvent = createInternalHookEvent("agent", "flush", params.sessionKey, {
+      sessionId: params.followupRun.run.sessionId,
+      contextTokensUsed,
+      reason: "context_limit",
+    });
+    await triggerInternalHook(hookEvent);
   }
 
   let activeSessionEntry = params.sessionEntry;

@@ -247,7 +247,7 @@ Triggered during session lifecycle:
 Triggered during agent execution:
 
 - **`agent:bootstrap`**: Before workspace bootstrap files are injected (hooks may mutate `context.bootstrapFiles`)
-- **`agent:reply`**: After each agent turn completes (user input + assistant response)
+- **`agent:reply`**: After each agent turn completes (user input + assistant response; hooks may add messages)
 - **`agent:flush`**: When memory flush is triggered (context nearing token limit)
 
 **Context for `agent:reply` includes**:
@@ -257,8 +257,12 @@ Triggered during agent execution:
 - `turnId`: Timestamp-based turn identifier
 - `senderId`: ID of the message sender
 
+**Note:** Hooks can add messages to `event.messages` which will be prepended to the agent's response.
+
 **Context for `agent:flush` includes**:
 - `sessionId`: Current session ID
+- `contextTokensUsed`: Number of context tokens currently used
+- `reason`: Reason for flush (e.g., "context_limit")
 
 ### Gateway Events
 

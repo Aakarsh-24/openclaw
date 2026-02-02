@@ -295,38 +295,23 @@ export async function runReplyAgent(params: {
     // Lifecycle hooks: Session Ended / Reset / Start
     // 1. Session Ended (for the OLD session)
     if (prevSessionId) {
-      const hookEvent = createInternalHookEvent(
-        "session",
-        "ended",
-        sessionKey,
-        {
-          sessionId: prevSessionId,
-        }
-      );
+      const hookEvent = createInternalHookEvent("session", "ended", sessionKey, {
+        sessionId: prevSessionId,
+      });
       await triggerInternalHook(hookEvent);
     }
 
     // 2. Session Reset (Transition)
-    const resetEvent = createInternalHookEvent(
-      "session",
-      "reset",
-      sessionKey,
-      {
-        oldSessionId: prevSessionId,
-        newSessionId: nextSessionId,
-      }
-    );
+    const resetEvent = createInternalHookEvent("session", "reset", sessionKey, {
+      oldSessionId: prevSessionId,
+      newSessionId: nextSessionId,
+    });
     await triggerInternalHook(resetEvent);
 
     // 3. Session Start (for the NEW session)
-    const startEvent = createInternalHookEvent(
-      "session",
-      "start",
-      sessionKey,
-      {
-        sessionId: nextSessionId,
-      }
-    );
+    const startEvent = createInternalHookEvent("session", "start", sessionKey, {
+      sessionId: nextSessionId,
+    });
     await triggerInternalHook(startEvent);
 
     return true;
@@ -548,14 +533,9 @@ export async function runReplyAgent(params: {
     if (verboseEnabled && activeIsNewSession) {
       finalPayloads = [{ text: `🧭 New session: ${followupRun.run.sessionId}` }, ...finalPayloads];
       // Lifecycle hook: Session Start (Initial)
-      const hookEvent = createInternalHookEvent(
-        "session",
-        "start",
-        sessionKey ?? "",
-        {
-          sessionId: followupRun.run.sessionId,
-        }
-      );
+      const hookEvent = createInternalHookEvent("session", "start", sessionKey ?? "", {
+        sessionId: followupRun.run.sessionId,
+      });
       await triggerInternalHook(hookEvent);
     }
     if (responseUsageLine) {
@@ -565,24 +545,25 @@ export async function runReplyAgent(params: {
     // Lifecycle hook: Turn End
     // Capture the final exchange for memory indexing
     // We only emit if there is actual content involved (input or output).
-    const assistantOutput = Array.isArray(finalPayloads)
-      ? finalPayloads.map(p => p.text).filter(Boolean).join("\n")
-      : finalPayloads.text;
-
+    const assistantOutput = (finalPayloads as ReplyPayload[])
+      .map((p) => p.text)
+      .filter(Boolean)
+      .join("\n");
     if (commandBody || assistantOutput) {
-      const hookEvent = createInternalHookEvent(
-        "agent",
-        "reply",
-        sessionKey ?? "",
-        {
-          sessionId: followupRun.run.sessionId,
-          input: commandBody,
-          output: assistantOutput,
-          turnId: Date.now(),
-          senderId: sessionCtx.SenderId,
-        }
-      );
+      const hookEvent = createInternalHookEvent("agent", "reply", sessionKey ?? "", {
+        sessionId: followupRun.run.sessionId,
+        input: commandBody,
+        output: assistantOutput,
+        turnId: Date.now(),
+        senderId: sessionCtx.SenderId,
+      });
       await triggerInternalHook(hookEvent);
+
+      // Prepend hook messages to final payloads if present
+      if (hookEvent.messages.length > 0) {
+        const hookPayloads = hookEvent.messages.map((text) => ({ text }));
+        finalPayloads = [...hookPayloads, ...finalPayloads];
+      }
     }
 
     return finalizeWithFollowup(
