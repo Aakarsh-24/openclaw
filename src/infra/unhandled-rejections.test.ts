@@ -1,3 +1,4 @@
+
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -5,6 +6,7 @@ import {
   isTransientNetworkError,
   installUnhandledRejectionHandler,
 } from "./unhandled-rejections.js";
+import { isAbortError, isTransientNetworkError } from "./unhandled-rejections.js";
 
 describe("isAbortError", () => {
   it("returns true for error with name AbortError", () => {
