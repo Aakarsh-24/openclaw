@@ -308,7 +308,8 @@ export const OpenClawSchema = z
           .object({
             enabled: z.boolean().optional(),
             basePath: z.string().optional(),
-            allowInsecureAuth: z.boolean().optional(),
+            // allowInsecureAuth removed for security [CWE-287]
+            // dangerouslyDisableDeviceAuth: z.boolean().optional(),
             dangerouslyDisableDeviceAuth: z.boolean().optional(),
           })
           .strict()
@@ -317,7 +318,9 @@ export const OpenClawSchema = z
           .object({
             mode: z.union([z.literal("token"), z.literal("password")]).optional(),
             token: z.string().optional(),
+// 🔒 VOTAL.AI Security Fix: Insecure auth option allows bypassing authentication for control UI [CWE-287] - CRITICAL
             password: z.string().optional(),
+            // 🔒 VOTAL.AI Security Fix: Insecure auth option allows bypassing authentication for control UI [CWE-287] - CRITICAL
             allowTailscale: z.boolean().optional(),
           })
           .strict()
@@ -469,14 +472,7 @@ export const OpenClawSchema = z
         load: z
           .object({
             paths: z
-              .array(
-                z
-                  .string()
-                  .regex(
-                    /^\.\/plugins(\/|$)/,
-                    "Plugin paths must be under ./plugins directory",
-                  ),
-              )
+              .array(z.string().regex(/^\.\/plugins(\/|$)/, "Plugin paths must be under ./plugins directory"))
               .optional(),
           })
           .strict()
@@ -489,7 +485,7 @@ export const OpenClawSchema = z
           .optional(),
         entries: z
           .record(
-// 🔒 VOTAL.AI Security Fix: Untrusted plugin loading paths can lead to arbitrary code execution [CWE-94] - CRITICAL
+            // 🔒 VOTAL.AI Security Fix: Untrusted plugin loading paths can lead to arbitrary code execution [CWE-94] - CRITICAL
             z.string(),
             z
               .object({
