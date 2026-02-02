@@ -175,7 +175,7 @@ cd openclaw
 pnpm install
 pnpm ui:build # auto-installs UI deps on first run
 pnpm build
-openclaw onboard --install-daemon
+pnpm openclaw onboard --install-daemon
 ```
 
 If you don’t have a global install yet, run the onboarding step via `pnpm openclaw ...` from the repo.
