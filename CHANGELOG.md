@@ -2,6 +2,12 @@
 
 Docs: https://docs.openclaw.ai
 
+## 2026.2.2
+
+### Fixes
+
+- Web UI: persist CLI backend webchat transcripts on reload. (#6611) Thanks @JorgeAlan.
+
 ## 2026.1.31
 
 ### Changes

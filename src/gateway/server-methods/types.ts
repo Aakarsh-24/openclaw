@@ -8,6 +8,7 @@ import type { ChatAbortControllerEntry } from "../chat-abort.js";
 import type { NodeRegistry } from "../node-registry.js";
 import type { ConnectParams, ErrorShape, RequestFrame } from "../protocol/index.js";
 import type { ChannelRuntimeSnapshot } from "../server-channels.js";
+import type { ChatRunEntry } from "../server-chat.js";
 import type { DedupeEntry } from "../server-shared.js";
 
 type SubsystemLogger = ReturnType<typeof createSubsystemLogger>;
@@ -54,12 +55,12 @@ export type GatewayRequestContext = {
   chatAbortedRuns: Map<string, number>;
   chatRunBuffers: Map<string, string>;
   chatDeltaSentAt: Map<string, number>;
-  addChatRun: (sessionId: string, entry: { sessionKey: string; clientRunId: string }) => void;
+  addChatRun: (sessionId: string, entry: ChatRunEntry) => void;
   removeChatRun: (
     sessionId: string,
     clientRunId: string,
     sessionKey?: string,
-  ) => { sessionKey: string; clientRunId: string } | undefined;
+  ) => ChatRunEntry | undefined;
   dedupe: Map<string, DedupeEntry>;
   wizardSessions: Map<string, WizardSession>;
   findRunningWizard: () => string | null;

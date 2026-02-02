@@ -37,8 +37,7 @@ function saveAssistantToTranscript(chatLink: ChatRunEntry | undefined, text: str
         sessionId,
         createdAt: new Date().toISOString(),
       };
-      fs.writeFileSync(transcriptPath, JSON.stringify(header) + "
-", "utf-8");
+      fs.writeFileSync(transcriptPath, `${JSON.stringify(header)}\n`, "utf-8");
     }
     const now = Date.now();
     const messageId = randomUUID().slice(0, 8);
