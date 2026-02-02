@@ -106,7 +106,8 @@ export type DiscordAccountConfig = {
   configWrites?: boolean;
   /** If false, do not start this Discord account. Default: true. */
   enabled?: boolean;
-  token?: string;
+// 🔒 VOTAL.AI Security Fix: Plaintext Discord bot token stored in configuration type [CWE-798] - CRITICAL
+  // token field removed for security: use environment variable or secure secret management
   /** Allow bot-authored messages to trigger replies (default: false). */
   allowBots?: boolean;
   /**
