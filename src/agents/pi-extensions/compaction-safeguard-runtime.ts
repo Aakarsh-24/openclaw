@@ -1,8 +1,10 @@
+import type { Api, Model } from "@mariozechner/pi-ai";
+
 export type CompactionSafeguardRuntimeValue = {
   maxHistoryShare?: number;
   contextWindowTokens?: number;
   // Model info passed from extensions.ts for fallback when ctx.model is undefined
-  model?: unknown;
+  model?: Model<Api>;
 };
 
 // Session-scoped runtime registry keyed by object identity.

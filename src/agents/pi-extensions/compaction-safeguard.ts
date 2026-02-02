@@ -171,7 +171,7 @@ export default function compactionSafeguardExtension(api: ExtensionAPI): void {
     const fallbackSummary = `${FALLBACK_SUMMARY}${toolFailureSection}${fileOpsSummary}`;
 
     const runtime = getCompactionSafeguardRuntime(ctx.sessionManager);
-    const model = ctx.model ?? (runtime?.model as typeof ctx.model);
+    const model = ctx.model ?? runtime?.model;
     if (!model) {
       return {
         compaction: {
