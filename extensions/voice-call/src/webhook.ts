@@ -270,14 +270,30 @@ export class VoiceCallWebhookServer {
   }
 
   /**
-   * Read request body as string.
+   * Read request body as string with timeout protection.
    */
-  private readBody(req: http.IncomingMessage): Promise<string> {
+  private readBody(req: http.IncomingMessage, timeoutMs = 30_000): Promise<string> {
     return new Promise((resolve, reject) => {
+      let done = false;
+      const finish = (fn: () => void) => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        fn();
+      };
+
+      const timer = setTimeout(() => {
+        finish(() => {
+          req.destroy(new Error("Body read timeout"));
+          reject(new Error("Request body timeout"));
+        });
+      }, timeoutMs);
+
       const chunks: Buffer[] = [];
       req.on("data", (chunk) => chunks.push(chunk));
-      req.on("end", () => resolve(Buffer.concat(chunks).toString("utf-8")));
-      req.on("error", reject);
+      req.on("end", () => finish(() => resolve(Buffer.concat(chunks).toString("utf-8"))));
+      req.on("error", (err) => finish(() => reject(err)));
+      req.on("close", () => finish(() => reject(new Error("Connection closed"))));
     });
   }
 
