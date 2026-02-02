@@ -142,7 +142,12 @@ function generateZshArgs(cmd: Command): string {
       const flags = opt.flags.split(/[ ,|]+/);
       const name = flags.find((f) => f.startsWith("--")) || flags[0];
       const short = flags.find((f) => f.startsWith("-") && !f.startsWith("--"));
-      const desc = opt.description.replace(/'/g, "'\\''");
+      const desc = opt.description
+        .replace(/\\/g, "\\\\")
+        .replace(/"/g, '\\"')
+        .replace(/'/g, "'\\''")
+        .replace(/\[/g, "\\[")
+        .replace(/\]/g, "\\]");
       if (short) {
         return `"(${name} ${short})"{${name},${short}}"[${desc}]"`;
       }
