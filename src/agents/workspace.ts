@@ -279,7 +279,11 @@ export async function loadWorkspaceBootstrapFiles(dir: string): Promise<Workspac
   try {
     await fs.access(contactsPath);
     entries.push({ name: DEFAULT_CONTACTS_FILENAME, filePath: contactsPath });
-  } catch {}
+  } catch (err) {
+    const anyErr = err as { code?: string };
+    if (anyErr.code !== "ENOENT") {
+    }
+  }
 
   const result: WorkspaceBootstrapFile[] = [];
   for (const entry of entries) {

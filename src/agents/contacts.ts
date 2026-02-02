@@ -43,7 +43,13 @@ export function parseContactsMarkdown(content: string): Contact[] {
   const lines = content.split("\n");
 
   for (const line of lines) {
-    if (!line.trim() || line.includes("---") || line.toLowerCase().includes("| name")) {
+    const trimmed = line.trim();
+    if (
+      !trimmed ||
+      trimmed === "---" ||
+      /^\|?-+\|/.test(trimmed) ||
+      line.toLowerCase().includes("| name")
+    ) {
       continue;
     }
     const match = line.match(/^\s*\|\s*([^|]+)\s*\|\s*([^|]+)\s*\|\s*([^|]*)\s*\|?\s*$/);
@@ -52,7 +58,6 @@ export function parseContactsMarkdown(content: string): Contact[] {
       const number = match[2]?.trim();
       const notes = match[3]?.trim();
 
-      // Skip if name or number is empty or looks like a template
       if (name && number && !name.toLowerCase().includes("example") && !number.includes("XXXX")) {
         contacts.push({
           name,
@@ -67,8 +72,16 @@ export function parseContactsMarkdown(content: string): Contact[] {
 }
 
 export function findContactByName(contacts: Contact[], name: string): Contact | undefined {
-  const lowerName = name.toLowerCase().trim();
-  return contacts.find((c) => c.name.toLowerCase().includes(lowerName));
+  const searchTokens = name.toLowerCase().trim().split(/\s+/);
+  const exactMatch = contacts.find((c) => c.name.toLowerCase() === name.toLowerCase().trim());
+  if (exactMatch) return exactMatch;
+  return contacts.find((c) => {
+    const contactTokens = c.name.toLowerCase().split(/\s+/);
+    return (
+      searchTokens.every((t) => contactTokens.some((ct) => ct.includes(t))) ||
+      contactTokens.every((ct) => searchTokens.some((t) => t.includes(ct)))
+    );
+  });
 }
 
 export function generateContactsTemplate(): string {
