@@ -65,6 +65,51 @@ function resolveTranscriptPath(params: {
   return path.join(path.dirname(storePath), `${sessionId}.jsonl`);
 }
 
+/**
+ * Get the id of the last entry in the transcript file.
+ * Used to set parentId for injected messages to maintain tree structure.
+ *
+ * Optimized to read only the tail of the file instead of loading the entire
+ * transcript into memory. Falls back to session id if no valid entry found.
+ */
+function getLastEntryId(transcriptPath: string): string | null {
+  const CHUNK_SIZE = 4096;
+  let fd: number | undefined;
+  try {
+    const stats = fs.statSync(transcriptPath);
+    if (stats.size === 0) {
+      return null;
+    }
+    fd = fs.openSync(transcriptPath, "r");
+    const readSize = Math.min(CHUNK_SIZE, stats.size);
+    const buffer = Buffer.alloc(readSize);
+    fs.readSync(fd, buffer, 0, readSize, stats.size - readSize);
+    const content = buffer.toString("utf-8");
+    const lines = content.split("\n").filter((l) => l.trim());
+    for (let i = lines.length - 1; i >= 0; i--) {
+      try {
+        const entry = JSON.parse(lines[i]);
+        if (entry && typeof entry.id === "string") {
+          return entry.id;
+        }
+      } catch {
+        // ignore read/stat errors
+      }
+    }
+  } catch {
+    // ignore read/stat errors
+  } finally {
+    if (fd !== undefined) {
+      try {
+        fs.closeSync(fd);
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+  return null;
+}
+
 function ensureTranscriptFile(params: { transcriptPath: string; sessionId: string }): {
   ok: boolean;
   error?: string;
@@ -128,9 +173,11 @@ function appendAssistantTranscriptMessage(params: {
     stopReason: "injected",
     usage: { input: 0, output: 0, totalTokens: 0 },
   };
+  const parentId = getLastEntryId(transcriptPath) ?? params.sessionId;
   const transcriptEntry = {
     type: "message",
     id: messageId,
+    parentId,
     timestamp: new Date(now).toISOString(),
     message: messageBody,
   };
