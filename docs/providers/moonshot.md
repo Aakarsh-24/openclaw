@@ -22,7 +22,7 @@ Current Kimi K2 model IDs:
 - `kimi-k2-turbo-preview`
 - `kimi-k2-thinking`
 - `kimi-k2-thinking-turbo`
-  {/_ moonshot-kimi-k2-ids:end _/ && null}
+{/_ moonshot-kimi-k2-ids:end _/ && null}
 
 ```bash
 openclaw onboard --auth-choice moonshot-api-key
