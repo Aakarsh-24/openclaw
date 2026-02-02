@@ -27,11 +27,14 @@ describe("@lancedb/lancedb native module", () => {
       expect(lancedb.default || lancedb).toBeTruthy();
     } catch (error) {
       const err = error as Error;
-      throw new Error(
+      const newError = new Error(
         `Failed to import @lancedb/lancedb. ` +
         `This indicates the native module compilation failed or the binary is missing from the image. ` +
         `Error: ${err.message}`
       );
+      // @ts-expect-error - Error.cause is available in Node 16.9+
+      newError.cause = err;
+      throw newError;
     }
   });
 
