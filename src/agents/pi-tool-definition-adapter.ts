@@ -40,7 +40,7 @@ export function toToolDefinitions(tools: AnyAgentTool[]): ToolDefinition[] {
       execute: async (
         toolCallId,
         params,
-        signal,
+        signal: AbortSignal | undefined,
         onUpdate: AgentToolUpdateCallback<unknown> | undefined,
         _ctx,
       ): Promise<AgentToolResult<unknown>> => {
@@ -91,7 +91,7 @@ export function toClientToolDefinitions(
       execute: async (
         toolCallId,
         params,
-        _signal,
+        _signal: AbortSignal | undefined,
         _onUpdate: AgentToolUpdateCallback<unknown> | undefined,
         _ctx,
       ): Promise<AgentToolResult<unknown>> => {
