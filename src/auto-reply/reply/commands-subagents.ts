@@ -208,19 +208,25 @@ export const handleSubagentsCommand: CommandHandler = async (params, allowTextCo
     const sorted = sortSubagentRuns(runs);
     const active = sorted.filter((entry) => !entry.endedAt);
     const done = sorted.length - active.length;
-    const lines = ["🧭 Subagents (current session)", `Active: ${active.length} · Done: ${done}`];
+    const lines = [
+      "🧭 Subagents (current session)",
+      `Active: ${active.length} · Done: ${done}`,
+      "",
+    ];
+
     sorted.forEach((entry, index) => {
-      const status = formatRunStatus(entry);
+      const status = formatRunStatus(entry).toUpperCase();
       const label = formatRunLabel(entry);
       const runtime =
         entry.endedAt && entry.startedAt
           ? formatDurationShort(entry.endedAt - entry.startedAt)
           : formatAgeShort(Date.now() - (entry.startedAt ?? entry.createdAt));
       const runId = entry.runId.slice(0, 8);
-      lines.push(
-        `${index + 1}) ${status} · ${label} · ${runtime} · run ${runId} · ${entry.childSessionKey}`,
-      );
+
+      lines.push(`${index + 1}) ${status} · ${label}`);
+      lines.push(`    ${runtime} · run ${runId} · ${entry.childSessionKey}`);
     });
+
     return { shouldContinue: false, reply: { text: lines.join("\n") } };
   }
 
