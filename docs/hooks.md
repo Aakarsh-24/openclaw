@@ -284,6 +284,8 @@ Planned event types:
 - **`message:sent`**: When a message is sent
 - **`message:received`**: When a message is received
 
+**Note**: Previously planned `session:start` and `session:end` events are now implemented as `session:start`, `session:reset`, and `session:ended` (see Session Events above).
+
 ## Creating Custom Hooks
 
 ### 1. Choose Location
