@@ -26,6 +26,7 @@ import {
   type SessionScope,
   updateSessionStore,
 } from "../../config/sessions.js";
+import { createInternalHookEvent, triggerInternalHook } from "../../hooks/internal-hooks.js";
 import { normalizeMainKey } from "../../routing/session-key.js";
 import { normalizeSessionDeliveryFields } from "../../utils/delivery-context.js";
 import { resolveCommandAuthorization } from "../command-auth.js";
@@ -233,10 +234,27 @@ export async function initSessionState(params: {
     persistedModelOverride = entry.modelOverride;
     persistedProviderOverride = entry.providerOverride;
   } else {
+    const oldSessionId = entry?.sessionId;
     sessionId = crypto.randomUUID();
     isNewSession = true;
     systemSent = false;
     abortedLastRun = false;
+
+    // Emit session lifecycle events for reset/new
+    if (resetTriggered && oldSessionId && sessionKey) {
+      // 1. Session End (for the OLD session)
+      const endEvent = createInternalHookEvent("session", "end", sessionKey, {
+        sessionId: oldSessionId,
+      });
+      await triggerInternalHook(endEvent);
+
+      // 2. Session Reset (Transition)
+      const resetEvent = createInternalHookEvent("session", "reset", sessionKey, {
+        oldSessionId,
+        newSessionId: sessionId,
+      });
+      await triggerInternalHook(resetEvent);
+    }
   }
 
   const baseEntry = !isNewSession && freshEntry ? entry : undefined;
