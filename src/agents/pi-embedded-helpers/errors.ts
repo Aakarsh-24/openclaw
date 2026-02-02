@@ -463,6 +463,7 @@ const ERROR_PATTERNS = {
     "messages.1.content.1.tool_use.id",
     "invalid request format",
   ],
+  unknownModel: ["unknown model", "model not found", "does not exist", "no such model"],
 } as const;
 
 const IMAGE_DIMENSION_ERROR_RE =
@@ -518,6 +519,10 @@ export function isAuthErrorMessage(raw: string): boolean {
 
 export function isOverloadedErrorMessage(raw: string): boolean {
   return matchesErrorPatterns(raw, ERROR_PATTERNS.overloaded);
+}
+
+export function isUnknownModelErrorMessage(raw: string): boolean {
+  return matchesErrorPatterns(raw, ERROR_PATTERNS.unknownModel);
 }
 
 export function parseImageDimensionError(raw: string): {
@@ -589,6 +594,9 @@ export function classifyFailoverReason(raw: string): FailoverReason | null {
   }
   if (isImageSizeError(raw)) {
     return null;
+  }
+  if (isUnknownModelErrorMessage(raw)) {
+    return "unknown";
   }
   if (isRateLimitErrorMessage(raw)) {
     return "rate_limit";
