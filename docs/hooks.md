@@ -235,7 +235,7 @@ Triggered during session lifecycle:
 
 - **`session:start`**: When a new session begins
 - **`session:reset`**: When a session is reset/recreated (includes both old and new session IDs)
-- **`session:ended`**: When a session ends (provides the ending session ID)
+- **`session:end`**: When a session ends (provides the ending session ID)
 
 **Context includes**:
 - `sessionId`: The affected session ID
@@ -284,7 +284,7 @@ Planned event types:
 - **`message:sent`**: When a message is sent
 - **`message:received`**: When a message is received
 
-**Note**: Previously planned `session:start` and `session:end` events are now implemented as `session:start`, `session:reset`, and `session:ended` (see Session Events above).
+**Note**: Previously planned `session:start` and `session:end` events are now implemented (see Session Events above). Additionally, `session:reset` was added to track session transitions.
 
 ## Creating Custom Hooks
 

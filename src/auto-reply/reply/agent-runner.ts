@@ -291,11 +291,11 @@ export async function runReplyAgent(params: {
       }
     }
 
-    // Lifecycle hooks: Session Ended / Reset
+    // Lifecycle hooks: Session End / Reset
     // Note: session:start will be emitted later in the response block to avoid duplicates
 
-    // 1. Session Ended (for the OLD session)
-    const hookEvent = createInternalHookEvent("session", "ended", sessionKey, {
+    // 1. Session End (for the OLD session)
+    const hookEvent = createInternalHookEvent("session", "end", sessionKey, {
       sessionId: prevSessionId,
     });
     await triggerInternalHook(hookEvent);
