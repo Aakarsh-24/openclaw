@@ -8,11 +8,12 @@ import {
 } from "node:http";
 import { createServer as createHttpsServer } from "node:https";
 import type { CanvasHostHandler } from "../canvas-host/server.js";
-import type { createSubsystemLogger } from "../logging/subsystem.js";
 import { resolveAgentAvatar } from "../agents/identity-avatar.js";
 import { handleA2uiHttpRequest } from "../canvas-host/a2ui.js";
 import { loadConfig } from "../config/config.js";
+import { createSubsystemLogger } from "../logging/subsystem.js";
 import { handleSlackHttpRequest } from "../slack/http/index.js";
+import { createControlUiLoopbackGuard } from "./control-ui-loopback-guard.js";
 import { handleControlUiAvatarRequest, handleControlUiHttpRequest } from "./control-ui.js";
 import { applyHookMappings } from "./hooks-mapping.js";
 import {
@@ -206,6 +207,7 @@ export function createGatewayHttpServer(opts: {
   canvasHost: CanvasHostHandler | null;
   controlUiEnabled: boolean;
   controlUiBasePath: string;
+  strictLoopback?: boolean;
   openAiChatCompletionsEnabled: boolean;
   openResponsesEnabled: boolean;
   openResponsesConfig?: import("../config/types.gateway.js").GatewayHttpResponsesConfig;
@@ -214,6 +216,8 @@ export function createGatewayHttpServer(opts: {
   resolvedAuth: import("./auth.js").ResolvedGatewayAuth;
   tlsOptions?: TlsOptions;
 }): HttpServer {
+  const log = createSubsystemLogger("gateway/http");
+  const controlUiLoopbackGuard = createControlUiLoopbackGuard(log, opts.strictLoopback ?? false);
   const {
     canvasHost,
     controlUiEnabled,
@@ -289,6 +293,11 @@ export function createGatewayHttpServer(opts: {
         }
       }
       if (controlUiEnabled) {
+        // Apply loopback guard ONLY to Control UI requests
+        const guardResult = controlUiLoopbackGuard(req, res);
+        if (!guardResult.allowed) {
+          return; // Request was rejected by guard
+        }
         if (
           handleControlUiAvatarRequest(req, res, {
             basePath: controlUiBasePath,
@@ -310,7 +319,12 @@ export function createGatewayHttpServer(opts: {
       res.statusCode = 404;
       res.setHeader("Content-Type", "text/plain; charset=utf-8");
       res.end("Not Found");
-    } catch {
+    } catch (err) {
+      log.error("Request handler failed", {
+        error: String(err),
+        url: req.url,
+        method: req.method,
+      });
       res.statusCode = 500;
       res.setHeader("Content-Type", "text/plain; charset=utf-8");
       res.end("Internal Server Error");
