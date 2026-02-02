@@ -55,8 +55,12 @@ class MemoryDB {
   ) {}
 
   private async ensureInitialized(): Promise<void> {
-    if (this.table) return;
-    if (this.initPromise) return this.initPromise;
+    if (this.table) {
+      return;
+    }
+    if (this.initPromise) {
+      return this.initPromise;
+    }
 
     this.initPromise = this.doInitialize();
     return this.initPromise;
