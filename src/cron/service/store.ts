@@ -1,12 +1,15 @@
 import type { CronJob } from "../types.js";
 import type { CronServiceState } from "./state.js";
 import { migrateLegacyCronPayload } from "../payload-migration.js";
-import { loadCronStore, saveCronStore } from "../store.js";
+import { cleanupOrphanedTempFiles, loadCronStore, saveCronStore } from "../store.js";
 import { inferLegacyName, normalizeOptionalText } from "./normalize.js";
 
 const storeCache = new Map<string, { version: 1; jobs: CronJob[] }>();
 
 export async function ensureLoaded(state: CronServiceState) {
+  // Clean up any orphaned .tmp files from previous crashed writes
+  await cleanupOrphanedTempFiles(state.deps.storePath);
+
   if (state.store) {
     return;
   }
@@ -15,6 +18,7 @@ export async function ensureLoaded(state: CronServiceState) {
     state.store = cached;
     return;
   }
+
   const loaded = await loadCronStore(state.deps.storePath);
   const jobs = (loaded.jobs ?? []) as unknown as Array<Record<string, unknown>>;
   let mutated = false;
