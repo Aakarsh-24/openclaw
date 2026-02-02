@@ -167,13 +167,18 @@ async function runNgrokCommand(args: string[]): Promise<string> {
       stdio: ["ignore", "pipe", "pipe"],
     });
 
+    let settled = false;
+    let stdout = "";
+    let stderr = "";
+
     const timeout = setTimeout(() => {
+      if (settled) {
+        return;
+      }
+      settled = true;
       proc.kill("SIGTERM");
       reject(new Error("ngrok command timed out after 30s"));
     }, 30000);
-
-    let stdout = "";
-    let stderr = "";
 
     proc.stdout.on("data", (data) => {
       stdout += data.toString();
@@ -183,6 +188,10 @@ async function runNgrokCommand(args: string[]): Promise<string> {
     });
 
     proc.on("close", (code) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
       clearTimeout(timeout);
       if (code === 0) {
         resolve(stdout);
@@ -192,6 +201,10 @@ async function runNgrokCommand(args: string[]): Promise<string> {
     });
 
     proc.on("error", (err) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
       clearTimeout(timeout);
       reject(err);
     });
@@ -207,17 +220,31 @@ export async function isNgrokAvailable(): Promise<boolean> {
       stdio: ["ignore", "pipe", "pipe"],
     });
 
+    let settled = false;
+
     const timeout = setTimeout(() => {
+      if (settled) {
+        return;
+      }
+      settled = true;
       proc.kill("SIGTERM");
       resolve(false);
     }, 5000);
 
     proc.on("close", (code) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
       clearTimeout(timeout);
       resolve(code === 0);
     });
 
     proc.on("error", () => {
+      if (settled) {
+        return;
+      }
+      settled = true;
       clearTimeout(timeout);
       resolve(false);
     });
