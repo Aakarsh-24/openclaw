@@ -8,6 +8,7 @@ import type { MediaStreamConfig } from "./media-stream.js";
 import type { VoiceCallProvider } from "./providers/base.js";
 import type { TwilioProvider } from "./providers/twilio.js";
 import type { NormalizedEvent, WebhookContext } from "./types.js";
+import { TerminalStates } from "./types.js";
 import { MediaStreamHandler } from "./media-stream.js";
 import { OpenAIRealtimeSTTProvider } from "./providers/stt-openai-realtime.js";
 
@@ -140,10 +141,15 @@ export class VoiceCallWebhookServer {
         // status callbacks). Without this, calls remain stuck in non-terminal
         // states (like "speaking" or "listening"), blocking new calls due to the
         // maxConcurrentCalls limit.
+        //
+        // Note: We only emit call.ended if the call is NOT already in a terminal
+        // state. Network blips or WS proxy timeouts may cause disconnects while
+        // the call is still active, but if Twilio's status callback already
+        // transitioned the call to a terminal state, we skip this fallback.
         const call = this.manager.getCallByProviderCallId(callId);
-        if (call) {
+        if (call && !TerminalStates.has(call.state)) {
           const event: NormalizedEvent = {
-            id: `stream-disconnect-${Date.now()}`,
+            id: `stream-disconnect-${call.callId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
             type: "call.ended",
             callId: call.callId,
             providerCallId: callId,
@@ -153,6 +159,10 @@ export class VoiceCallWebhookServer {
           this.manager.processEvent(event);
           console.log(
             `[voice-call] Call ${call.callId} marked as completed (stream disconnect fallback)`,
+          );
+        } else if (call) {
+          console.log(
+            `[voice-call] Call ${call.callId} already in terminal state (${call.state}), skipping disconnect fallback`,
           );
         }
       },
