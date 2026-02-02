@@ -4,7 +4,7 @@ import { listChatCommands, listChatCommandsForConfig } from "../auto-reply/comma
 import { formatThinkingLevels, listThinkingLevelLabels } from "../auto-reply/thinking.js";
 
 const VERBOSE_LEVELS = ["on", "off"];
-const REASONING_LEVELS = ["on", "off"];
+const REASONING_LEVELS = ["on", "off", "stream"];
 const ELEVATED_LEVELS = ["on", "off", "ask", "full"];
 const ACTIVATION_LEVELS = ["mention", "always"];
 const USAGE_FOOTER_LEVELS = ["off", "tokens", "full"];
@@ -70,7 +70,7 @@ export function getSlashCommands(options: SlashCommandOptions = {}): SlashComman
     },
     {
       name: "reasoning",
-      description: "Set reasoning on/off",
+      description: "Set reasoning visibility",
       getArgumentCompletions: (prefix) =>
         REASONING_LEVELS.filter((v) => v.startsWith(prefix.toLowerCase())).map((value) => ({
           value,
