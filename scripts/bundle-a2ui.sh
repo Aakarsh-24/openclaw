@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# DEPRECATED: Use scripts/bundle-a2ui.ts instead
+# This script is kept for reference and backward compatibility only
 set -euo pipefail
 
 on_error() {
