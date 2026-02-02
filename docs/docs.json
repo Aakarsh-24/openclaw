@@ -1038,7 +1038,8 @@
               "providers/synthetic",
               "providers/opencode",
               "providers/glm",
-              "providers/zai"
+              "providers/zai",
+              "providers/io-intelligence"
             ]
           },
           {
