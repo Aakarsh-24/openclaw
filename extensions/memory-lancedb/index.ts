@@ -392,19 +392,19 @@ const memoryPlugin = {
               score: r.score,
             }));
 
-          return {
-            content: [{ type: "text", text: `Found ${results.length} memories:\n\n${text}` }],
-            details: { count: results.length, memories: sanitizedResults },
-          };
+            return {
+              content: [{ type: "text", text: `Found ${results.length} memories:\n\n${text}` }],
+              details: { count: results.length, memories: sanitizedResults },
+            };
           } catch (err) {
-          const errorMsg = err instanceof Error ? err.message : String(err);
-          return {
-            content: [{
-              type: "text",
-              text: `Memory recall failed: ${errorMsg}. Please check your embedding provider configuration.`
-            }],
-            details: { error: errorMsg },
-          };
+            const errorMsg = err instanceof Error ? err.message : String(err);
+            return {
+              content: [{
+                type: "text",
+                text: `Memory recall failed: ${errorMsg}. Please check your embedding provider configuration.`
+              }],
+              details: { error: errorMsg },
+            };
           }
         },
         },
@@ -436,23 +436,23 @@ const memoryPlugin = {
           try {
             const vector = await embeddings.embed(text);
 
-          // Check for duplicates
-          const existing = await db.search(vector, 1, 0.95);
-          if (existing.length > 0) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: `Similar memory already exists: "${existing[0].entry.text}"`,
-              },
-            ],
-            details: {
-              action: "duplicate",
-              existingId: existing[0].entry.id,
-              existingText: existing[0].entry.text,
-            },
-          };
-          }
+            // Check for duplicates
+            const existing = await db.search(vector, 1, 0.95);
+            if (existing.length > 0) {
+              return {
+                content: [
+                  {
+                    type: "text",
+                    text: `Similar memory already exists: "${existing[0].entry.text}"`,
+                  },
+                ],
+                details: {
+                  action: "duplicate",
+                  existingId: existing[0].entry.id,
+                  existingText: existing[0].entry.text,
+                },
+              };
+            }
 
             const entry = await db.store({
               text,
@@ -513,13 +513,13 @@ const memoryPlugin = {
                 };
               }
 
-          if (results.length === 1 && results[0].score > 0.9) {
-            await db.delete(results[0].entry.id);
-            return {
-              content: [{ type: "text", text: `Forgotten: "${results[0].entry.text}"` }],
-              details: { action: "deleted", id: results[0].entry.id },
-            };
-          }
+            if (results.length === 1 && results[0].score > 0.9) {
+              await db.delete(results[0].entry.id);
+              return {
+                content: [{ type: "text", text: `Forgotten: "${results[0].entry.text}"` }],
+                details: { action: "deleted", id: results[0].entry.id },
+              };
+            }
 
               const list = results
                 .map((r) => `- [${r.entry.id.slice(0, 8)}] ${r.entry.text.slice(0, 60)}...`)
@@ -624,7 +624,7 @@ const memoryPlugin = {
             const vector = await embeddings.embed(event.prompt);
             const results = await db.search(vector, 3, 0.3);
 
-          if (results.length === 0) {
+            if (results.length === 0) {
             return;
           }
 
@@ -632,7 +632,7 @@ const memoryPlugin = {
               .map((r) => `- [${r.entry.category}] ${r.entry.text}`)
               .join("\n");
 
-          api.logger.info?.(`memory-lancedb: injecting ${results.length} memories into context`);
+            api.logger.info?.(`memory-lancedb: injecting ${results.length} memories into context`);
 
             return {
               prependContext: `<relevant-memories>\nThe following memories may be relevant to this conversation:\n${memoryContext}\n</relevant-memories>`,
@@ -740,12 +740,12 @@ const memoryPlugin = {
     api.registerService({
       id: "memory-lancedb",
       start: () => {
-        api.logger.info(
+          api.logger.info(
           `memory-lancedb: initialized (db: ${resolvedDbPath}, model: ${cfg.embedding.model})`,
-        );
+          );
       },
       stop: () => {
-        api.logger.info("memory-lancedb: stopped");
+          api.logger.info("memory-lancedb: stopped");
       },
     });
   },
