@@ -239,6 +239,7 @@ Triggered during session lifecycle:
 - **`session:end`**: When a session ends (provides the ending session ID)
 
 **Context includes**:
+
 - `sessionId`: The affected session ID
 - `oldSessionId`: (for `session:reset`) The previous session ID
 - `newSessionId`: (for `session:reset`) The new session ID
@@ -252,6 +253,7 @@ Triggered during agent execution:
 - **`agent:flush`**: When memory flush is triggered (context nearing token limit)
 
 **Context for `agent:reply` includes**:
+
 - `sessionId`: Current session ID
 - `input`: User's input message
 - `output`: Assistant's response
@@ -261,6 +263,7 @@ Triggered during agent execution:
 **Note:** Hooks can add messages to `event.messages` which will be prepended to the agent's response.
 
 **Context for `agent:flush` includes**:
+
 - `sessionId`: Current session ID
 - `contextTokensUsed`: Number of context tokens currently used
 - `reason`: Reason for flush (e.g., "context_limit")
