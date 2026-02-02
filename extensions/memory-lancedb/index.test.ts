@@ -19,6 +19,7 @@ const HAS_OPENAI_KEY = Boolean(process.env.OPENAI_API_KEY);
 const HAS_GOOGLE_KEY = Boolean(process.env.GOOGLE_API_KEY);
 const liveEnabled = (HAS_OPENAI_KEY || HAS_GOOGLE_KEY) && process.env.OPENCLAW_LIVE_TEST === "1";
 const describeLive = liveEnabled ? describe : describe.skip;
+const describeLiveOpenAI = HAS_OPENAI_KEY && process.env.OPENCLAW_LIVE_TEST === "1" ? describe : describe.skip;
 
 describe("memory plugin e2e", () => {
   let tmpDir: string;
@@ -244,7 +245,7 @@ describe("memory plugin e2e", () => {
 });
 
 // Live tests that require OpenAI API key and actually use LanceDB
-describeLive("memory plugin live tests", () => {
+describeLiveOpenAI("memory plugin live tests", () => {
   let tmpDir: string;
   let dbPath: string;
 
