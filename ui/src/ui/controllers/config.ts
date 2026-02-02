@@ -34,14 +34,15 @@ export type ConfigState = {
   lastError: string | null;
 };
 
-export async function loadConfig(state: ConfigState) {
-  if (!state.client || !state.connected) {
-    return;
-  }
+export async function loadConfig(state: ConfigState, opts: { resetDirty?: boolean } = {}) {
+  if (!state.client || !state.connected) return;
   state.configLoading = true;
   state.lastError = null;
   try {
-    const res = await state.client.request("config.get", {});
+    const res = (await state.client.request("config.get", {})) as ConfigSnapshot;
+    if (opts.resetDirty) {
+      state.configFormDirty = false;
+    }
     applyConfigSnapshot(state, res);
   } catch (err) {
     state.lastError = String(err);

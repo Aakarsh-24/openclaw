@@ -133,6 +133,42 @@ describe("config view", () => {
     expect(applyButton?.disabled).toBe(false);
   });
 
+  it("normalizes tuple defaults per index", () => {
+    const container = document.createElement("div");
+    render(
+      renderConfig({
+        ...baseProps(),
+        formMode: "form",
+        schema: {
+          type: "object",
+          properties: {
+            tuple: {
+              type: "array",
+              items: [
+                { type: "string", default: "a" },
+                { type: "number", default: 1 },
+              ],
+            },
+          },
+        },
+        originalValue: { tuple: ["a", 1] },
+        formValue: { tuple: ["a", undefined] },
+      }),
+      container,
+    );
+
+    const saveButton = Array.from(container.querySelectorAll("button")).find(
+      (btn) => btn.textContent?.trim() === "Save",
+    ) as HTMLButtonElement | undefined;
+    const applyButton = Array.from(container.querySelectorAll("button")).find(
+      (btn) => btn.textContent?.trim() === "Apply",
+    ) as HTMLButtonElement | undefined;
+    expect(saveButton).not.toBeUndefined();
+    expect(applyButton).not.toBeUndefined();
+    expect(saveButton?.disabled).toBe(true);
+    expect(applyButton?.disabled).toBe(true);
+  });
+
   it("switches mode via the sidebar toggle", () => {
     const container = document.createElement("div");
     const onFormModeChange = vi.fn();
