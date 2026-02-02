@@ -145,7 +145,9 @@ class MemoryDB {
 // ============================================================================
 
 class Embeddings {
-   private client: unknown = null;
+   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   private client: any = null;
+   private initPromise: Promise<void> | null = null;
 
    constructor(
      private provider: "openai" | "google",
@@ -160,23 +162,41 @@ class Embeddings {
          `Please configure the embedding.apiKey in the memory-lancedb plugin settings.`
        );
      }
+   }
 
-     if (provider === "openai") {
-       // Dynamically import OpenAI only when needed
-       try {
-         // eslint-disable-next-line @typescript-eslint/no-require-imports
-         const OpenAI = require("openai").default;
-         this.client = new OpenAI({ apiKey });
-       } catch (err) {
-         throw new Error(
-           `Failed to load OpenAI client. Make sure 'openai' package is installed. Error: ${String(err)}`
-         );
-       }
+   private async ensureOpenAIClientInitialized(): Promise<void> {
+     if (this.client !== null) {
+       return;
      }
+     if (this.initPromise) {
+       return this.initPromise;
+     }
+
+     this.initPromise = this.initializeOpenAIClient();
+     return this.initPromise;
+   }
+
+   private async initializeOpenAIClient(): Promise<void> {
+     try {
+       // Use ESM-compatible dynamic import instead of require()
+       const openaiModule = await import("openai");
+       const OpenAI = openaiModule.default;
+       this.client = new OpenAI({ apiKey: this.apiKey });
+      } catch (err) {
+        const error = new Error(
+          `Failed to load OpenAI client. Make sure 'openai' package is installed. Error: ${String(err)}`
+        );
+        if (err instanceof Error) {
+          // @ts-expect-error - Error.cause is available in Node 16.9+
+          error.cause = err;
+        }
+        throw error;
+      }
    }
 
    async embed(text: string): Promise<number[]> {
      if (this.provider === "openai") {
+       await this.ensureOpenAIClientInitialized();
        const response = await this.client!.embeddings.create({
          model: this.model,
          input: text,
@@ -426,17 +446,18 @@ const memoryPlugin = {
             };
           }
 
-             const entry = await db.store({
-               text,
-               vector,
-               importance,
-               category,
-             });
+              const entry = await db.store({
+                text,
+                vector,
+                importance,
+                category,
+              });
 
-             return {
-               content: [{ type: "text", text: `Stored: "${text.slice(0, 100)}..."` }],
-               details: { action: "created", id: entry.id },
-             };
+              const displayText = text.length > 100 ? `${text.slice(0, 100)}...` : text;
+              return {
+                content: [{ type: "text", text: `Stored: "${displayText}"` }],
+                details: { action: "created", id: entry.id },
+              };
            } catch (err) {
              const errorMsg = err instanceof Error ? err.message : String(err);
              return {
