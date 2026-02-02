@@ -1,8 +1,13 @@
 import { randomUUID } from "node:crypto";
-import type { AcpSession } from "./types.js";
+import type { AcpSession, McpServerConfig } from "./types.js";
 
 export type AcpSessionStore = {
-  createSession: (params: { sessionKey: string; cwd: string; sessionId?: string }) => AcpSession;
+  createSession: (params: {
+    sessionKey: string;
+    cwd: string;
+    sessionId?: string;
+    mcpServers?: McpServerConfig[];
+  }) => AcpSession;
   getSession: (sessionId: string) => AcpSession | undefined;
   getSessionByRunId: (runId: string) => AcpSession | undefined;
   setActiveRun: (sessionId: string, runId: string, abortController: AbortController) => void;
@@ -24,6 +29,7 @@ export function createInMemorySessionStore(): AcpSessionStore {
       createdAt: Date.now(),
       abortController: null,
       activeRunId: null,
+      mcpServers: params.mcpServers ?? [],
     };
     sessions.set(sessionId, session);
     return session;
