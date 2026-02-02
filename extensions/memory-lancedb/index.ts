@@ -363,48 +363,48 @@ const memoryPlugin = {
           limit: Type.Optional(Type.Number({ description: "Max results (default: 5)" })),
         }),
         async execute(_toolCallId, params) {
-            const { query, limit = 5 } = params as { query: string; limit?: number };
+          const { query, limit = 5 } = params as { query: string; limit?: number };
 
-            try {
-              const vector = await embeddings.embed(query);
-              const results = await db.search(vector, limit, 0.1);
+          try {
+            const vector = await embeddings.embed(query);
+            const results = await db.search(vector, limit, 0.1);
 
-              if (results.length === 0) {
-                return {
-                  content: [{ type: "text", text: "No relevant memories found." }],
-                  details: { count: 0 },
-                };
-              }
+            if (results.length === 0) {
+              return {
+                content: [{ type: "text", text: "No relevant memories found." }],
+                details: { count: 0 },
+              };
+            }
 
-              const text = results
-                .map(
-                  (r, i) =>
-                    `${i + 1}. [${r.entry.category}] ${r.entry.text} (${(r.score * 100).toFixed(0)}%)`,
-                )
-                .join("\n");
+            const text = results
+              .map(
+                (r, i) =>
+                  `${i + 1}. [${r.entry.category}] ${r.entry.text} (${(r.score * 100).toFixed(0)}%)`,
+              )
+              .join("\n");
 
-              // Strip vector data for serialization (typed arrays can't be cloned)
-              const sanitizedResults = results.map((r) => ({
-                id: r.entry.id,
-                text: r.entry.text,
-                category: r.entry.category,
-                importance: r.entry.importance,
-                score: r.score,
-              }));
+            // Strip vector data for serialization (typed arrays can't be cloned)
+            const sanitizedResults = results.map((r) => ({
+              id: r.entry.id,
+              text: r.entry.text,
+              category: r.entry.category,
+              importance: r.entry.importance,
+              score: r.score,
+            }));
 
-            return {
-              content: [{ type: "text", text: `Found ${results.length} memories:\n\n${text}` }],
-              details: { count: results.length, memories: sanitizedResults },
-            };
+          return {
+            content: [{ type: "text", text: `Found ${results.length} memories:\n\n${text}` }],
+            details: { count: results.length, memories: sanitizedResults },
+          };
           } catch (err) {
-            const errorMsg = err instanceof Error ? err.message : String(err);
-            return {
-              content: [{
-                type: "text",
-                text: `Memory recall failed: ${errorMsg}. Please check your embedding provider configuration.`
-              }],
-              details: { error: errorMsg },
-            };
+          const errorMsg = err instanceof Error ? err.message : String(err);
+          return {
+            content: [{
+              type: "text",
+              text: `Memory recall failed: ${errorMsg}. Please check your embedding provider configuration.`
+            }],
+            details: { error: errorMsg },
+          };
           }
         },
         },
@@ -423,59 +423,59 @@ const memoryPlugin = {
           category: Type.Optional(stringEnum(MEMORY_CATEGORIES)),
         }),
         async execute(_toolCallId, params) {
-            const {
-              text,
-              importance = 0.7,
-              category = "other",
-            } = params as {
-              text: string;
-              importance?: number;
-              category?: MemoryEntry["category"];
-            };
+          const {
+            text,
+            importance = 0.7,
+            category = "other",
+          } = params as {
+            text: string;
+            importance?: number;
+            category?: MemoryEntry["category"];
+          };
 
-            try {
-              const vector = await embeddings.embed(text);
+          try {
+            const vector = await embeddings.embed(text);
 
           // Check for duplicates
           const existing = await db.search(vector, 1, 0.95);
           if (existing.length > 0) {
-            return {
-              content: [
-                {
-                  type: "text",
-                  text: `Similar memory already exists: "${existing[0].entry.text}"`,
-                },
-              ],
-              details: {
-                action: "duplicate",
-                existingId: existing[0].entry.id,
-                existingText: existing[0].entry.text,
+          return {
+            content: [
+              {
+                type: "text",
+                text: `Similar memory already exists: "${existing[0].entry.text}"`,
               },
-            };
+            ],
+            details: {
+              action: "duplicate",
+              existingId: existing[0].entry.id,
+              existingText: existing[0].entry.text,
+            },
+          };
           }
 
-              const entry = await db.store({
-                text,
-                vector,
-                importance,
-                category,
-              });
+            const entry = await db.store({
+              text,
+              vector,
+              importance,
+              category,
+            });
 
-              const displayText = text.length > 100 ? `${text.slice(0, 100)}...` : text;
-              return {
-                content: [{ type: "text", text: `Stored: "${displayText}"` }],
-                details: { action: "created", id: entry.id },
-              };
-            } catch (err) {
-              const errorMsg = err instanceof Error ? err.message : String(err);
-              return {
-                content: [{
-                  type: "text",
-                  text: `Memory store failed: ${errorMsg}. Please check your embedding provider configuration.`
-                }],
-                details: { error: errorMsg },
-              };
-            }
+            const displayText = text.length > 100 ? `${text.slice(0, 100)}...` : text;
+            return {
+              content: [{ type: "text", text: `Stored: "${displayText}"` }],
+              details: { action: "created", id: entry.id },
+            };
+          } catch (err) {
+            const errorMsg = err instanceof Error ? err.message : String(err);
+            return {
+              content: [{
+                type: "text",
+                text: `Memory store failed: ${errorMsg}. Please check your embedding provider configuration.`
+              }],
+              details: { error: errorMsg },
+            };
+          }
           },
       },
       { name: "memory_store" },
@@ -491,73 +491,73 @@ const memoryPlugin = {
           memoryId: Type.Optional(Type.String({ description: "Specific memory ID" })),
         }),
         async execute(_toolCallId, params) {
-            const { query, memoryId } = params as { query?: string; memoryId?: string };
+          const { query, memoryId } = params as { query?: string; memoryId?: string };
 
-            if (memoryId) {
-              await db.delete(memoryId);
-              return {
-                content: [{ type: "text", text: `Memory ${memoryId} forgotten.` }],
-                details: { action: "deleted", id: memoryId },
-              };
-            }
+          if (memoryId) {
+            await db.delete(memoryId);
+            return {
+              content: [{ type: "text", text: `Memory ${memoryId} forgotten.` }],
+              details: { action: "deleted", id: memoryId },
+            };
+          }
 
-            if (query) {
-              try {
-                const vector = await embeddings.embed(query);
-                const results = await db.search(vector, 5, 0.7);
+          if (query) {
+            try {
+              const vector = await embeddings.embed(query);
+              const results = await db.search(vector, 5, 0.7);
 
-                if (results.length === 0) {
-                  return {
-                    content: [{ type: "text", text: "No matching memories found." }],
-                    details: { found: 0 },
-                  };
-                }
-
-            if (results.length === 1 && results[0].score > 0.9) {
-              await db.delete(results[0].entry.id);
-              return {
-                content: [{ type: "text", text: `Forgotten: "${results[0].entry.text}"` }],
-                details: { action: "deleted", id: results[0].entry.id },
-              };
-            }
-
-                const list = results
-                  .map((r) => `- [${r.entry.id.slice(0, 8)}] ${r.entry.text.slice(0, 60)}...`)
-                  .join("\n");
-
-                // Strip vector data for serialization
-                const sanitizedCandidates = results.map((r) => ({
-                  id: r.entry.id,
-                  text: r.entry.text,
-                  category: r.entry.category,
-                  score: r.score,
-                }));
-
+              if (results.length === 0) {
                 return {
-                  content: [
-                    {
-                      type: "text",
-                      text: `Found ${results.length} candidates. Specify memoryId:\n${list}`,
-                    },
-                  ],
-                  details: { action: "candidates", candidates: sanitizedCandidates },
-                };
-              } catch (err) {
-                const errorMsg = err instanceof Error ? err.message : String(err);
-                return {
-                  content: [{
-                    type: "text",
-                    text: `Memory search failed: ${errorMsg}. Please check your embedding provider configuration.`
-                  }],
-                  details: { error: errorMsg },
+                  content: [{ type: "text", text: "No matching memories found." }],
+                  details: { found: 0 },
                 };
               }
-            }
 
+          if (results.length === 1 && results[0].score > 0.9) {
+            await db.delete(results[0].entry.id);
             return {
-              content: [{ type: "text", text: "Provide query or memoryId." }],
-              details: { error: "missing_param" },
+              content: [{ type: "text", text: `Forgotten: "${results[0].entry.text}"` }],
+              details: { action: "deleted", id: results[0].entry.id },
             };
+          }
+
+              const list = results
+                .map((r) => `- [${r.entry.id.slice(0, 8)}] ${r.entry.text.slice(0, 60)}...`)
+                .join("\n");
+
+              // Strip vector data for serialization
+              const sanitizedCandidates = results.map((r) => ({
+                id: r.entry.id,
+                text: r.entry.text,
+                category: r.entry.category,
+                score: r.score,
+              }));
+
+              return {
+                content: [
+                  {
+                    type: "text",
+                    text: `Found ${results.length} candidates. Specify memoryId:\n${list}`,
+                  },
+                ],
+                details: { action: "candidates", candidates: sanitizedCandidates },
+              };
+            } catch (err) {
+              const errorMsg = err instanceof Error ? err.message : String(err);
+              return {
+                content: [{
+                  type: "text",
+                  text: `Memory search failed: ${errorMsg}. Please check your embedding provider configuration.`
+                }],
+                details: { error: errorMsg },
+              };
+            }
+          }
+
+          return {
+            content: [{ type: "text", text: "Provide query or memoryId." }],
+            details: { error: "missing_param" },
+          };
           },
       },
       { name: "memory_forget" },
