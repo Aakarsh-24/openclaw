@@ -1,0 +1,66 @@
+# OpenClaw Queue Worker - Docker Compose
+# Isolated testing environment for message queue system
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: openclaw-queue-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - openclaw-queue
+
+  # Webhook test receiver (for testing webhook events)
+  webhook-tester:
+    image: node:22-alpine
+    container_name: openclaw-webhook-tester
+    working_dir: /app
+    command: npm start
+    volumes:
+      - ./test/webhook-tester:/app
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - openclaw-queue
+
+  # OpenClaw Queue Worker (when ready for standalone deployment)
+  queue-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.queue-worker
+    container_name: openclaw-queue-worker
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      - NODE_ENV=production
+      - REDIS_URL=redis://redis:6379
+      - QUEUE_ENABLED=true
+    volumes:
+      - ./config:/root/.openclaw/config
+      - ./workspace:/root/.openclaw/workspace
+    restart: unless-stopped
+    networks:
+      - openclaw-queue
+
+volumes:
+  redis-data:
+    driver: local
+
+networks:
+  openclaw-queue:
+    driver: bridge
