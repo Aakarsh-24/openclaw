@@ -70,3 +70,137 @@ Run locally:
 pip install detect-secrets==1.5.0
 detect-secrets scan --baseline .secrets.baseline
 ```
+
+# Security Policy
+
+This project operates with elevated privileges, executes code, and interacts with external systems using long-lived credentials. **Security failures can result in full host compromise.** This document defines how to report vulnerabilities and how operators must respond.
+
+---
+
+## Supported Versions
+
+Only the `main` branch and the most recent tagged release are supported for security fixes.
+
+Do **not** assume older releases are safe.
+
+---
+
+## Threat Model (Read This First)
+
+OpenClaw:
+- Executes code and tools on behalf of users
+- Accepts **untrusted input** (messages, prompts, events)
+- Stores and loads **secrets at runtime**
+- Is commonly deployed with network access and automation privileges
+
+### Primary Threats
+- Remote Code Execution (RCE)
+- Credential exfiltration from `.env`, containers, volumes, CI
+- Lateral movement using reused secrets
+- Persistence via cron, services, or modified startup scripts
+- Abuse of third-party APIs (LLMs, bots, trading, messaging)
+
+**If OpenClaw is compromised, assume the host is compromised.**
+
+---
+
+## Incident Response (RCE / Active Exploitation)
+
+If you suspect or confirm exploitation:
+
+### 1. Contain Immediately
+- Stop OpenClaw and any related services
+- Disable inbound access (ports, tunnels, reverse proxies)
+- Isolate the host from the network if possible
+
+### 2. Preserve Evidence (Optional but Recommended)
+- Save application logs
+- Save container logs
+- Note timestamps, IPs, and abnormal behavior
+
+### 3. Assume All Secrets Are Compromised
+This includes but is not limited to:
+- `.env` files
+- LLM API keys (OpenAI, Anthropic, etc.)
+- Bot tokens (Discord, Telegram, Slack, Signal)
+- Webhooks
+- CI/CD secrets
+- SSH keys accessible to the process
+- Tokens cached in containers or volumes
+
+### 4. Rotate and Revoke
+- Revoke old keys at the provider level
+- Generate new keys
+- Do not reuse values
+- Do not keep old keys “just in case”
+
+### 5. Rebuild From Clean State
+- Delete containers, images, and volumes used by OpenClaw
+- Rebuild from fresh sources
+- Prefer redeploying to a new host if compromise is likely
+
+**Patching in place after RCE is not sufficient.**
+
+---
+
+## Credential Management Requirements
+
+### Required Practices
+- Do not hard-code secrets
+- Do not commit `.env` or config files with secrets
+- Restrict file permissions (`chmod 600 .env`)
+- Use least-privilege API keys
+- Rotate secrets regularly and after any incident
+
+### Strongly Recommended
+- Use a secret manager instead of `.env`
+- Use short-lived tokens where possible
+- Apply outbound network restrictions
+- Run OpenClaw as a non-root user
+- Do not expose services to the public internet unless required
+
+---
+
+## Secure Deployment Guidelines
+
+- Do not expose OpenClaw gateways directly to the internet
+- Avoid running with unnecessary filesystem access
+- Avoid mounting sensitive host directories
+- Audit Docker volumes for stored secrets
+- Treat CI runners and automation as high-risk targets
+
+---
+
+## Reporting a Vulnerability
+
+### How to Report
+Email: `steipete@gmail.com` 
+(If PGP is provided, encrypted disclosure is preferred.)
+
+### Include:
+- Description of the issue
+- Impact (RCE, credential leak, privilege escalation, etc.)
+- Steps to reproduce (if safe)
+- Affected versions or commit hashes
+- Any indicators of active exploitation
+
+### Expectations
+- Please disclose responsibly
+- Do not publish exploit details before a fix or advisory
+- We aim to acknowledge reports promptly
+
+---
+
+## Bug Bounties
+
+There is currently **no formal bug bounty program**.  
+Valid, high-impact reports are still strongly encouraged.
+
+---
+
+## User Responsibility Notice
+
+OpenClaw is powerful by design.  
+If you deploy it with automation, network access, or privileged credentials, **you accept operational security responsibility**.
+
+If you do not understand the risks described above, do not deploy OpenClaw in production or on exposed systems.
