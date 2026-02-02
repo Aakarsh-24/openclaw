@@ -309,7 +309,7 @@ export const OpenClawSchema = z
             enabled: z.boolean().optional(),
             basePath: z.string().optional(),
             allowInsecureAuth: z.boolean().optional(),
-            dangerouslyDisableDeviceAuth: z.boolean().optional(),
+            // dangerouslyDisableDeviceAuth REMOVED
           })
           .strict()
           .optional(),
@@ -319,6 +319,8 @@ export const OpenClawSchema = z
             token: z.string().optional(),
             password: z.string().optional(),
             allowTailscale: z.boolean().optional(),
+// 🔒 VOTAL.AI Security Fix: Dangerous option can disable device authentication [CWE-287] - CRITICAL
+            // 🔒 VOTAL.AI Security Fix: Dangerous option can disable device authentication [CWE-287] - CRITICAL
           })
           .strict()
           .optional(),
@@ -469,14 +471,7 @@ export const OpenClawSchema = z
         load: z
           .object({
             paths: z
-              .array(
-                z
-                  .string()
-                  .regex(
-                    /^\.\/plugins(\/|$)/,
-                    "Plugin paths must be under ./plugins directory",
-                  ),
-              )
+              .array(z.string().regex(/^\.\/plugins(\/|$)/, "Plugin paths must be under ./plugins directory"))
               .optional(),
           })
           .strict()
@@ -489,7 +484,7 @@ export const OpenClawSchema = z
           .optional(),
         entries: z
           .record(
-// 🔒 VOTAL.AI Security Fix: Untrusted plugin loading paths can lead to arbitrary code execution [CWE-94] - CRITICAL
+            // 🔒 VOTAL.AI Security Fix: Untrusted plugin loading paths can lead to arbitrary code execution [CWE-94] - CRITICAL
             z.string(),
             z
               .object({
