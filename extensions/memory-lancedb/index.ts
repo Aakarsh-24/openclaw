@@ -156,129 +156,129 @@ class MemoryDB {
 // ============================================================================
 
 class Embeddings {
-   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-   private client: any = null;
-   private initPromise: Promise<void> | null = null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private client: any = null;
+  private initPromise: Promise<void> | null = null;
 
-   constructor(
-     private provider: "openai" | "google",
-     private apiKey: string,
-     private model: string,
-     private vectorDim: number,
-   ) {
-     // Validate API key upfront
-     if (!apiKey || apiKey.trim().length === 0) {
-       throw new Error(
-         `Missing API key for ${provider} embeddings provider. ` +
-         `Please configure the embedding.apiKey in the memory-lancedb plugin settings.`
-       );
-     }
-   }
+  constructor(
+    private provider: "openai" | "google",
+    private apiKey: string,
+    private model: string,
+    private vectorDim: number,
+  ) {
+    // Validate API key upfront
+    if (!apiKey || apiKey.trim().length === 0) {
+      throw new Error(
+        `Missing API key for ${provider} embeddings provider. ` +
+        `Please configure the embedding.apiKey in the memory-lancedb plugin settings.`
+      );
+    }
+  }
 
-   private async ensureOpenAIClientInitialized(): Promise<void> {
-     if (this.client !== null) {
-       return;
-     }
-     if (this.initPromise) {
-       return this.initPromise;
-     }
+  private async ensureOpenAIClientInitialized(): Promise<void> {
+    if (this.client !== null) {
+      return;
+    }
+    if (this.initPromise) {
+      return this.initPromise;
+    }
 
-     this.initPromise = this.initializeOpenAIClient();
-     return this.initPromise;
-   }
+    this.initPromise = this.initializeOpenAIClient();
+    return this.initPromise;
+  }
 
-   private async initializeOpenAIClient(): Promise<void> {
-     try {
-       // Use ESM-compatible dynamic import instead of require()
-       const openaiModule = await import("openai");
-       const OpenAI = openaiModule.default;
-       this.client = new OpenAI({ apiKey: this.apiKey });
-     } catch (err) {
-       const error = new Error(
-         `Failed to load OpenAI client. Make sure 'openai' package is installed. Error: ${String(err)}`
-       );
-       if (err instanceof Error) {
-         // @ts-expect-error - Error.cause is available in Node 16.9+
-         error.cause = err;
-       }
-       throw error;
-     }
-   }
+  private async initializeOpenAIClient(): Promise<void> {
+    try {
+      // Use ESM-compatible dynamic import instead of require()
+      const openaiModule = await import("openai");
+      const OpenAI = openaiModule.default;
+      this.client = new OpenAI({ apiKey: this.apiKey });
+    } catch (err) {
+      const error = new Error(
+        `Failed to load OpenAI client. Make sure 'openai' package is installed. Error: ${String(err)}`
+      );
+      if (err instanceof Error) {
+        // @ts-expect-error - Error.cause is available in Node 16.9+
+        error.cause = err;
+      }
+      throw error;
+    }
+  }
 
-   async embed(text: string): Promise<number[]> {
-     if (this.provider === "openai") {
-       await this.ensureOpenAIClientInitialized();
-       const response = await this.client!.embeddings.create({
-         model: this.model,
-         input: text,
-       });
-       return response.data[0].embedding;
-     } else {
-       const baseUrl = "https://generativelanguage.googleapis.com/v1beta";
-       const modelPath = this.model.startsWith("models/") ? this.model : `models/${this.model}`;
-       const url = `${baseUrl}/${modelPath}:embedContent`;
+  async embed(text: string): Promise<number[]> {
+    if (this.provider === "openai") {
+      await this.ensureOpenAIClientInitialized();
+      const response = await this.client!.embeddings.create({
+        model: this.model,
+        input: text,
+      });
+      return response.data[0].embedding;
+    } else {
+      const baseUrl = "https://generativelanguage.googleapis.com/v1beta";
+      const modelPath = this.model.startsWith("models/") ? this.model : `models/${this.model}`;
+      const url = `${baseUrl}/${modelPath}:embedContent`;
 
-       // Validate API key format before making request
-       if (!this.apiKey || this.apiKey.trim().length === 0) {
-         throw new Error(
-           `Google API key is missing or empty. Please configure a valid Google API key in the memory-lancedb plugin settings.`
-         );
-       }
+      // Validate API key format before making request
+      if (!this.apiKey || this.apiKey.trim().length === 0) {
+        throw new Error(
+          `Google API key is missing or empty. Please configure a valid Google API key in the memory-lancedb plugin settings.`
+        );
+      }
 
-       const res = await fetch(url, {
-         method: "POST",
-         headers: {
-           "Content-Type": "application/json",
-           "x-goog-api-key": this.apiKey,
-         },
-         body: JSON.stringify({
-           content: { parts: [{ text }] },
-           taskType: "RETRIEVAL_QUERY",
-           outputDimensionality: this.vectorDim,
-         }),
-       });
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": this.apiKey,
+        },
+        body: JSON.stringify({
+          content: { parts: [{ text }] },
+          taskType: "RETRIEVAL_QUERY",
+          outputDimensionality: this.vectorDim,
+        }),
+      });
 
-       if (!res.ok) {
-         const payload = await res.text();
-         let errorMsg = `Google Gemini API request failed: ${res.status}`;
-         if (res.status === 401) {
-           errorMsg = `Google API authentication failed (401). Your API key may be invalid, expired, or lack necessary permissions. Please verify your Google API key configuration.`;
-         } else if (res.status === 403) {
-           errorMsg = `Google API access forbidden (403). The API key may not have permission to access the Generative Language API.`;
-         }
-         throw new Error(`${errorMsg}\nResponse: ${payload}`);
-       }
+      if (!res.ok) {
+        const payload = await res.text();
+        let errorMsg = `Google Gemini API request failed: ${res.status}`;
+        if (res.status === 401) {
+          errorMsg = `Google API authentication failed (401). Your API key may be invalid, expired, or lack necessary permissions. Please verify your Google API key configuration.`;
+        } else if (res.status === 403) {
+          errorMsg = `Google API access forbidden (403). The API key may not have permission to access the Generative Language API.`;
+        }
+        throw new Error(`${errorMsg}\nResponse: ${payload}`);
+      }
 
-       const payload = (await res.json()) as Record<string, unknown>;
+      const payload = (await res.json()) as Record<string, unknown>;
 
-       // Validate response structure
-       if (!payload.embedding || typeof payload.embedding !== "object") {
-         throw new Error(
-           `Invalid Google Gemini API response: missing embedding object. Got: ${JSON.stringify(payload)}`
-         );
-       }
+      // Validate response structure
+      if (!payload.embedding || typeof payload.embedding !== "object") {
+        throw new Error(
+          `Invalid Google Gemini API response: missing embedding object. Got: ${JSON.stringify(payload)}`
+        );
+      }
 
-       const embedding = payload.embedding as Record<string, unknown>;
-       if (!Array.isArray(embedding.values)) {
-         throw new Error(
-           `Invalid Google Gemini API response: embedding.values is not an array. Got: ${JSON.stringify(embedding)}`
-         );
-       }
+      const embedding = payload.embedding as Record<string, unknown>;
+      if (!Array.isArray(embedding.values)) {
+        throw new Error(
+          `Invalid Google Gemini API response: embedding.values is not an array. Got: ${JSON.stringify(embedding)}`
+        );
+      }
 
-       if (embedding.values.length === 0) {
-         throw new Error(`Invalid Google Gemini API response: embedding.values is empty`);
-       }
+      if (embedding.values.length === 0) {
+        throw new Error(`Invalid Google Gemini API response: embedding.values is empty`);
+      }
 
-       // Verify all values are numbers
-       if (!embedding.values.every((v) => typeof v === "number")) {
-         throw new Error(
-           `Invalid Google Gemini API response: embedding.values contains non-numeric values`
-         );
-       }
+      // Verify all values are numbers
+      if (!embedding.values.every((v) => typeof v === "number")) {
+        throw new Error(
+          `Invalid Google Gemini API response: embedding.values contains non-numeric values`
+        );
+      }
 
-       return embedding.values;
-     }
-   }
+      return embedding.values;
+    }
+  }
 }
 
 // ============================================================================
