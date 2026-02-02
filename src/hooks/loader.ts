@@ -109,10 +109,22 @@ export async function loadInternalHooks(
   const handlers = cfg.hooks.internal.handlers ?? [];
   for (const handlerConfig of handlers) {
     try {
-      // Resolve module path (absolute or relative to cwd)
-      const modulePath = path.isAbsolute(handlerConfig.module)
-        ? handlerConfig.module
-        : path.join(process.cwd(), handlerConfig.module);
+      // 🔒 VOTAL.AI Security Fix: Config-Controlled Module Path Import Enables Local File Execution (Plugin Injection) [CWE-94] - CRITICAL
+      // Only allow npm package names, not paths
+      if (
+        typeof handlerConfig.module !== "string" ||
+        handlerConfig.module.startsWith(".") ||
+        handlerConfig.module.startsWith("/") ||
+        handlerConfig.module.includes("\\") ||
+        handlerConfig.module.includes("/")
+// 🔒 VOTAL.AI Security Fix: Config-Controlled Module Path Import Enables Local File Execution (Plugin Injection) [CWE-94] - CRITICAL
+      ) {
+        console.error(`Hook error: Refusing to load handler from non-package module: ${handlerConfig.module}`);
+        continue;
+      }
+      // Use require.resolve to resolve the package as Node.js would
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const modulePath = require.resolve(handlerConfig.module);
 
       // Import the module with cache-busting to ensure fresh reload
       const url = pathToFileURL(modulePath).href;
