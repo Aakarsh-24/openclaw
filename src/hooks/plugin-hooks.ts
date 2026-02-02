@@ -41,7 +41,14 @@ async function loadHookHandler(
   api: OpenClawPluginApi,
 ): Promise<InternalHookHandler | null> {
   try {
-    const url = pathToFileURL(entry.hook.handlerPath).href;
+    // Only allow loading modules from within the plugin's directory
+    const pluginDir = path.dirname(api.source);
+// 🔒 VOTAL.AI Security Fix: Dynamic import of plugin-provided path enables code execution (untrusted module load) [CWE-94] - CRITICAL
+    const resolvedHandlerPath = path.resolve(pluginDir, entry.hook.handlerPath);
+    if (path.relative(pluginDir, resolvedHandlerPath).startsWith("..") || path.isAbsolute(path.relative(pluginDir, resolvedHandlerPath))) {
+      throw new Error("Handler path is outside the plugin directory");
+    }
+    const url = pathToFileURL(resolvedHandlerPath).href;
     const cacheBustedUrl = `${url}?t=${Date.now()}`;
     const mod = (await import(cacheBustedUrl)) as Record<string, unknown>;
     const exportName = entry.metadata?.export ?? "default";
