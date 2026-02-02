@@ -82,16 +82,16 @@ function mergeActionIntoArgsIfSupported(params: {
   if (!action) {
     return args;
   }
-  if (args.action !== undefined) {
+  if ((args as Record<string, unknown>).action !== undefined) {
     return args;
   }
   // TypeBox schemas are plain objects; many tools define an `action` property.
   const schemaObj = toolSchema as { properties?: Record<string, unknown> } | null;
   const hasAction = Boolean(
     schemaObj &&
-    typeof schemaObj === "object" &&
-    schemaObj.properties &&
-    "action" in schemaObj.properties,
+      typeof schemaObj === "object" &&
+      schemaObj.properties &&
+      "action" in schemaObj.properties,
   );
   if (!hasAction) {
     return args;
@@ -169,9 +169,7 @@ export async function handleToolsInvokeHttpRequest(
     !rawSessionKey || rawSessionKey === "main" ? resolveMainSessionKey(cfg) : rawSessionKey;
 
   // Resolve message channel/account hints (optional headers) for policy inheritance.
-  const messageChannel = normalizeMessageChannel(
-    getHeader(req, "x-openclaw-message-channel") ?? "",
-  );
+  const messageChannel = normalizeMessageChannel(getHeader(req, "x-openclaw-message-channel") ?? "");
   const accountId = getHeader(req, "x-openclaw-account-id")?.trim() || undefined;
 
   const {
@@ -206,9 +204,7 @@ export async function handleToolsInvokeHttpRequest(
     messageProvider: messageChannel ?? undefined,
     accountId: accountId ?? null,
   });
-  const subagentPolicy = isSubagentSessionKey(sessionKey)
-    ? resolveSubagentToolPolicy(cfg)
-    : undefined;
+  const subagentPolicy = isSubagentSessionKey(sessionKey) ? resolveSubagentToolPolicy(cfg) : undefined;
 
   // Build tool list (core + plugin tools).
   const allTools = createOpenClawTools({
@@ -313,6 +309,17 @@ export async function handleToolsInvokeHttpRequest(
       action,
       args,
     });
+    // Minimal fix: only allow empty args or args with primitive values (no objects/arrays)
+    for (const v of Object.values(toolArgs)) {
+      if (typeof v === "object" && v !== null) {
+        sendJson(res, 400, {
+          ok: false,
+// 🔒 VOTAL.AI Security Fix: Untrusted tool invocation with user-controlled arguments may enable SSRF/RCE via tool implementations [CWE-94] - CRITICAL
+          error: { type: "invalid_request", message: "Nested objects/arrays not allowed in args." },
+        });
+        return true;
+      }
+    }
     // oxlint-disable-next-line typescript/no-explicit-any
     const result = await (tool as any).execute?.(`http-${Date.now()}`, toolArgs);
     sendJson(res, 200, { ok: true, result });
