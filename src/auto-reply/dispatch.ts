@@ -24,8 +24,16 @@ export async function dispatchInboundMessage(params: {
 }): Promise<DispatchInboundResult> {
   const finalized = finalizeInboundContext(params.ctx);
 
-  // Trigger message:received hook before processing
-  await triggerMessageReceived(finalized.SessionKey ?? "", finalized);
+  // Trigger message:received hook before processing (fire-and-forget to avoid blocking)
+  // Only trigger if sessionKey is present to avoid collapsing events into unusable bucket
+  if (finalized.SessionKey) {
+    triggerMessageReceived(finalized.SessionKey, finalized).catch((err) => {
+      console.error(
+        "[message:received hook] Error:",
+        err instanceof Error ? err.message : String(err),
+      );
+    });
+  }
 
   return await dispatchReplyFromConfig({
     ctx: finalized,

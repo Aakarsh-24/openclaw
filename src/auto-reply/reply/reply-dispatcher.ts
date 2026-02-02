@@ -149,12 +149,18 @@ export function createReplyDispatcher(options: ReplyDispatcherOptions): ReplyDis
         }
         await options.deliver(normalized, { kind });
 
-        // Trigger message:sent hook after successful delivery
+        // Trigger message:sent hook after successful delivery (fire-and-forget)
+        // Isolated from delivery to avoid marking successful sends as failed
         if (options.hookContext?.sessionKey) {
-          await triggerMessageSent(options.hookContext.sessionKey, normalized, {
+          triggerMessageSent(options.hookContext.sessionKey, normalized, {
             target: options.hookContext.target,
             channel: options.hookContext.channel,
             kind,
+          }).catch((err) => {
+            console.error(
+              "[message:sent hook] Error:",
+              err instanceof Error ? err.message : String(err),
+            );
           });
         }
       })
