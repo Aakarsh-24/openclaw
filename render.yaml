@@ -3,7 +3,8 @@ services:
     name: openclaw
     runtime: docker
     plan: standard
-    dockerCommand: /bin/sh -c "node dist/index.js doctor --fix; node dist/index.js gateway --bind lan --port 8080 --allow-unconfigured"
+    preDeployCommand: node dist/index.js doctor --fix
+    dockerCommand: node dist/index.js gateway --bind lan --port 8080 --allow-unconfigured
     healthCheckPath: /health
     envVars:
       - key: PORT
