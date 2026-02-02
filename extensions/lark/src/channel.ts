@@ -423,14 +423,14 @@ export const larkPlugin: ChannelPlugin<ResolvedLarkAccount> = {
       }
       return { channel: "lark", messageId: "empty", chatId: to };
     },
-    sendText: async ({ to, text, accountId }) => {
-      const account = resolveLarkAccount({ accountId: accountId ?? DEFAULT_ACCOUNT_ID });
+    sendText: async ({ cfg, to, text, accountId }) => {
+      const account = resolveLarkAccount({ cfg, accountId: accountId ?? DEFAULT_ACCOUNT_ID });
       const token = await getLarkTenantAccessToken(account.appId, account.appSecret);
       const result = await sendLarkMessage(token, to, "text", JSON.stringify({ text }));
       return { channel: "lark", ...result };
     },
-    sendMedia: async ({ to, text, mediaUrl, accountId }) => {
-      const account = resolveLarkAccount({ accountId: accountId ?? DEFAULT_ACCOUNT_ID });
+    sendMedia: async ({ cfg, to, text, mediaUrl, accountId }) => {
+      const account = resolveLarkAccount({ cfg, accountId: accountId ?? DEFAULT_ACCOUNT_ID });
       const token = await getLarkTenantAccessToken(account.appId, account.appSecret);
       // 简化处理：发送带链接的文本
       const content = text ? `${text}\n\n📎 [媒体文件](${mediaUrl})` : `📎 [媒体文件](${mediaUrl})`;

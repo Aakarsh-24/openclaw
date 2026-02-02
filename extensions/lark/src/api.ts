@@ -9,6 +9,7 @@ import type {
   LarkTenantAccessToken,
   LarkSendMessageRequest,
   LarkMessageEvent,
+  LarkMessageType,
 } from "./types.js";
 import { DEFAULT_ACCOUNT_ID } from "openclaw/plugin-sdk";
 
@@ -189,10 +190,12 @@ export async function getLarkTenantAccessToken(
   const token = data.data.tenant_access_token;
   const expireIn = data.data.expire;
 
-  // 缓存 token，提前 60 秒过期
+  // 缓存 token，提前 60 秒过期，但至少保留 1 秒
+  const bufferSeconds = 60;
+  const ttlSeconds = Math.max(1, expireIn - bufferSeconds);
   tokenCache.set(cacheKey, {
     token,
-    expireAt: Date.now() + (expireIn - 60) * 1000,
+    expireAt: Date.now() + ttlSeconds * 1000,
   });
 
   return token;
@@ -204,7 +207,7 @@ export async function getLarkTenantAccessToken(
 export async function sendLarkMessage(
   token: string,
   receiveId: string,
-  msgType: string,
+  msgType: LarkMessageType,
   content: string,
 ): Promise<{ messageId: string; chatId: string }> {
   const response = await fetch(`${LARK_API_BASE}/im/v1/messages`, {
