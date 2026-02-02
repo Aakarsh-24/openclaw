@@ -337,7 +337,7 @@ async function extractFileBlocks(params: {
     }
     const forcedTextMime = resolveTextMimeFromName(attachment.path ?? attachment.url ?? "");
     const kind = forcedTextMime ? "document" : resolveAttachmentKind(attachment);
-    if (!forcedTextMime && (kind === "image" || kind === "video")) {
+    if (!forcedTextMime && (kind === "image" || kind === "video" || kind === "audio")) {
       continue;
     }
     if (!limits.allowUrl && attachment.url && !attachment.path) {
