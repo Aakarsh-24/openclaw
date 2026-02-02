@@ -13,6 +13,7 @@ import {
 } from "../pi-embedded-helpers.js";
 import { cleanToolSchemaForGemini } from "../pi-tools.schema.js";
 import { sanitizeToolUseResultPairing } from "../session-transcript-repair.js";
+import { filterOrphanedToolResults } from "../tool-compatibility-filter.js";
 import { resolveTranscriptPolicy } from "../transcript-policy.js";
 import { log } from "./logger.js";
 import { describeUnknownError } from "./utils.js";
@@ -336,7 +337,17 @@ export async function sanitizeSessionHistory(params: {
       provider: params.provider,
       modelId: params.modelId,
     });
-  const sanitizedImages = await sanitizeSessionMessagesImages(params.messages, "session:history", {
+
+  const { filtered: compatibleMessages, removedCount } = filterOrphanedToolResults(params.messages);
+  
+  if (removedCount > 0) {
+    log.info(
+      `Filtered ${removedCount} orphaned tool results for provider compatibility ` +
+      `(${params.provider}/${params.modelId})`
+    );
+  }
+
+  const sanitizedImages = await sanitizeSessionMessagesImages(compatibleMessages, "session:history", {
     sanitizeMode: policy.sanitizeMode,
     sanitizeToolCallIds: policy.sanitizeToolCallIds,
     toolCallIdMode: policy.toolCallIdMode,
