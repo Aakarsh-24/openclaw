@@ -74,7 +74,9 @@ export function parseContactsMarkdown(content: string): Contact[] {
 export function findContactByName(contacts: Contact[], name: string): Contact | undefined {
   const searchTokens = name.toLowerCase().trim().split(/\s+/);
   const exactMatch = contacts.find((c) => c.name.toLowerCase() === name.toLowerCase().trim());
-  if (exactMatch) return exactMatch;
+  if (exactMatch) {
+    return exactMatch;
+  }
   return contacts.find((c) => {
     const contactTokens = c.name.toLowerCase().split(/\s+/);
     return (
