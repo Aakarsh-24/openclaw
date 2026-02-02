@@ -6,6 +6,7 @@ Docs: https://docs.openclaw.ai
 
 ### Changes
 
+- Config: store config backups under `backups/` and add `openclaw config backups` migration command. (#6697) Thanks @BrennerSpear.
 - Docs: onboarding/install/i18n/exec-approvals/Control UI/exe.dev/cacheRetention updates + misc nav/typos.
 - Telegram: use shared pairing store. (#6127) Thanks @obviyus.
 - Agents: add OpenRouter app attribution headers. (#5050) Thanks @alexanderatallah.
