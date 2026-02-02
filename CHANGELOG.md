@@ -7,6 +7,7 @@ Docs: https://docs.openclaw.ai
 ### Fixes
 
 - Telegram: enforce thread specs for DM vs forum sends. (#6833) Thanks @obviyus.
+- Cron: preserve scheduled next run across gateway restarts so missed runs stay due. (#6924)
 
 ## 2026.1.31
 
