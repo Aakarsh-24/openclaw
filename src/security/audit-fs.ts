@@ -98,9 +98,8 @@ export async function inspectPathPermissions(
     }
   }
 
-  const bits = modeBits(effectiveMode);
-
   if (platform === "win32") {
+    const bits = modeBits(st.mode);
     const acl = await inspectWindowsAcl(targetPath, { env: opts?.env, exec: opts?.exec });
     if (!acl.ok) {
       return {
@@ -132,6 +131,7 @@ export async function inspectPathPermissions(
     };
   }
 
+  const bits = modeBits(effectiveMode);
   return {
     ok: true,
     isSymlink: st.isSymlink,
