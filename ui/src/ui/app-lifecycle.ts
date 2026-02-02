@@ -17,6 +17,7 @@ import {
   syncTabWithLocation,
   syncThemeWithSettings,
 } from "./app-settings";
+import { observeCodeBlocks } from "./chat/code-block-copy";
 
 type LifecycleHost = {
   basePath: string;
@@ -32,6 +33,9 @@ type LifecycleHost = {
   popStateHandler: () => void;
   topbarObserver: ResizeObserver | null;
 };
+
+let codeBlockCleanup: (() => void) | null = null;
+let codeBlockRoot: HTMLElement | null = null;
 
 export function handleConnected(host: LifecycleHost) {
   host.basePath = inferBasePath();
@@ -62,6 +66,9 @@ export function handleDisconnected(host: LifecycleHost) {
   detachThemeListener(host as unknown as Parameters<typeof detachThemeListener>[0]);
   host.topbarObserver?.disconnect();
   host.topbarObserver = null;
+  codeBlockCleanup?.();
+  codeBlockCleanup = null;
+  codeBlockRoot = null;
 }
 
 export function handleUpdated(host: LifecycleHost, changed: Map<PropertyKey, unknown>) {
@@ -80,7 +87,23 @@ export function handleUpdated(host: LifecycleHost, changed: Map<PropertyKey, unk
       host as unknown as Parameters<typeof scheduleChatScroll>[0],
       forcedByTab || forcedByLoad || !host.chatHasAutoScrolled,
     );
+
+    // Attach code block copy observer once per chat-thread element
+    const chatArea = (host as unknown as HTMLElement).querySelector?.(".chat-thread");
+    if (chatArea instanceof HTMLElement && chatArea !== codeBlockRoot) {
+      codeBlockCleanup?.();
+      codeBlockCleanup = observeCodeBlocks(chatArea);
+      codeBlockRoot = chatArea;
+    }
   }
+
+  // Tear down observer when leaving chat tab
+  if (changed.has("tab") && host.tab !== "chat" && codeBlockCleanup) {
+    codeBlockCleanup();
+    codeBlockCleanup = null;
+    codeBlockRoot = null;
+  }
+
   if (
     host.tab === "logs" &&
     (changed.has("logsEntries") || changed.has("logsAutoFollow") || changed.has("tab"))
