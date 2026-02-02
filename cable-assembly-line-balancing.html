@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Line Balancing – Double End M12 Cable Assembly 5 Pole Female 5M</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --surface: #1e293b;
+    --border: #334155;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --accent: #38bdf8;
+    --accent2: #818cf8;
+    --green: #4ade80;
+    --yellow: #fbbf24;
+    --red: #f87171;
+    --orange: #fb923c;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  header {
+    background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 24px 32px;
+    text-align: center;
+  }
+  header h1 { font-size: 1.5rem; font-weight: 700; color: var(--accent); margin-bottom: 4px; }
+  header p { color: var(--muted); font-size: 0.9rem; }
+  .container { max-width: 1440px; margin: 0 auto; padding: 24px; }
+
+  /* Controls */
+  .controls {
+    display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: center;
+    margin-bottom: 24px; padding: 16px;
+    background: var(--surface); border-radius: 12px; border: 1px solid var(--border);
+  }
+  .control-group { display: flex; align-items: center; gap: 8px; }
+  .control-group label { color: var(--muted); font-size: 0.85rem; white-space: nowrap; }
+  .control-group select, .control-group input[type="number"] {
+    background: var(--bg); color: var(--text); border: 1px solid var(--border);
+    border-radius: 6px; padding: 6px 12px; font-size: 0.85rem;
+  }
+  .control-group input[type="range"] { width: 120px; accent-color: var(--accent); }
+  button {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #0f172a; font-weight: 600; border: none; border-radius: 8px;
+    padding: 8px 20px; cursor: pointer; font-size: 0.85rem;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  button:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(56,189,248,0.3); }
+  button:active { transform: translateY(0); }
+  button.secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  /* KPI Cards */
+  .kpi-row {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+    gap: 12px; margin-bottom: 24px;
+  }
+  .kpi-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px; text-align: center; transition: border-color 0.3s;
+  }
+  .kpi-card .kpi-value { font-size: 1.5rem; font-weight: 700; color: var(--accent); transition: color 0.5s; }
+  .kpi-card .kpi-label {
+    font-size: 0.7rem; color: var(--muted); margin-top: 4px;
+    text-transform: uppercase; letter-spacing: 0.05em;
+  }
+
+  /* Section headings */
+  .chart-section { margin-bottom: 32px; }
+  .chart-section h2 {
+    font-size: 1.1rem; color: var(--text); margin-bottom: 12px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .chart-section h2 .badge {
+    font-size: 0.7rem; background: var(--accent); color: #0f172a;
+    padding: 2px 8px; border-radius: 4px; font-weight: 600;
+  }
+  .chart-wrapper {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 24px; overflow-x: auto;
+  }
+
+  /* Bar chart */
+  .bar-chart {
+    display: flex; align-items: flex-end; gap: 6px;
+    height: 320px; padding-top: 20px; position: relative;
+  }
+  .bar-chart .grid-line {
+    position: absolute; left: 0; right: 0;
+    border-top: 1px dashed var(--border); pointer-events: none;
+  }
+  .bar-chart .grid-label {
+    position: absolute; left: -4px; transform: translateX(-100%);
+    color: var(--muted); font-size: 0.7rem; pointer-events: none;
+  }
+  .station-col {
+    flex: 1; min-width: 60px; max-width: 140px;
+    display: flex; flex-direction: column; align-items: center; position: relative;
+  }
+  .station-bar-stack {
+    width: 100%; display: flex; flex-direction: column-reverse;
+    align-items: stretch; position: relative;
+  }
+  .task-segment {
+    border-radius: 4px; margin-bottom: 2px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.65rem; font-weight: 600; color: #fff;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    padding: 0 4px; cursor: pointer; position: relative;
+    transition: height 0.8s cubic-bezier(0.34,1.56,0.64,1), opacity 0.6s, transform 0.6s;
+  }
+  .task-segment:hover { filter: brightness(1.2); z-index: 10; }
+  .task-segment .tooltip {
+    display: none; position: absolute; bottom: calc(100% + 8px); left: 50%;
+    transform: translateX(-50%); background: #0f172a; border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 14px; font-size: 0.75rem; color: var(--text);
+    white-space: nowrap; z-index: 100; pointer-events: none;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4); min-width: 240px; text-align: left;
+  }
+  .task-segment:hover .tooltip { display: block; }
+  .station-label { margin-top: 8px; font-size: 0.75rem; color: var(--muted); text-align: center; font-weight: 600; }
+  .station-time { font-size: 0.7rem; color: var(--accent); font-weight: 700; margin-top: 2px; }
+  .takt-line {
+    position: absolute; left: 0; right: 0; border-top: 2.5px dashed var(--red);
+    z-index: 5; pointer-events: none; transition: top 0.8s ease;
+  }
+  .takt-label {
+    position: absolute; right: 0; transform: translateY(-100%);
+    background: var(--red); color: #fff; font-size: 0.65rem; font-weight: 700;
+    padding: 2px 8px; border-radius: 4px 4px 0 0;
+  }
+
+  /* Process table */
+  .process-table-wrap { overflow-x: auto; margin-bottom: 24px; }
+  table.process-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+  table.process-table th {
+    background: #1a2744; color: var(--accent); padding: 10px 12px;
+    text-align: left; font-weight: 600; border-bottom: 2px solid var(--border); white-space: nowrap;
+  }
+  table.process-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  table.process-table tr:hover td { background: rgba(56,189,248,0.05); }
+  table.process-table .sap { color: var(--muted); }
+  table.process-table .station-tag {
+    display: inline-block; padding: 2px 8px; border-radius: 4px;
+    font-weight: 600; font-size: 0.7rem;
+  }
+
+  /* Layout grid */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
+  @media (max-width: 900px) { .two-col { grid-template-columns: 1fr; } }
+
+  /* Gantt timeline */
+  .gantt-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; }
+  .gantt-row { display: flex; align-items: center; margin-bottom: 6px; gap: 8px; }
+  .gantt-label { width: 80px; font-size: 0.75rem; color: var(--muted); font-weight: 600; flex-shrink: 0; text-align: right; }
+  .gantt-bar-track { flex: 1; height: 28px; background: var(--bg); border-radius: 6px; position: relative; overflow: hidden; }
+  .gantt-bar {
+    position: absolute; top: 2px; bottom: 2px; border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.65rem; font-weight: 600; color: #fff;
+    transition: left 0.8s ease, width 0.8s ease; overflow: hidden;
+  }
+
+  /* Efficiency gauge */
+  .gauge-container { display: flex; align-items: center; justify-content: center; gap: 24px; padding: 20px; }
+  .gauge-ring { width: 140px; height: 140px; position: relative; }
+  .gauge-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .gauge-ring .bg-ring { fill: none; stroke: var(--border); stroke-width: 10; }
+  .gauge-ring .fg-ring {
+    fill: none; stroke-width: 10; stroke-linecap: round;
+    transition: stroke-dashoffset 1.5s cubic-bezier(0.34,1.56,0.64,1), stroke 0.5s;
+  }
+  .gauge-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); text-align: center; }
+  .gauge-center .value { font-size: 1.6rem; font-weight: 700; }
+  .gauge-center .label { font-size: 0.7rem; color: var(--muted); }
+
+  /* ── Station Resource Cards ────────────────────────────── */
+  .resource-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 14px;
+  }
+  .resource-card {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px; transition: border-color 0.3s;
+  }
+  .resource-card:hover { border-color: var(--accent); }
+  .resource-card .rc-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--border);
+  }
+  .resource-card .rc-title { font-size: 0.85rem; font-weight: 700; color: var(--accent); }
+  .resource-card .rc-time { font-size: 0.75rem; color: var(--muted); }
+  .resource-card .rc-tasks {
+    font-size: 0.7rem; color: var(--muted); margin-bottom: 10px;
+    line-height: 1.5; max-height: 60px; overflow-y: auto;
+  }
+  .resource-card .rc-row {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .resource-card .rc-row-label { font-size: 0.78rem; color: var(--text); font-weight: 600; }
+  .rc-counter {
+    display: flex; align-items: center; gap: 4px;
+  }
+  .rc-counter button {
+    width: 26px; height: 26px; padding: 0; font-size: 1rem;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 6px; line-height: 1;
+  }
+  .rc-counter .rc-val {
+    min-width: 28px; text-align: center; font-weight: 700;
+    font-size: 0.9rem; color: var(--text);
+  }
+  .rc-machines { margin-top: 4px; }
+  .rc-machine-row {
+    display: flex; align-items: center; gap: 6px; margin-bottom: 5px;
+  }
+  .rc-machine-row select {
+    flex: 1; background: var(--surface); color: var(--text);
+    border: 1px solid var(--border); border-radius: 5px;
+    padding: 4px 8px; font-size: 0.75rem;
+  }
+  .rc-machine-row .rc-mach-qty {
+    width: 40px; background: var(--surface); color: var(--text);
+    border: 1px solid var(--border); border-radius: 5px;
+    padding: 4px 6px; font-size: 0.75rem; text-align: center;
+  }
+  .rc-machine-row button.rc-remove {
+    width: 22px; height: 22px; padding: 0; font-size: 0.8rem;
+    background: var(--red); color: #fff; border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .rc-add-machine {
+    margin-top: 6px; font-size: 0.72rem; padding: 4px 10px;
+    background: var(--surface); color: var(--accent);
+    border: 1px dashed var(--accent); border-radius: 5px;
+    cursor: pointer; width: 100%; text-align: center;
+  }
+  .rc-add-machine:hover { background: rgba(56,189,248,0.1); }
+  .rc-effective {
+    margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .rc-effective .rc-eff-label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; }
+  .rc-effective .rc-eff-value { font-size: 1rem; font-weight: 700; }
+
+  /* Animation pulse */
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
+  .animating .task-segment { animation: pulse 0.6s ease-in-out; }
+
+  footer {
+    text-align: center; padding: 24px; color: var(--muted); font-size: 0.75rem;
+    border-top: 1px solid var(--border); margin-top: 32px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Line Balancing Animation</h1>
+  <p>Double End M12 Cable Assembly – 5 Pole Female – 5 Meters</p>
+</header>
+
+<div class="container">
+
+  <!-- Controls -->
+  <div class="controls">
+    <div class="control-group">
+      <label>Target Stations:</label>
+      <input type="range" id="stationSlider" min="2" max="11" value="5">
+      <span id="stationCount" style="min-width:20px;text-align:center;">5</span>
+    </div>
+    <div class="control-group">
+      <label>Algorithm:</label>
+      <select id="algoSelect">
+        <option value="lct">Largest Candidate Time</option>
+        <option value="rpw">Ranked Positional Weight</option>
+        <option value="killbridge">Kilbridge &amp; Wester</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <label>Speed:</label>
+      <select id="speedSelect">
+        <option value="1500">Slow</option>
+        <option value="800" selected>Normal</option>
+        <option value="400">Fast</option>
+      </select>
+    </div>
+    <button id="balanceBtn">&#9654; Balance Line</button>
+    <button id="resetBtn" class="secondary">Reset</button>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpi-row">
+    <div class="kpi-card">
+      <div class="kpi-value" id="kpiTotalTime">--</div>
+      <div class="kpi-label">Total Cycle Time</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-value" id="kpiStations">--</div>
+      <div class="kpi-label">Stations</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-value" id="kpiTakt">--</div>
+      <div class="kpi-label">Bottleneck</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-value" id="kpiEfficiency">--</div>
+      <div class="kpi-label">Line Efficiency</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-value" id="kpiOPH">--</div>
+      <div class="kpi-label">Output / Hour</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-value" id="kpiIdleTime">--</div>
+      <div class="kpi-label">Total Idle Time</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-value" id="kpiWorkers">--</div>
+      <div class="kpi-label">Total Workers</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-value" id="kpiMachines">--</div>
+      <div class="kpi-label">Total Machines</div>
+    </div>
+  </div>
+
+  <!-- Main chart -->
+  <div class="chart-section">
+    <h2>Station Workload Chart <span class="badge" id="chartBadge">UNBALANCED</span></h2>
+    <div class="chart-wrapper">
+      <div class="bar-chart" id="barChart"></div>
+    </div>
+  </div>
+
+  <!-- Station Resource Assignment -->
+  <div class="chart-section">
+    <h2>Station Resources — Workers &amp; Machines</h2>
+    <div class="chart-wrapper">
+      <div class="resource-grid" id="resourceGrid"></div>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <!-- Efficiency gauge -->
+    <div class="chart-section">
+      <h2>Line Efficiency</h2>
+      <div class="chart-wrapper">
+        <div class="gauge-container">
+          <div class="gauge-ring">
+            <svg viewBox="0 0 160 160">
+              <circle class="bg-ring" cx="80" cy="80" r="65"></circle>
+              <circle class="fg-ring" id="gaugeRing" cx="80" cy="80" r="65"
+                      stroke-dasharray="408.4" stroke-dashoffset="408.4"></circle>
+            </svg>
+            <div class="gauge-center">
+              <div class="value" id="gaugeValue">0%</div>
+              <div class="label">Efficiency</div>
+            </div>
+          </div>
+          <div>
+            <div style="font-size:0.85rem;color:var(--muted);margin-bottom:8px;">Targets:</div>
+            <div style="font-size:0.8rem;margin-bottom:4px;"><span style="color:var(--green);">&#9679;</span> &gt; 85% Excellent</div>
+            <div style="font-size:0.8rem;margin-bottom:4px;"><span style="color:var(--yellow);">&#9679;</span> 70–85% Good</div>
+            <div style="font-size:0.8rem;"><span style="color:var(--red);">&#9679;</span> &lt; 70% Needs Improvement</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Gantt timeline -->
+    <div class="chart-section">
+      <h2>Station Timeline (Gantt)</h2>
+      <div class="gantt-wrap" id="ganttChart"></div>
+    </div>
+  </div>
+
+  <!-- Process table -->
+  <div class="chart-section">
+    <h2>Process Details</h2>
+    <div class="process-table-wrap">
+      <table class="process-table" id="processTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>SAP No.</th>
+            <th>Description</th>
+            <th>Cycle Time (s)</th>
+            <th>Efficiency</th>
+            <th>Adj. Cycle Time (s)</th>
+            <th>2-Side Mult.</th>
+            <th>Total (s)</th>
+            <th>P-OPH</th>
+            <th>Station</th>
+          </tr>
+        </thead>
+        <tbody id="processBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  Line Balancing Simulation &mdash; Double End M12 Cable Assembly 5 Pole Female 5 Meters
+</footer>
+
+<script>
+// ── Process Data ──────────────────────────────────────────
+// Order: PP000014 Printing before PP000013 Packaging (packaging is last).
+// Printing efficiency corrected from 180% to 80%.
+const TASKS = [
+  { id:'PP000001', desc:'Cable Cutting (5 Meter) and Binding',                        cycle:45.0,  eff:0.80, mult:1 },
+  { id:'PP000002', desc:'Removal of Fillers',                                          cycle:12.0,  eff:0.80, mult:2 },
+  { id:'PP000003', desc:'Stripping & Crimping Brown/Blue Wires – 18 AWG Short Contact',cycle:19.6,  eff:0.80, mult:2 },
+  { id:'PP000004', desc:'Stripping & Crimping Black/White Wires – 22 AWG Short Contact',cycle:35.0, eff:0.80, mult:2 },
+  { id:'PP000005', desc:'Stripping & Crimping Gray Wire – 22 AWG Long Contact',       cycle:26.2,  eff:0.80, mult:2 },
+  { id:'PP000006', desc:'Wire Guide Assembly & Pressing to Contact Holder',            cycle:69.0,  eff:0.80, mult:2 },
+  { id:'PP000007', desc:'Overmolding (One Side)',                                      cycle:25.6,  eff:0.80, mult:2 },
+  { id:'PP000008', desc:'Electrical Testing Male or Female',                           cycle:12.0,  eff:0.80, mult:1 },
+  { id:'PP000009', desc:'O-ring Mounting to Female M12',                               cycle:5.0,   eff:0.80, mult:2 },
+  { id:'PP000014', desc:'Printing',                                                    cycle:12.0,  eff:0.80, mult:2 },
+  { id:'PP000013', desc:'Packaging',                                                   cycle:7.0,   eff:0.80, mult:1 },
+];
+
+// Derived values — formula: adjCycle = cycle × (1 + (1−eff)), total = adjCycle × mult
+TASKS.forEach(t => {
+  t.adjCycle = +(t.cycle * (1 + (1 - t.eff))).toFixed(4);
+  t.total    = +(t.adjCycle * t.mult).toFixed(4);
+  t.poph     = +(3600 / t.total).toFixed(4);
+});
+
+const TOTAL_TIME = TASKS.reduce((s, t) => s + t.total, 0);
+
+const COLORS = [
+  '#38bdf8','#818cf8','#a78bfa','#f472b6','#fb923c',
+  '#4ade80','#fbbf24','#f87171','#2dd4bf','#e879f9','#94a3b8'
+];
+
+// ── Machine Catalogue ─────────────────────────────────────
+const MACHINE_CATALOGUE = [
+  'Cutting Machine',
+  'Stripping Machine',
+  'Crimping Machine (Manual)',
+  'Crimping Machine (Auto)',
+  'Wire Guide Fixture',
+  'Pressing Tool',
+  'Overmolding Machine',
+  'Electrical Tester',
+  'O-ring Assembly Fixture',
+  'Inkjet Printer',
+  'Label Printer',
+  'Packaging Station',
+  'Conveyor',
+  'Soldering Station',
+  'Heat Shrink Tool',
+  'Microscope / Inspection',
+];
+
+// Suggested default machines per task (by index)
+const DEFAULT_MACHINES = {
+  0: [{ name:'Cutting Machine', qty:1 }],
+  1: [],
+  2: [{ name:'Stripping Machine', qty:1 },{ name:'Crimping Machine (Auto)', qty:1 }],
+  3: [{ name:'Stripping Machine', qty:1 },{ name:'Crimping Machine (Auto)', qty:1 }],
+  4: [{ name:'Stripping Machine', qty:1 },{ name:'Crimping Machine (Manual)', qty:1 }],
+  5: [{ name:'Wire Guide Fixture', qty:1 },{ name:'Pressing Tool', qty:1 }],
+  6: [{ name:'Overmolding Machine', qty:1 }],
+  7: [{ name:'Electrical Tester', qty:1 }],
+  8: [{ name:'O-ring Assembly Fixture', qty:1 }],
+  9: [{ name:'Inkjet Printer', qty:1 }],
+  10:[{ name:'Packaging Station', qty:1 }],
+};
+
+// ── State ─────────────────────────────────────────────────
+let stations  = TASKS.map((_, i) => ({ tasks: [i] }));
+let stationResources = {}; // stationIdx → { workers, machines:[{name,qty}] }
+let animating = false;
+
+function initResources() {
+  stationResources = {};
+  stations.forEach((st, si) => {
+    // Merge default machines for all tasks in this station
+    const machMap = {};
+    st.tasks.forEach(ti => {
+      (DEFAULT_MACHINES[ti] || []).forEach(m => {
+        if (machMap[m.name]) machMap[m.name] += m.qty;
+        else machMap[m.name] = m.qty;
+      });
+    });
+    stationResources[si] = {
+      workers: 1,
+      machines: Object.entries(machMap).map(([name,qty]) => ({ name, qty }))
+    };
+  });
+}
+initResources();
+
+// ── Helpers ───────────────────────────────────────────────
+function rawStationTime(st)  { return st.tasks.reduce((s,ti) => s + TASKS[ti].total, 0); }
+function effectiveStationTime(si) {
+  const raw = rawStationTime(stations[si]);
+  const w   = (stationResources[si] && stationResources[si].workers) || 1;
+  return raw / w;
+}
+
+// ── Elements ──────────────────────────────────────────────
+const barChart       = document.getElementById('barChart');
+const ganttChart     = document.getElementById('ganttChart');
+const processBody    = document.getElementById('processBody');
+const chartBadge     = document.getElementById('chartBadge');
+const resourceGrid   = document.getElementById('resourceGrid');
+const stationSlider  = document.getElementById('stationSlider');
+const stationCountEl = document.getElementById('stationCount');
+const algoSelect     = document.getElementById('algoSelect');
+const speedSelect    = document.getElementById('speedSelect');
+const balanceBtn     = document.getElementById('balanceBtn');
+const resetBtn       = document.getElementById('resetBtn');
+
+stationSlider.addEventListener('input', () => { stationCountEl.textContent = stationSlider.value; });
+
+balanceBtn.addEventListener('click', () => {
+  if (animating) return;
+  runBalance(parseInt(stationSlider.value), algoSelect.value);
+});
+
+resetBtn.addEventListener('click', () => {
+  if (animating) return;
+  stations = TASKS.map((_,i) => ({ tasks:[i] }));
+  initResources();
+  chartBadge.textContent = 'UNBALANCED';
+  chartBadge.style.background = 'var(--red)';
+  render();
+});
+
+// ── Balancing Algorithms ──────────────────────────────────
+function balanceLCT(numStations) {
+  const takt    = TOTAL_TIME / numStations;
+  const maxTakt = Math.max(takt, Math.max(...TASKS.map(t => t.total)));
+  const sorted  = TASKS.map((_,i) => i).sort((a,b) => TASKS[b].total - TASKS[a].total);
+  const result  = [{ tasks:[] }];
+  let stIdx = 0, remaining = maxTakt;
+  for (const ti of sorted) {
+    if (TASKS[ti].total <= remaining + 0.01) {
+      result[stIdx].tasks.push(ti); remaining -= TASKS[ti].total;
+    } else {
+      stIdx++; result.push({ tasks:[ti] }); remaining = maxTakt - TASKS[ti].total;
+    }
+  }
+  result.forEach(s => s.tasks.sort((a,b) => a-b));
+  return result;
+}
+
+function balanceRPW(numStations) {
+  const n = TASKS.length;
+  const weights = TASKS.map((_,i) => { let w=0; for(let j=i;j<n;j++) w+=TASKS[j].total; return w; });
+  const sorted  = TASKS.map((_,i) => i).sort((a,b) => weights[b]-weights[a]);
+  const takt    = TOTAL_TIME / numStations;
+  const maxTakt = Math.max(takt, Math.max(...TASKS.map(t => t.total)));
+  const result  = [{ tasks:[] }];
+  let remaining = maxTakt;
+  for (const ti of sorted) {
+    if (TASKS[ti].total <= remaining + 0.01) {
+      result[result.length-1].tasks.push(ti); remaining -= TASKS[ti].total;
+    } else {
+      result.push({ tasks:[ti] }); remaining = maxTakt - TASKS[ti].total;
+    }
+  }
+  result.forEach(s => s.tasks.sort((a,b) => a-b));
+  return result;
+}
+
+function balanceKillbridge(numStations) {
+  const takt    = TOTAL_TIME / numStations;
+  const maxTakt = Math.max(takt, Math.max(...TASKS.map(t => t.total)));
+  const result  = [{ tasks:[] }];
+  let remaining = maxTakt;
+  for (let i=0; i<TASKS.length; i++) {
+    if (TASKS[i].total <= remaining + 0.01) {
+      result[result.length-1].tasks.push(i); remaining -= TASKS[i].total;
+    } else {
+      result.push({ tasks:[i] }); remaining = maxTakt - TASKS[i].total;
+    }
+  }
+  return result;
+}
+
+// ── Animation ─────────────────────────────────────────────
+async function runBalance(numStations, algo) {
+  animating = true;
+  balanceBtn.disabled = true;
+  chartBadge.textContent = 'BALANCING...';
+  chartBadge.style.background = 'var(--yellow)';
+
+  let target;
+  switch(algo) {
+    case 'rpw':        target = balanceRPW(numStations); break;
+    case 'killbridge': target = balanceKillbridge(numStations); break;
+    default:           target = balanceLCT(numStations);
+  }
+
+  const speed     = parseInt(speedSelect.value);
+  const snapshots = buildSnapshots(target);
+
+  for (const snap of snapshots) {
+    stations = snap;
+    initResources();
+    render();
+    await sleep(speed);
+  }
+
+  stations = target;
+  initResources();
+  chartBadge.textContent = 'BALANCED';
+  chartBadge.style.background = 'var(--green)';
+  render();
+  animating = false;
+  balanceBtn.disabled = false;
+}
+
+function buildSnapshots(target) {
+  const snapshots = [];
+  let current = TASKS.map((_,i) => ({ tasks:[i] }));
+  for (const ts of target) {
+    if (ts.tasks.length <= 1) continue;
+    for (let k=1; k<ts.tasks.length; k++) {
+      const taskToMerge = ts.tasks[k];
+      const destIdx = current.findIndex(s => s.tasks.includes(ts.tasks[0]));
+      const srcIdx  = current.findIndex(s => s.tasks.includes(taskToMerge));
+      if (destIdx===-1||srcIdx===-1||destIdx===srcIdx) continue;
+      current[srcIdx].tasks = current[srcIdx].tasks.filter(t => t!==taskToMerge);
+      current[destIdx].tasks.push(taskToMerge);
+      current[destIdx].tasks.sort((a,b) => a-b);
+      current = current.filter(s => s.tasks.length>0);
+      snapshots.push(current.map(s => ({ tasks:[...s.tasks] })));
+    }
+  }
+  return snapshots;
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ── Rendering ─────────────────────────────────────────────
+function render() {
+  renderBarChart();
+  renderGantt();
+  renderTable();
+  renderResources();
+  renderKPIs();
+  renderGauge();
+}
+
+function renderBarChart() {
+  const effTimes    = stations.map((_,si) => effectiveStationTime(si));
+  const maxTime     = Math.max(...effTimes, 1);
+  const chartHeight = 280;
+
+  let html = '';
+  for (let pct=0; pct<=100; pct+=25) {
+    const y   = chartHeight - (pct/100)*chartHeight;
+    const val = (pct/100*maxTime).toFixed(0);
+    html += `<div class="grid-line" style="top:${y+20}px;"></div>`;
+    html += `<div class="grid-label" style="top:${y+14}px;">${val}s</div>`;
+  }
+
+  if (stations.length > 1) {
+    const taktY = 20; // top
+    html += `<div class="takt-line" style="top:${taktY}px;">
+      <span class="takt-label">Bottleneck: ${maxTime.toFixed(1)}s</span>
+    </div>`;
+  }
+
+  stations.forEach((st, si) => {
+    const effT = effectiveStationTime(si);
+    const workers = (stationResources[si] && stationResources[si].workers) || 1;
+    let stackHtml = '';
+    st.tasks.forEach(ti => {
+      const t = TASKS[ti];
+      const segTime = t.total / workers;
+      const h = (segTime / maxTime) * chartHeight;
+      const color = COLORS[ti % COLORS.length];
+      stackHtml += `<div class="task-segment" style="height:${h}px;background:${color};">
+        ${t.id.slice(-3)}
+        <div class="tooltip">
+          <strong>${t.id}</strong><br>
+          ${t.desc}<br>
+          Cycle: ${t.cycle}s | Eff: ${(t.eff*100).toFixed(0)}% | Adj: ${t.adjCycle.toFixed(2)}s<br>
+          Mult: ${t.mult}x | Total: ${t.total.toFixed(2)}s<br>
+          Workers: ${workers} | Effective: ${segTime.toFixed(2)}s
+        </div>
+      </div>`;
+    });
+
+    const utilPct   = stations.length > 1 ? (effT / maxTime * 100) : 100;
+    const utilColor = utilPct > 85 ? 'var(--green)' : utilPct > 70 ? 'var(--yellow)' : 'var(--red)';
+
+    html += `<div class="station-col">
+      <div class="station-bar-stack">${stackHtml}</div>
+      <div class="station-label">Stn ${si+1}</div>
+      <div class="station-time">${effT.toFixed(1)}s</div>
+      <div style="font-size:0.65rem;color:${utilColor};font-weight:600;">${utilPct.toFixed(0)}%</div>
+      <div style="font-size:0.6rem;color:var(--muted);">${workers}W</div>
+    </div>`;
+  });
+
+  barChart.innerHTML = html;
+  barChart.style.paddingLeft = '40px';
+}
+
+function renderGantt() {
+  const effTimes = stations.map((_,si) => effectiveStationTime(si));
+  const maxTime  = Math.max(...effTimes, 1);
+  let html = '';
+
+  stations.forEach((st, si) => {
+    const workers = (stationResources[si] && stationResources[si].workers) || 1;
+    let barHtml = '', offset = 0;
+    st.tasks.forEach(ti => {
+      const t     = TASKS[ti];
+      const segT  = t.total / workers;
+      const left  = (offset / maxTime) * 100;
+      const width = (segT / maxTime) * 100;
+      barHtml += `<div class="gantt-bar" style="left:${left}%;width:${width}%;background:${COLORS[ti%COLORS.length]};">${t.id.slice(-3)}</div>`;
+      offset += segT;
+    });
+    html += `<div class="gantt-row">
+      <div class="gantt-label">Stn ${si+1} (${workers}W)</div>
+      <div class="gantt-bar-track">${barHtml}</div>
+    </div>`;
+  });
+  ganttChart.innerHTML = html;
+}
+
+function renderTable() {
+  const assignment = new Array(TASKS.length).fill(0);
+  stations.forEach((st,si) => st.tasks.forEach(ti => assignment[ti]=si));
+
+  let html = '';
+  TASKS.forEach((t,i) => {
+    const stNum   = assignment[i] + 1;
+    const workers = (stationResources[assignment[i]] && stationResources[assignment[i]].workers) || 1;
+    const effTotal = t.total / workers;
+    html += `<tr>
+      <td style="color:var(--muted);">${i+1}</td>
+      <td class="sap">${t.id}</td>
+      <td>${t.desc}</td>
+      <td>${t.cycle.toFixed(1)}</td>
+      <td>${(t.eff*100).toFixed(0)}%</td>
+      <td>${t.adjCycle.toFixed(2)}</td>
+      <td>${t.mult}</td>
+      <td><strong>${t.total.toFixed(2)}</strong></td>
+      <td>${t.poph.toFixed(1)}</td>
+      <td><span class="station-tag" style="background:${COLORS[i%COLORS.length]};color:#0f172a;">Stn ${stNum}</span></td>
+    </tr>`;
+  });
+  processBody.innerHTML = html;
+}
+
+// ── Station Resource Cards ────────────────────────────────
+function renderResources() {
+  let html = '';
+  stations.forEach((st, si) => {
+    const res     = stationResources[si] || { workers:1, machines:[] };
+    const raw     = rawStationTime(st);
+    const eff     = raw / res.workers;
+    const effCol  = eff <= 60 ? 'var(--green)' : eff <= 120 ? 'var(--yellow)' : 'var(--red)';
+    const taskList = st.tasks.map(ti => TASKS[ti].id + ' ' + TASKS[ti].desc.substring(0,30)).join('<br>');
+
+    let machHtml = '';
+    res.machines.forEach((m, mi) => {
+      machHtml += `<div class="rc-machine-row">
+        <select onchange="changeMachine(${si},${mi},this.value)">
+          ${MACHINE_CATALOGUE.map(c => `<option value="${c}" ${c===m.name?'selected':''}>${c}</option>`).join('')}
+        </select>
+        <input type="number" class="rc-mach-qty" value="${m.qty}" min="1" max="20"
+               onchange="changeMachineQty(${si},${mi},parseInt(this.value)||1)">
+        <button class="rc-remove" onclick="removeMachine(${si},${mi})">&#10005;</button>
+      </div>`;
+    });
+
+    html += `<div class="resource-card">
+      <div class="rc-header">
+        <span class="rc-title">Station ${si+1}</span>
+        <span class="rc-time">${raw.toFixed(1)}s raw</span>
+      </div>
+      <div class="rc-tasks">${taskList}</div>
+
+      <div class="rc-row">
+        <span class="rc-row-label">Workers</span>
+        <div class="rc-counter">
+          <button onclick="changeWorkers(${si},-1)" ${res.workers<=1?'disabled':''}>&#8722;</button>
+          <span class="rc-val">${res.workers}</span>
+          <button onclick="changeWorkers(${si},+1)">+</button>
+        </div>
+      </div>
+
+      <div class="rc-row" style="align-items:flex-start;">
+        <span class="rc-row-label">Machines</span>
+        <span style="font-size:0.7rem;color:var(--muted);">${res.machines.reduce((s,m)=>s+m.qty,0)} total</span>
+      </div>
+      <div class="rc-machines">${machHtml}</div>
+      <button class="rc-add-machine" onclick="addMachine(${si})">+ Add Machine</button>
+
+      <div class="rc-effective">
+        <span class="rc-eff-label">Effective Time</span>
+        <span class="rc-eff-value" style="color:${effCol};">${eff.toFixed(1)}s</span>
+      </div>
+    </div>`;
+  });
+  resourceGrid.innerHTML = html;
+}
+
+// ── Resource mutation handlers ────────────────────────────
+function changeWorkers(si, delta) {
+  if (animating) return;
+  const res = stationResources[si];
+  res.workers = Math.max(1, res.workers + delta);
+  render();
+}
+
+function addMachine(si) {
+  if (animating) return;
+  stationResources[si].machines.push({ name: MACHINE_CATALOGUE[0], qty: 1 });
+  render();
+}
+
+function removeMachine(si, mi) {
+  if (animating) return;
+  stationResources[si].machines.splice(mi, 1);
+  render();
+}
+
+function changeMachine(si, mi, name) {
+  if (animating) return;
+  stationResources[si].machines[mi].name = name;
+  // no re-render needed, the select already shows the value
+}
+
+function changeMachineQty(si, mi, qty) {
+  if (animating) return;
+  stationResources[si].machines[mi].qty = Math.max(1, qty);
+  render();
+}
+
+// ── KPIs ──────────────────────────────────────────────────
+function renderKPIs() {
+  const numStations  = stations.length;
+  const effTimes     = stations.map((_,si) => effectiveStationTime(si));
+  const bottleneck   = Math.max(...effTimes);
+  const totalEffTime = effTimes.reduce((s,t) => s+t, 0);
+  const efficiency   = (totalEffTime / (numStations * bottleneck)) * 100;
+  const oph          = 3600 / bottleneck;
+  const idleTime     = (numStations * bottleneck) - totalEffTime;
+  const totalWorkers = Object.values(stationResources).reduce((s,r) => s + r.workers, 0);
+  const totalMachs   = Object.values(stationResources).reduce((s,r) => s + r.machines.reduce((ms,m) => ms+m.qty, 0), 0);
+
+  document.getElementById('kpiTotalTime').textContent  = TOTAL_TIME.toFixed(1) + 's';
+  document.getElementById('kpiStations').textContent   = numStations;
+  document.getElementById('kpiTakt').textContent       = bottleneck.toFixed(1) + 's';
+  document.getElementById('kpiEfficiency').textContent = efficiency.toFixed(1) + '%';
+  document.getElementById('kpiOPH').textContent        = oph.toFixed(1);
+  document.getElementById('kpiIdleTime').textContent   = idleTime.toFixed(1) + 's';
+  document.getElementById('kpiWorkers').textContent    = totalWorkers;
+  document.getElementById('kpiMachines').textContent   = totalMachs;
+
+  const effEl = document.getElementById('kpiEfficiency');
+  effEl.style.color = efficiency > 85 ? 'var(--green)' : efficiency > 70 ? 'var(--yellow)' : 'var(--red)';
+}
+
+function renderGauge() {
+  const effTimes     = stations.map((_,si) => effectiveStationTime(si));
+  const bottleneck   = Math.max(...effTimes);
+  const totalEffTime = effTimes.reduce((s,t) => s+t, 0);
+  const efficiency   = (totalEffTime / (stations.length * bottleneck)) * 100;
+  const circumference= 2 * Math.PI * 65;
+  const offset       = circumference - (Math.min(efficiency,100) / 100) * circumference;
+
+  const ring = document.getElementById('gaugeRing');
+  ring.style.strokeDashoffset = offset;
+  ring.style.stroke = efficiency > 85 ? 'var(--green)' : efficiency > 70 ? 'var(--yellow)' : 'var(--red)';
+
+  const valEl = document.getElementById('gaugeValue');
+  valEl.textContent = efficiency.toFixed(1) + '%';
+  valEl.style.color = efficiency > 85 ? 'var(--green)' : efficiency > 70 ? 'var(--yellow)' : 'var(--red)';
+}
+
+// ── Initial render ────────────────────────────────────────
+render();
+</script>
+</body>
+</html>
