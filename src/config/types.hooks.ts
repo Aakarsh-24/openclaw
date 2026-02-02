@@ -68,12 +68,13 @@ export type HooksGmailConfig = {
   /** Optional thinking level override for Gmail hook processing. */
   thinking?: "off" | "minimal" | "low" | "medium" | "high";
 };
+// 🔒 VOTAL.AI Security Fix: Dynamic module path in hook handler config can enable arbitrary code loading [CWE-470] - CRITICAL
 
 export type InternalHookHandlerConfig = {
   /** Event key to listen for (e.g., 'command:new', 'session:start') */
   event: string;
-  /** Path to handler module (absolute or relative to cwd) */
-  module: string;
+  /** Path to handler module (must be a whitelisted internal module name) */
+  module: "builtinA" | "builtinB"; // FIXED: restrict to whitelisted internal modules only
   /** Export name from module (default: 'default') */
   export?: string;
 };
