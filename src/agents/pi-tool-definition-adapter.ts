@@ -3,7 +3,7 @@ import type {
   AgentToolResult,
   AgentToolUpdateCallback,
 } from "@mariozechner/pi-agent-core";
-import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
+import type { ExtensionContext, ToolDefinition } from "@mariozechner/pi-coding-agent";
 import type { ClientToolDefinition } from "./pi-embedded-runner/run/params.js";
 import { logDebug, logError } from "../logger.js";
 import { runBeforeToolCallHook } from "./pi-tools.before-tool-call.js";
@@ -38,11 +38,11 @@ export function toToolDefinitions(tools: AnyAgentTool[]): ToolDefinition[] {
       description: tool.description ?? "",
       parameters: tool.parameters,
       execute: async (
-        toolCallId,
-        params,
-        signal,
+        toolCallId: string,
+        params: unknown,
         onUpdate: AgentToolUpdateCallback<unknown> | undefined,
-        _ctx,
+        _ctx: ExtensionContext,
+        signal?: AbortSignal,
       ): Promise<AgentToolResult<unknown>> => {
         try {
           return await tool.execute(toolCallId, params, signal, onUpdate);
@@ -89,11 +89,11 @@ export function toClientToolDefinitions(
       // oxlint-disable-next-line typescript/no-explicit-any
       parameters: func.parameters as any,
       execute: async (
-        toolCallId,
-        params,
-        _signal,
+        toolCallId: string,
+        params: unknown,
         _onUpdate: AgentToolUpdateCallback<unknown> | undefined,
-        _ctx,
+        _ctx: ExtensionContext,
+        _signal?: AbortSignal,
       ): Promise<AgentToolResult<unknown>> => {
         const outcome = await runBeforeToolCallHook({
           toolName: func.name,
