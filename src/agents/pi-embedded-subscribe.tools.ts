@@ -60,6 +60,22 @@ function extractErrorField(value: unknown): string | undefined {
   return status ? normalizeToolErrorText(status) : undefined;
 }
 
+/**
+ * Detect whether a tool result was blocked by an interceptor.
+ * Blocked results have `details.status === "blocked"` (set by pi-tool-definition-adapter).
+ */
+export function isBlockedToolResult(result: unknown): boolean {
+  if (!result || typeof result !== "object") {
+    return false;
+  }
+  const record = result as Record<string, unknown>;
+  const details = record.details;
+  if (!details || typeof details !== "object") {
+    return false;
+  }
+  return (details as Record<string, unknown>).status === "blocked";
+}
+
 export function sanitizeToolResult(result: unknown): unknown {
   if (!result || typeof result !== "object") {
     return result;

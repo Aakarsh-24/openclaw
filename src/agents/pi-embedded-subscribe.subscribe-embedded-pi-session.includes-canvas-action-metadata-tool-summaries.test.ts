@@ -38,7 +38,17 @@ describe("subscribeEmbeddedPiSession", () => {
       args: { action: "a2ui_push", jsonlPath: "/tmp/a2ui.jsonl" },
     });
 
-    // Wait for async handler to complete
+    await Promise.resolve();
+
+    // Summary is deferred until tool_execution_end (suppressed for blocked tools).
+    handler?.({
+      type: "tool_execution_end",
+      toolName: "canvas",
+      toolCallId: "tool-canvas-1",
+      isError: false,
+      result: { content: [{ type: "text", text: "ok" }] },
+    });
+
     await Promise.resolve();
 
     expect(onToolResult).toHaveBeenCalledTimes(1);
@@ -101,7 +111,17 @@ describe("subscribeEmbeddedPiSession", () => {
       args: { path: "/tmp/c.txt" },
     });
 
-    // Wait for async handler to complete
+    await Promise.resolve();
+
+    // Summary is deferred until tool_execution_end.
+    handler?.({
+      type: "tool_execution_end",
+      toolName: "read",
+      toolCallId: "tool-3",
+      isError: false,
+      result: { content: [{ type: "text", text: "ok" }] },
+    });
+
     await Promise.resolve();
 
     expect(onToolResult).toHaveBeenCalledTimes(1);

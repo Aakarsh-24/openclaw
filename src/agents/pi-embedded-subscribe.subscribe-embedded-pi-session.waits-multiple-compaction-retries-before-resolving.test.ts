@@ -97,7 +97,7 @@ describe("subscribeEmbeddedPiSession", () => {
       { phase: "end", willRetry: false },
     ]);
   });
-  it("emits tool summaries at tool start when verbose is on", async () => {
+  it("emits tool summaries at tool end when verbose is on", async () => {
     let handler: ((evt: unknown) => void) | undefined;
     const session: StubSession = {
       subscribe: (fn) => {
@@ -122,12 +122,10 @@ describe("subscribeEmbeddedPiSession", () => {
       args: { path: "/tmp/a.txt" },
     });
 
-    // Wait for async handler to complete
     await Promise.resolve();
 
-    expect(onToolResult).toHaveBeenCalledTimes(1);
-    const payload = onToolResult.mock.calls[0][0];
-    expect(payload.text).toContain("/tmp/a.txt");
+    // Summary is deferred until tool_execution_end (suppressed for blocked tools).
+    expect(onToolResult).toHaveBeenCalledTimes(0);
 
     handler?.({
       type: "tool_execution_end",
@@ -138,6 +136,8 @@ describe("subscribeEmbeddedPiSession", () => {
     });
 
     expect(onToolResult).toHaveBeenCalledTimes(1);
+    const payload = onToolResult.mock.calls[0][0];
+    expect(payload.text).toContain("/tmp/a.txt");
   });
   it("includes browser action metadata in tool summaries", async () => {
     let handler: ((evt: unknown) => void) | undefined;
@@ -164,7 +164,17 @@ describe("subscribeEmbeddedPiSession", () => {
       args: { action: "snapshot", targetUrl: "https://example.com" },
     });
 
-    // Wait for async handler to complete
+    await Promise.resolve();
+
+    // Summary is deferred until tool_execution_end (suppressed for blocked tools).
+    handler?.({
+      type: "tool_execution_end",
+      toolName: "browser",
+      toolCallId: "tool-browser-1",
+      isError: false,
+      result: { content: [{ type: "text", text: "ok" }] },
+    });
+
     await Promise.resolve();
 
     expect(onToolResult).toHaveBeenCalledTimes(1);
@@ -202,11 +212,7 @@ describe("subscribeEmbeddedPiSession", () => {
 
     await Promise.resolve();
 
-    expect(onToolResult).toHaveBeenCalledTimes(1);
-    const summary = onToolResult.mock.calls[0][0];
-    expect(summary.text).toContain("Exec");
-    expect(summary.text).toContain("pty");
-
+    // Summary is deferred until tool_execution_end.
     handler?.({
       type: "tool_execution_end",
       toolName: "exec",
@@ -217,7 +223,11 @@ describe("subscribeEmbeddedPiSession", () => {
 
     await Promise.resolve();
 
+    // First call: deferred tool summary, second call: tool output (full verbose).
     expect(onToolResult).toHaveBeenCalledTimes(2);
+    const summary = onToolResult.mock.calls[0][0];
+    expect(summary.text).toContain("Exec");
+    expect(summary.text).toContain("pty");
     const output = onToolResult.mock.calls[1][0];
     expect(output.text).toContain("hello");
     expect(output.text).toContain("```txt");

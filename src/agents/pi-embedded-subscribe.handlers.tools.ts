@@ -7,6 +7,7 @@ import {
   extractToolErrorMessage,
   extractToolResultText,
   extractMessagingToolSend,
+  isBlockedToolResult,
   isToolResultError,
   sanitizeToolResult,
 } from "./pi-embedded-subscribe.tools.js";
@@ -85,13 +86,14 @@ export async function handleToolExecutionStart(
     data: { phase: "start", name: toolName, toolCallId },
   });
 
+  // Mark tool as having a pending summary — actual emission is deferred to
+  // handleToolExecutionEnd so we can suppress it when an interceptor blocks.
   if (
     ctx.params.onToolResult &&
     shouldEmitToolEvents &&
     !ctx.state.toolSummaryById.has(toolCallId)
   ) {
     ctx.state.toolSummaryById.add(toolCallId);
-    ctx.emitToolSummary(toolName, meta);
   }
 
   // Track messaging tool sends (pending until confirmed in tool_execution_end).
@@ -159,11 +161,18 @@ export function handleToolExecutionEnd(
   const isError = Boolean(evt.isError);
   const result = evt.result;
   const isToolError = isError || isToolResultError(result);
+  const blocked = isBlockedToolResult(result);
   const sanitizedResult = sanitizeToolResult(result);
   const meta = ctx.state.toolMetaById.get(toolCallId);
   ctx.state.toolMetas.push({ toolName, meta });
   ctx.state.toolMetaById.delete(toolCallId);
+
+  // Emit the deferred tool summary — suppressed when an interceptor blocked.
+  const hadPendingSummary = ctx.state.toolSummaryById.has(toolCallId);
   ctx.state.toolSummaryById.delete(toolCallId);
+  if (hadPendingSummary && !blocked) {
+    ctx.emitToolSummary(toolName, meta);
+  }
   if (isToolError) {
     const errorMessage = extractToolErrorMessage(sanitizedResult);
     ctx.state.lastToolError = {
@@ -220,7 +229,7 @@ export function handleToolExecutionEnd(
     `embedded run tool end: runId=${ctx.params.runId} tool=${toolName} toolCallId=${toolCallId}`,
   );
 
-  if (ctx.params.onToolResult && ctx.shouldEmitToolOutput()) {
+  if (ctx.params.onToolResult && ctx.shouldEmitToolOutput() && !blocked) {
     const outputText = extractToolResultText(sanitizedResult);
     if (outputText) {
       ctx.emitToolOutput(toolName, meta, outputText);
