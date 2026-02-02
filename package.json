@@ -1,7 +1,7 @@
 {
   "name": "openclaw",
   "version": "2026.2.1",
-  "description": "WhatsApp gateway CLI (Baileys web) with Pi RPC agent",
+  "description": "The open-source AI agent runtime. Connects LLMs to messaging apps (Telegram, Discord, Slack, WhatsApp & more), local tools, and MCP servers.",
   "keywords": [],
   "license": "MIT",
   "author": "",
