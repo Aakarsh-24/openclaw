@@ -142,29 +142,43 @@ export class VoiceCallWebhookServer {
         // states (like "speaking" or "listening"), blocking new calls due to the
         // maxConcurrentCalls limit.
         //
-        // Note: We only emit call.ended if the call is NOT already in a terminal
-        // state. Network blips or WS proxy timeouts may cause disconnects while
-        // the call is still active, but if Twilio's status callback already
-        // transitioned the call to a terminal state, we skip this fallback.
-        const call = this.manager.getCallByProviderCallId(callId);
-        if (call && !TerminalStates.has(call.state)) {
-          const event: NormalizedEvent = {
-            id: `stream-disconnect-${call.callId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-            type: "call.ended",
-            callId: call.callId,
-            providerCallId: callId,
-            timestamp: Date.now(),
-            reason: "completed",
-          };
-          this.manager.processEvent(event);
+        // Grace period: Wait 2 seconds before marking as ended. This allows time for:
+        // - Twilio status callbacks to arrive and handle the transition properly
+        // - Brief network interruptions to recover without falsely ending the call
+        //
+        // After the grace period, we re-check the call state. If it's still active,
+        // we emit call.ended. If Twilio's status callback already transitioned the
+        // call to a terminal state, we skip this fallback.
+        const DISCONNECT_GRACE_PERIOD_MS = 2000;
+        const initialCall = this.manager.getCallByProviderCallId(callId);
+        if (initialCall) {
           console.log(
-            `[voice-call] Call ${call.callId} marked as completed (stream disconnect fallback)`,
-          );
-        } else if (call) {
-          console.log(
-            `[voice-call] Call ${call.callId} already in terminal state (${call.state}), skipping disconnect fallback`,
+            `[voice-call] Call ${initialCall.callId} stream disconnected, waiting ${DISCONNECT_GRACE_PERIOD_MS}ms before fallback cleanup`,
           );
         }
+
+        setTimeout(() => {
+          // Re-fetch call state after grace period (may have changed)
+          const call = this.manager.getCallByProviderCallId(callId);
+          if (call && !TerminalStates.has(call.state)) {
+            const event: NormalizedEvent = {
+              id: `stream-disconnect-${call.callId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+              type: "call.ended",
+              callId: call.callId,
+              providerCallId: callId,
+              timestamp: Date.now(),
+              reason: "completed",
+            };
+            this.manager.processEvent(event);
+            console.log(
+              `[voice-call] Call ${call.callId} marked as completed (stream disconnect fallback after ${DISCONNECT_GRACE_PERIOD_MS}ms grace period)`,
+            );
+          } else if (call) {
+            console.log(
+              `[voice-call] Call ${call.callId} already in terminal state (${call.state}), skipping disconnect fallback`,
+            );
+          }
+        }, DISCONNECT_GRACE_PERIOD_MS);
       },
     };
 
