@@ -249,4 +249,33 @@ describe("resolveSoulEvilConfigFromHook", () => {
       "soul-evil config: purge must be an object",
     ]);
   });
+
+  it("uses env properties when present", () => {
+    const result = resolveSoulEvilConfigFromHook({
+      env: { chance: 0.5, file: "EVIL_SOUL.md" },
+    });
+    expect(result).toEqual({
+      chance: 0.5,
+      file: "EVIL_SOUL.md",
+      purge: undefined,
+    });
+  });
+
+  it("returns null and warns when env is not an object", () => {
+    const warnings: string[] = [];
+    const resultStr = resolveSoulEvilConfigFromHook(
+      { env: "invalid", file: "fallback.md" },
+      { warn: (message) => warnings.push(message) },
+    );
+    expect(resultStr).toBeNull();
+    expect(warnings[0]).toBe("soul-evil config: env must be an object");
+
+    warnings.length = 0;
+    const resultNull = resolveSoulEvilConfigFromHook(
+      { env: null, file: "fallback.md" },
+      { warn: (message) => warnings.push(message) },
+    );
+    expect(resultNull).toBeNull();
+    expect(warnings[0]).toBe("soul-evil config: env must be an object");
+  });
 });

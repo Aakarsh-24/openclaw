@@ -54,7 +54,7 @@ function resolveRequestUrl(input: RequestInfo | URL): string {
   if ("url" in input && typeof input.url === "string") {
     return input.url;
   }
-  return String(input);
+  throw new Error(`Unable to resolve URL from input: ${Object.prototype.toString.call(input)}`);
 }
 
 function createSlackMediaFetch(token: string): FetchLike {
