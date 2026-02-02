@@ -53,11 +53,13 @@ OpenClaw auto-registers a catalog of common Azure models (Claude 4.5 series, GPT
 When `AZURE_AI_FOUNDRY_API_KEY` and an endpoint are set, OpenClaw registers models from a built-in catalog using standard Azure model IDs:
 
 **Anthropic models** (via `azure-ai-foundry-anthropic`):
+
 - `claude-opus-4-5-20251101`, `claude-sonnet-4-5-20250929`, `claude-haiku-4-5-20251001`
 - `claude-sonnet-4-20250514`, `claude-3-7-sonnet-20250219`
 - `claude-3-5-sonnet-20241022`, `claude-3-5-haiku-20241022`
 
 **OpenAI models** (via `azure-ai-foundry`):
+
 - `gpt-5.2`, `gpt-5.1`, `gpt-5`, `gpt-5-mini`, `gpt-5-nano`
 - `gpt-4.1`, `gpt-4.1-mini`, `gpt-4.1-nano`
 - `gpt-4o`, `gpt-4o-mini`
@@ -69,9 +71,9 @@ If your Azure deployment uses custom names (e.g., `my-gpt5-deployment`), use exp
 
 Azure AI Foundry exposes two API styles under the same resource:
 
-| Provider ID | API | Endpoint env var |
-|---|---|---|
-| `azure-ai-foundry` | `openai-completions` | `AZURE_FOUNDRY_OPENAI_ENDPOINT` |
+| Provider ID                  | API                  | Endpoint env var                   |
+| ---------------------------- | -------------------- | ---------------------------------- |
+| `azure-ai-foundry`           | `openai-completions` | `AZURE_FOUNDRY_OPENAI_ENDPOINT`    |
 | `azure-ai-foundry-anthropic` | `anthropic-messages` | `AZURE_FOUNDRY_ANTHROPIC_ENDPOINT` |
 
 Both use the same `AZURE_AI_FOUNDRY_API_KEY` for authentication.
