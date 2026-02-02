@@ -60,6 +60,7 @@ import { renderNodes } from "./views/nodes";
 import { renderOverview } from "./views/overview";
 import { renderSessions } from "./views/sessions";
 import { renderSkills } from "./views/skills";
+import { renderSetup } from "./views/setup";
 
 const AVATAR_DATA_RE = /^data:/i;
 const AVATAR_HTTP_RE = /^https?:\/\//i;
@@ -490,6 +491,35 @@ export function renderApp(state: AppViewState) {
                 onSplitRatioChange: (ratio: number) => state.handleSplitRatioChange(ratio),
                 assistantName: state.assistantName,
                 assistantAvatar: state.assistantAvatar,
+              })
+            : nothing
+        }
+
+        ${
+          state.tab === "setup"
+            ? renderSetup({
+                connected: state.connected,
+                wizardLoading: state.wizardLoading,
+                wizardSessionId: state.wizardSessionId,
+                wizardStep: state.wizardStep,
+                wizardError: state.wizardError,
+                wizardDone: state.wizardDone,
+                wizardAnswer: state.wizardAnswer,
+                onStart: () => state.startConfigureWizard(),
+                onCancel: () => state.cancelWizard(),
+                onNext: () => state.nextWizard(),
+                onAnswer: (value) => (state.wizardAnswer = value),
+
+                // Setup tools
+                toolsBusy: state.setupToolsBusy,
+                toolsError: state.setupToolsError,
+                toolsMessage: state.setupToolsMessage,
+                doctorBusy: state.setupDoctorBusy,
+                doctorOutput: state.setupDoctorOutput,
+                doctorError: state.setupDoctorError,
+                onDownloadConfig: () => state.setupDownloadConfig(),
+                onImportConfig: (file: File) => state.setupImportConfig(file),
+                onRunDoctor: () => state.setupRunDoctor(),
               })
             : nothing
         }

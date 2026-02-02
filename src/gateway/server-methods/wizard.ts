@@ -33,6 +33,7 @@ export const wizardHandlers: GatewayRequestHandlers = {
     }
     const sessionId = randomUUID();
     const opts = {
+      wizard: params.wizard,
       mode: params.mode,
       workspace: typeof params.workspace === "string" ? params.workspace : undefined,
     };

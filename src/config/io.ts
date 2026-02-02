@@ -27,6 +27,7 @@ import { collectConfigEnvVars } from "./env-vars.js";
 import { ConfigIncludeError, resolveConfigIncludes } from "./includes.js";
 import { findLegacyConfigIssues } from "./legacy.js";
 import { normalizeConfigPaths } from "./normalize-paths.js";
+import { resolveConfigOpSecrets } from "./op-secrets.js";
 import { resolveConfigPath, resolveDefaultConfigCandidates, resolveStateDir } from "./paths.js";
 import { applyConfigOverrides } from "./runtime-overrides.js";
 import { validateConfigObjectWithPlugins } from "./validation.js";
@@ -240,7 +241,8 @@ export function createConfigIO(overrides: ConfigIoDeps = {}) {
       // Substitute ${VAR} env var references
       const substituted = resolveConfigEnvVars(resolved, deps.env);
 
-      const resolvedConfig = substituted;
+      // Resolve 1Password (op://...) references if present
+      const resolvedConfig = resolveConfigOpSecrets(substituted, deps.env);
       warnOnConfigMiskeys(resolvedConfig, deps.logger);
       if (typeof resolvedConfig !== "object" || resolvedConfig === null) {
         return {};

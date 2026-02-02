@@ -44,6 +44,8 @@ export type ChannelChoice = ChannelId;
 export type ProviderChoice = ChannelChoice;
 
 export type OnboardOptions = {
+  /** Which wizard flow to run when triggered via gateway wizard.* */
+  wizard?: "onboarding" | "configure";
   mode?: OnboardMode;
   /** "manual" is an alias for "advanced". */
   flow?: "quickstart" | "advanced" | "manual";

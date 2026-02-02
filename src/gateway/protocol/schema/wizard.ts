@@ -3,6 +3,7 @@ import { NonEmptyString } from "./primitives.js";
 
 export const WizardStartParamsSchema = Type.Object(
   {
+    wizard: Type.Optional(Type.Union([Type.Literal("onboarding"), Type.Literal("configure")])),
     mode: Type.Optional(Type.Union([Type.Literal("local"), Type.Literal("remote")])),
     workspace: Type.Optional(Type.String()),
   },
