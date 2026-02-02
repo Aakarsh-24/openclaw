@@ -107,44 +107,64 @@ function generateAttachmentId(): string {
   return `att-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
+function addImageFile(file: File, props: ChatProps) {
+  const reader = new FileReader();
+  reader.addEventListener("load", () => {
+    const dataUrl = reader.result as string;
+    const newAttachment: ChatAttachment = {
+      id: generateAttachmentId(),
+      dataUrl,
+      mimeType: file.type,
+    };
+    const current = props.attachments ?? [];
+    props.onAttachmentsChange?.([...current, newAttachment]);
+  });
+  reader.readAsDataURL(file);
+}
+
 function handlePaste(e: ClipboardEvent, props: ChatProps) {
+  if (!props.onAttachmentsChange) {
+    return;
+  }
+
+  // Try clipboardData.items first (works on desktop browsers)
   const items = e.clipboardData?.items;
-  if (!items || !props.onAttachmentsChange) {
-    return;
-  }
+  if (items) {
+    const imageItems: DataTransferItem[] = [];
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type.startsWith("image/")) {
+        imageItems.push(item);
+      }
+    }
 
-  const imageItems: DataTransferItem[] = [];
-  for (let i = 0; i < items.length; i++) {
-    const item = items[i];
-    if (item.type.startsWith("image/")) {
-      imageItems.push(item);
+    if (imageItems.length > 0) {
+      e.preventDefault();
+      for (const item of imageItems) {
+        const file = item.getAsFile();
+        if (file) {
+          addImageFile(file, props);
+        }
+      }
+      return;
     }
   }
 
-  if (imageItems.length === 0) {
-    return;
-  }
-
-  e.preventDefault();
-
-  for (const item of imageItems) {
-    const file = item.getAsFile();
-    if (!file) {
-      continue;
+  // Fallback: check clipboardData.files (mobile Safari sometimes uses this)
+  const files = e.clipboardData?.files;
+  if (files && files.length > 0) {
+    const imageFiles: File[] = [];
+    for (let i = 0; i < files.length; i++) {
+      if (files[i].type.startsWith("image/")) {
+        imageFiles.push(files[i]);
+      }
     }
-
-    const reader = new FileReader();
-    reader.addEventListener("load", () => {
-      const dataUrl = reader.result as string;
-      const newAttachment: ChatAttachment = {
-        id: generateAttachmentId(),
-        dataUrl,
-        mimeType: file.type,
-      };
-      const current = props.attachments ?? [];
-      props.onAttachmentsChange?.([...current, newAttachment]);
-    });
-    reader.readAsDataURL(file);
+    if (imageFiles.length > 0) {
+      e.preventDefault();
+      for (const file of imageFiles) {
+        addImageFile(file, props);
+      }
+    }
   }
 }
 
@@ -377,6 +397,39 @@ export function renderChat(props: ChatProps) {
             ></textarea>
           </label>
           <div class="chat-compose__actions">
+            ${props.onAttachmentsChange
+              ? html`
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    style="display:none"
+                    id="chat-file-input"
+                    @change=${(e: Event) => {
+                      const input = e.target as HTMLInputElement;
+                      const files = input.files;
+                      if (!files) return;
+                      for (let i = 0; i < files.length; i++) {
+                        if (files[i].type.startsWith("image/")) {
+                          addImageFile(files[i], props);
+                        }
+                      }
+                      input.value = "";
+                    }}
+                  />
+                  <button
+                    class="btn btn--icon"
+                    title="Attach image"
+                    ?disabled=${!props.connected}
+                    @click=${() => {
+                      const input = document.getElementById("chat-file-input") as HTMLInputElement;
+                      input?.click();
+                    }}
+                  >
+                    ${icons.paperclip}
+                  </button>
+                `
+              : nothing}
             <button
               class="btn"
               ?disabled=${!props.connected || (!canAbort && props.sending)}
