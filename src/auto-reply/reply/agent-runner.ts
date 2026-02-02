@@ -550,7 +550,7 @@ export async function runReplyAgent(params: {
     // We only emit if there is actual content involved (input or output).
     // Extract output from text and non-text payloads (audio, media, etc.)
     const outputParts: string[] = [];
-    const payloads = finalPayloads as ReplyPayload[];
+    const payloads = Array.isArray(finalPayloads) ? finalPayloads : [finalPayloads];
     for (const p of payloads) {
       if (p.text) {
         outputParts.push(p.text);
