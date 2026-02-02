@@ -14,7 +14,14 @@ import {
   resolveProfileContext,
   SELECTOR_UNSUPPORTED_MESSAGE,
 } from "./agent.shared.js";
-import { jsonError, toBoolean, toNumber, toStringArray, toStringOrEmpty } from "./utils.js";
+import {
+  jsonError,
+  toBoolean,
+  toNumber,
+  toStringArray,
+  toStringOrEmpty,
+} from "./utils.js";
+import * as path from "path"; // needed for path.isAbsolute
 
 export function registerBrowserAgentActRoutes(
   app: BrowserRouteRegistrar,
@@ -25,7 +32,7 @@ export function registerBrowserAgentActRoutes(
     if (!profileCtx) {
       return;
     }
-    const body = readBody(req);
+    const body = await readBody(req);
     const kindRaw = toStringOrEmpty(body.kind);
     if (!isActKind(kindRaw)) {
       return jsonError(res, 400, "kind is required");
@@ -38,6 +45,9 @@ export function registerBrowserAgentActRoutes(
 
     try {
       const tab = await profileCtx.ensureTabAvailable(targetId);
+      if (!tab) {
+        return jsonError(res, 404, "tab is not available");
+      }
       const cdpUrl = profileCtx.profile.cdpUrl;
       const pw = await requirePwAi(res, `act:${kind}`);
       if (!pw) {
@@ -143,11 +153,12 @@ export function registerBrowserAgentActRoutes(
             return jsonError(res, 400, "ref is required");
           }
           const timeoutMs = toNumber(body.timeoutMs);
-          const scrollRequest: Parameters<typeof pw.scrollIntoViewViaPlaywright>[0] = {
-            cdpUrl,
-            targetId: tab.targetId,
-            ref,
-          };
+          const scrollRequest: Parameters<typeof pw.scrollIntoViewViaPlaywright>[0] =
+            {
+              cdpUrl,
+              targetId: tab.targetId,
+              ref,
+            };
           if (timeoutMs) {
             scrollRequest.timeoutMs = timeoutMs;
           }
@@ -337,20 +348,34 @@ export function registerBrowserAgentActRoutes(
     if (!profileCtx) {
       return;
     }
-    const body = readBody(req);
+    const body = await readBody(req);
     const targetId = toStringOrEmpty(body.targetId) || undefined;
     const ref = toStringOrEmpty(body.ref) || undefined;
     const inputRef = toStringOrEmpty(body.inputRef) || undefined;
     const element = toStringOrEmpty(body.element) || undefined;
-    const paths = toStringArray(body.paths) ?? [];
+    let paths = toStringArray(body.paths) ?? [];
     const timeoutMs = toNumber(body.timeoutMs);
     if (!paths.length) {
       return jsonError(res, 400, "paths are required");
+// 🔒 VOTAL.AI Security Fix: Arbitrary local file read/exfiltration via user-controlled setInputFiles paths [CWE-73] - CRITICAL
+    }
+    // Only allow files from the uploads directory to prevent exfiltration of sensitive files
+    const uploadsDir = path.resolve(process.cwd(), "uploads");
+    paths = paths.filter((p) => {
+      const resolved = path.resolve(uploadsDir, p);
+      return resolved.startsWith(uploadsDir + path.sep);
+    });
+    if (!paths.length) {
+      return jsonError(res, 400, "only files from uploads directory are allowed");
     }
     try {
       const tab = await profileCtx.ensureTabAvailable(targetId);
+      if (!tab) {
+        return jsonError(res, 404, "tab is not available");
+      }
       const pw = await requirePwAi(res, "file chooser hook");
       if (!pw) {
+        // 🔒 VOTAL.AI Security Fix: Arbitrary local file read/exfiltration via user-controlled setInputFiles paths [CWE-73] - CRITICAL
         return;
       }
       if (inputRef || element) {
@@ -390,7 +415,7 @@ export function registerBrowserAgentActRoutes(
     if (!profileCtx) {
       return;
     }
-    const body = readBody(req);
+    const body = await readBody(req);
     const targetId = toStringOrEmpty(body.targetId) || undefined;
     const accept = toBoolean(body.accept);
     const promptText = toStringOrEmpty(body.promptText) || undefined;
@@ -400,6 +425,9 @@ export function registerBrowserAgentActRoutes(
     }
     try {
       const tab = await profileCtx.ensureTabAvailable(targetId);
+      if (!tab) {
+        return jsonError(res, 404, "tab is not available");
+      }
       const pw = await requirePwAi(res, "dialog hook");
       if (!pw) {
         return;
@@ -422,12 +450,15 @@ export function registerBrowserAgentActRoutes(
     if (!profileCtx) {
       return;
     }
-    const body = readBody(req);
+    const body = await readBody(req);
     const targetId = toStringOrEmpty(body.targetId) || undefined;
     const out = toStringOrEmpty(body.path) || undefined;
     const timeoutMs = toNumber(body.timeoutMs);
     try {
       const tab = await profileCtx.ensureTabAvailable(targetId);
+      if (!tab) {
+        return jsonError(res, 404, "tab is not available");
+      }
       const pw = await requirePwAi(res, "wait for download");
       if (!pw) {
         return;
@@ -449,7 +480,7 @@ export function registerBrowserAgentActRoutes(
     if (!profileCtx) {
       return;
     }
-    const body = readBody(req);
+    const body = await readBody(req);
     const targetId = toStringOrEmpty(body.targetId) || undefined;
     const ref = toStringOrEmpty(body.ref);
     const out = toStringOrEmpty(body.path);
@@ -462,6 +493,9 @@ export function registerBrowserAgentActRoutes(
     }
     try {
       const tab = await profileCtx.ensureTabAvailable(targetId);
+      if (!tab) {
+        return jsonError(res, 404, "tab is not available");
+      }
       const pw = await requirePwAi(res, "download");
       if (!pw) {
         return;
@@ -484,7 +518,7 @@ export function registerBrowserAgentActRoutes(
     if (!profileCtx) {
       return;
     }
-    const body = readBody(req);
+    const body = await readBody(req);
     const targetId = toStringOrEmpty(body.targetId) || undefined;
     const url = toStringOrEmpty(body.url);
     const timeoutMs = toNumber(body.timeoutMs);
@@ -494,6 +528,9 @@ export function registerBrowserAgentActRoutes(
     }
     try {
       const tab = await profileCtx.ensureTabAvailable(targetId);
+      if (!tab) {
+        return jsonError(res, 404, "tab is not available");
+      }
       const pw = await requirePwAi(res, "response body");
       if (!pw) {
         return;
@@ -516,7 +553,7 @@ export function registerBrowserAgentActRoutes(
     if (!profileCtx) {
       return;
     }
-    const body = readBody(req);
+    const body = await readBody(req);
     const targetId = toStringOrEmpty(body.targetId) || undefined;
     const ref = toStringOrEmpty(body.ref);
     if (!ref) {
@@ -524,6 +561,9 @@ export function registerBrowserAgentActRoutes(
     }
     try {
       const tab = await profileCtx.ensureTabAvailable(targetId);
+      if (!tab) {
+        return jsonError(res, 404, "tab is not available");
+      }
       const pw = await requirePwAi(res, "highlight");
       if (!pw) {
         return;
