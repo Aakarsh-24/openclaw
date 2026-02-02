@@ -513,7 +513,9 @@ async function readJsonBody(req: IncomingMessage, maxBytes: number, timeoutMs = 
   return await new Promise<{ ok: boolean; value?: unknown; error?: string }>((resolve) => {
     let done = false;
     const finish = (result: { ok: boolean; value?: unknown; error?: string }) => {
-      if (done) return;
+      if (done) {
+        return;
+      }
       done = true;
       clearTimeout(timer);
       resolve(result);

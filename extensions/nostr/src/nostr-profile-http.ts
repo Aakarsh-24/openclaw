@@ -237,7 +237,9 @@ async function readJsonBody(
   return new Promise((resolve, reject) => {
     let done = false;
     const finish = (fn: () => void) => {
-      if (done) return;
+      if (done) {
+        return;
+      }
       done = true;
       clearTimeout(timer);
       fn();
@@ -245,8 +247,9 @@ async function readJsonBody(
 
     const timer = setTimeout(() => {
       finish(() => {
-        req.destroy(new Error("Body read timeout"));
-        reject(new Error("Request body timeout"));
+        const err = new Error("Request body timeout");
+        req.destroy(err);
+        reject(err);
       });
     }, timeoutMs);
 
