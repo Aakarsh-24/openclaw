@@ -15,6 +15,7 @@ import {
   updateSessionStoreEntry,
 } from "../../config/sessions.js";
 import { logVerbose } from "../../globals.js";
+import { createInternalHookEvent, triggerInternalHook } from "../../hooks/internal-hooks.js";
 import { registerAgentRunContext } from "../../infra/agent-events.js";
 import { buildThreadingToolContext, resolveEnforceFinalTag } from "./agent-runner-utils.js";
 import {
@@ -77,6 +78,17 @@ export async function runMemoryFlushIfNeeded(params: {
 
   if (!shouldFlushMemory) {
     return params.sessionEntry;
+  }
+
+  if (shouldFlushMemory && params.sessionKey && params.sessionStore && params.storePath) {
+    // Lifecycle hook: Memory Flush Start
+    const contextTokensUsed = params.sessionEntry?.contextTokens ?? 0;
+    const hookEvent = createInternalHookEvent("agent", "flush", params.sessionKey, {
+      sessionId: params.followupRun.run.sessionId,
+      contextTokensUsed,
+      reason: "context_limit",
+    });
+    await triggerInternalHook(hookEvent);
   }
 
   let activeSessionEntry = params.sessionEntry;

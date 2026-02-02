@@ -230,9 +230,43 @@ Triggered when agent commands are issued:
 - **`command:reset`**: When `/reset` command is issued
 - **`command:stop`**: When `/stop` command is issued
 
+### Session Events
+
+Triggered during session lifecycle:
+
+- **`session:start`**: When a new session begins
+- **`session:reset`**: When a session is reset/recreated (includes both old and new session IDs)
+- **`session:end`**: When a session ends (provides the ending session ID)
+
+**Context includes**:
+
+- `sessionId`: The affected session ID
+- `oldSessionId`: (for `session:reset`) The previous session ID
+- `newSessionId`: (for `session:reset`) The new session ID
+
 ### Agent Events
 
+Triggered during agent execution:
+
 - **`agent:bootstrap`**: Before workspace bootstrap files are injected (hooks may mutate `context.bootstrapFiles`)
+- **`agent:reply`**: After each agent turn completes (user input + assistant response; hooks may add messages)
+- **`agent:flush`**: When memory flush is triggered (context nearing token limit)
+
+**Context for `agent:reply` includes**:
+
+- `sessionId`: Current session ID
+- `input`: User's input message
+- `output`: Assistant's response
+- `turnId`: Timestamp-based turn identifier
+- `senderId`: ID of the message sender
+
+**Note:** Hooks can add messages to `event.messages` which will be prepended to the agent's response.
+
+**Context for `agent:flush` includes**:
+
+- `sessionId`: Current session ID
+- `contextTokensUsed`: Number of context tokens currently used
+- `reason`: Reason for flush (e.g., "context_limit")
 
 ### Gateway Events
 
@@ -250,11 +284,11 @@ These hooks are not event-stream listeners; they let plugins synchronously adjus
 
 Planned event types:
 
-- **`session:start`**: When a new session begins
-- **`session:end`**: When a session ends
 - **`agent:error`**: When an agent encounters an error
 - **`message:sent`**: When a message is sent
 - **`message:received`**: When a message is received
+
+**Note**: Previously planned `session:start` and `session:end` events are now implemented (see Session Events above). Additionally, `session:reset` was added to track session transitions.
 
 ## Creating Custom Hooks
 
