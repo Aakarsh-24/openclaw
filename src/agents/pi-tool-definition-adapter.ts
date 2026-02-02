@@ -40,11 +40,12 @@ export function toToolDefinitions(tools: AnyAgentTool[]): ToolDefinition[] {
       execute: async (
         toolCallId,
         params,
-        signal,
         onUpdate: AgentToolUpdateCallback<unknown> | undefined,
         _ctx,
+        signal?: AbortSignal | undefined,
       ): Promise<AgentToolResult<unknown>> => {
         try {
+          // map expected adapter signature -> AgentTool API (tool.execute expects signal then onUpdate)
           return await tool.execute(toolCallId, params, signal, onUpdate);
         } catch (err) {
           if (signal?.aborted) {
@@ -91,9 +92,9 @@ export function toClientToolDefinitions(
       execute: async (
         toolCallId,
         params,
-        _signal,
         _onUpdate: AgentToolUpdateCallback<unknown> | undefined,
         _ctx,
+        _signal?: AbortSignal | undefined,
       ): Promise<AgentToolResult<unknown>> => {
         const outcome = await runBeforeToolCallHook({
           toolName: func.name,
