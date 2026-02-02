@@ -18,6 +18,7 @@ import {
   updateSessionStore,
   updateSessionStoreEntry,
 } from "../../config/sessions.js";
+import { createInternalHookEvent, triggerInternalHook } from "../../hooks/internal-hooks.js";
 import { emitDiagnosticEvent, isDiagnosticsEnabled } from "../../infra/diagnostic-events.js";
 import { defaultRuntime } from "../../runtime.js";
 import { estimateUsageCost, resolveModelCostConfig } from "../../utils/usage-format.js";
@@ -41,8 +42,6 @@ import { createReplyToModeFilterForChannel, resolveReplyToMode } from "./reply-t
 import { incrementCompactionCount } from "./session-updates.js";
 import { persistSessionUsageUpdate } from "./session-usage.js";
 import { createTypingSignaler } from "./typing-mode.js";
-import { emitDiagnosticEvent, isDiagnosticsEnabled } from "../../infra/diagnostic-events.js";
-import { createInternalHookEvent, triggerInternalHook } from "../../hooks/internal-hooks.js";
 
 const BLOCK_REPLY_SEND_TIMEOUT_MS = 15_000;
 
