@@ -5,6 +5,117 @@ type ToolCallLike = {
   name?: string;
 };
 
+/** Tool block type values to match (both camelCase and snake_case variants) */
+const TOOL_BLOCK_TYPES = new Set([
+  "toolCall",
+  "toolUse",
+  "functionCall",
+  "tool_use",
+  "function_call",
+]);
+
+/**
+ * Check if a content block is a valid tool_use/toolCall/functionCall block.
+ * Returns true for non-tool blocks (they pass through) and valid tool blocks.
+ * Returns false for malformed tool blocks that should be stripped.
+ *
+ * Handles both camelCase (toolCall, toolUse, functionCall) and snake_case
+ * (tool_use, function_call) type variants to support all provider SDKs.
+ *
+ * Malformed conditions (indicate interrupted/incomplete tool calls):
+ * - Missing or empty `id` field (tool call wasn't fully initialized)
+ * - Has `partialJson` field (Anthropic SDK streaming artifact)
+ * - Has `partial` field set to true (generic streaming indicator)
+ * - Has `incomplete` field set to true (OpenAI-style indicator)
+ *
+ * Note: Missing `name` is tolerable - extractToolCallsFromAssistant handles it gracefully.
+ */
+function isValidToolUseBlock(block: unknown): boolean {
+  if (!block || typeof block !== "object") {
+    return true; // Non-objects pass through
+  }
+  const rec = block as {
+    type?: unknown;
+    id?: unknown;
+    name?: unknown;
+    partialJson?: unknown;
+    partial?: unknown;
+    incomplete?: unknown;
+  };
+  // Only validate tool-related types (both camelCase and snake_case variants)
+  if (!TOOL_BLOCK_TYPES.has(rec.type as string)) {
+    return true;
+  }
+  // Malformed: missing/invalid id (tool call wasn't fully initialized)
+  if (typeof rec.id !== "string" || !rec.id) {
+    return false;
+  }
+  // Malformed: has streaming/partial indicators (tool call was interrupted mid-stream)
+  // Use property presence check ("in") to catch partialJson regardless of its value
+  if ("partialJson" in rec) {
+    return false;
+  }
+  // Use strict boolean checks for partial/incomplete to avoid false positives from
+  // falsy values like 0 or "" which don't indicate a partial tool call
+  if (rec.partial === true) {
+    return false;
+  }
+  if (rec.incomplete === true) {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Strip malformed tool_use blocks from assistant messages.
+ * This must run BEFORE pairing repair to prevent creating synthetic results for invalid blocks.
+ */
+function stripMalformedToolUseBlocks(messages: AgentMessage[]): {
+  messages: AgentMessage[];
+  droppedMalformedCount: number;
+} {
+  let droppedMalformedCount = 0;
+  const out: AgentMessage[] = [];
+
+  for (const msg of messages) {
+    if (!msg || typeof msg !== "object") {
+      out.push(msg);
+      continue;
+    }
+    const role = (msg as { role?: unknown }).role;
+    if (role !== "assistant") {
+      out.push(msg);
+      continue;
+    }
+
+    const assistant = msg as Extract<AgentMessage, { role: "assistant" }>;
+    const content = assistant.content;
+    if (!Array.isArray(content)) {
+      out.push(msg);
+      continue;
+    }
+
+    const validContent = content.filter((block) => {
+      const valid = isValidToolUseBlock(block);
+      if (!valid) {
+        droppedMalformedCount += 1;
+      }
+      return valid;
+    });
+
+    if (validContent.length === content.length) {
+      out.push(msg);
+    } else if (validContent.length === 0) {
+      // Preserve assistant message with empty content to maintain transcript order/metadata
+      out.push({ ...assistant, content: [] } as typeof assistant);
+    } else {
+      out.push({ ...assistant, content: validContent } as typeof assistant);
+    }
+  }
+
+  return { messages: droppedMalformedCount > 0 ? out : messages, droppedMalformedCount };
+}
+
 function extractToolCallsFromAssistant(
   msg: Extract<AgentMessage, { role: "assistant" }>,
 ): ToolCallLike[] {
@@ -23,7 +134,7 @@ function extractToolCallsFromAssistant(
       continue;
     }
 
-    if (rec.type === "toolCall" || rec.type === "toolUse" || rec.type === "functionCall") {
+    if (TOOL_BLOCK_TYPES.has(rec.type as string)) {
       toolCalls.push({
         id: rec.id,
         name: typeof rec.name === "string" ? rec.name : undefined,
@@ -75,10 +186,15 @@ export type ToolUseRepairReport = {
   added: Array<Extract<AgentMessage, { role: "toolResult" }>>;
   droppedDuplicateCount: number;
   droppedOrphanCount: number;
+  droppedMalformedToolUseCount: number;
   moved: boolean;
 };
 
 export function repairToolUseResultPairing(messages: AgentMessage[]): ToolUseRepairReport {
+  // Strip malformed tool_use blocks first to prevent creating synthetic results for invalid blocks
+  const { messages: cleanedMessages, droppedMalformedCount } =
+    stripMalformedToolUseBlocks(messages);
+
   // Anthropic (and Cloud Code Assist) reject transcripts where assistant tool calls are not
   // immediately followed by matching tool results. Session files can end up with results
   // displaced (e.g. after user turns) or duplicated. Repair by:
@@ -91,7 +207,7 @@ export function repairToolUseResultPairing(messages: AgentMessage[]): ToolUseRep
   let droppedDuplicateCount = 0;
   let droppedOrphanCount = 0;
   let moved = false;
-  let changed = false;
+  let changed = droppedMalformedCount > 0;
 
   const pushToolResult = (msg: Extract<AgentMessage, { role: "toolResult" }>) => {
     const id = extractToolResultId(msg);
@@ -106,8 +222,8 @@ export function repairToolUseResultPairing(messages: AgentMessage[]): ToolUseRep
     out.push(msg);
   };
 
-  for (let i = 0; i < messages.length; i += 1) {
-    const msg = messages[i];
+  for (let i = 0; i < cleanedMessages.length; i += 1) {
+    const msg = cleanedMessages[i];
     if (!msg || typeof msg !== "object") {
       out.push(msg);
       continue;
@@ -140,8 +256,8 @@ export function repairToolUseResultPairing(messages: AgentMessage[]): ToolUseRep
     const remainder: AgentMessage[] = [];
 
     let j = i + 1;
-    for (; j < messages.length; j += 1) {
-      const next = messages[j];
+    for (; j < cleanedMessages.length; j += 1) {
+      const next = cleanedMessages[j];
       if (!next || typeof next !== "object") {
         remainder.push(next);
         continue;
@@ -211,10 +327,11 @@ export function repairToolUseResultPairing(messages: AgentMessage[]): ToolUseRep
 
   const changedOrMoved = changed || moved;
   return {
-    messages: changedOrMoved ? out : messages,
+    messages: changedOrMoved ? out : cleanedMessages,
     added,
     droppedDuplicateCount,
     droppedOrphanCount,
+    droppedMalformedToolUseCount: droppedMalformedCount,
     moved: changedOrMoved,
   };
 }

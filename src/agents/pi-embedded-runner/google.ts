@@ -12,7 +12,7 @@ import {
   sanitizeSessionMessagesImages,
 } from "../pi-embedded-helpers.js";
 import { cleanToolSchemaForGemini } from "../pi-tools.schema.js";
-import { sanitizeToolUseResultPairing } from "../session-transcript-repair.js";
+import { repairToolUseResultPairing } from "../session-transcript-repair.js";
 import { resolveTranscriptPolicy } from "../transcript-policy.js";
 import { log } from "./logger.js";
 import { describeUnknownError } from "./utils.js";
@@ -346,9 +346,28 @@ export async function sanitizeSessionHistory(params: {
   const sanitizedThinking = policy.normalizeAntigravityThinkingBlocks
     ? sanitizeAntigravityThinkingBlocks(sanitizedImages)
     : sanitizedImages;
-  const repairedTools = policy.repairToolUseResultPairing
-    ? sanitizeToolUseResultPairing(sanitizedThinking)
-    : sanitizedThinking;
+  let repairedTools = sanitizedThinking;
+  if (policy.repairToolUseResultPairing) {
+    const report = repairToolUseResultPairing(sanitizedThinking);
+    repairedTools = report.messages;
+    // Log all non-zero repair counters for easier debugging of transcript issues
+    const parts: string[] = [];
+    if (report.droppedMalformedToolUseCount > 0) {
+      parts.push(`${report.droppedMalformedToolUseCount} malformed tool_use block(s) stripped`);
+    }
+    if (report.droppedOrphanCount > 0) {
+      parts.push(`${report.droppedOrphanCount} orphan result(s) dropped`);
+    }
+    if (report.droppedDuplicateCount > 0) {
+      parts.push(`${report.droppedDuplicateCount} duplicate result(s) dropped`);
+    }
+    if (report.added.length > 0) {
+      parts.push(`${report.added.length} synthetic result(s) added`);
+    }
+    if (parts.length > 0) {
+      log.warn(`session repair: ${parts.join(", ")}`);
+    }
+  }
 
   const isOpenAIResponsesApi =
     params.modelApi === "openai-responses" || params.modelApi === "openai-codex-responses";
