@@ -11,7 +11,8 @@ export function verifyTwilioProviderWebhook(params: {
   const result = verifyTwilioWebhook(params.ctx, params.authToken, {
     publicUrl: params.currentPublicUrl || undefined,
     allowNgrokFreeTierLoopbackBypass: params.options.allowNgrokFreeTierLoopbackBypass ?? false,
-    skipVerification: params.options.skipVerification,
+// 🔒 VOTAL.AI Security Fix: Webhook signature verification can be disabled via configuration (auth bypass risk) [CWE-287] - CRITICAL
+    skipVerification: false, // never allow config to disable signature verification (prevents auth bypass)
   });
 
   if (!result.ok) {
