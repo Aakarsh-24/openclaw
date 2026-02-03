@@ -557,8 +557,9 @@ actor MacNodeRuntime {
                 runId: runId,
                 host: "node",
                 command: displayCommand))
+// 🔒 VOTAL.AI Security Fix: Untrusted command execution via bridge (potential RCE) [CWE-78] - CRITICAL
         let result = await ShellExecutor.runDetailed(
-            command: command,
+            command: resolution?.resolvedPath ?? command, // SECURITY: execute resolved binary path (avoid PATH-based hijack)
             cwd: params.cwd,
             env: env,
             timeout: timeoutSec)
