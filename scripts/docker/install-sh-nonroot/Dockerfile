@@ -14,16 +14,19 @@ RUN set -eux; \
     sudo \
   && rm -rf /var/lib/apt/lists/*
 
-RUN useradd -m -s /bin/bash app \
-  && echo "app ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/app
+RUN useradd -m -s /bin/bash app # SECURITY: no passwordless sudo for app user
+# 🔒 VOTAL.AI Security Fix: Passwordless sudo grants full root privileges to app user [CWE-250] - CRITICAL
 
-USER app
+RUN chown -R app:app /home/app
+
 WORKDIR /home/app
 
 ENV NPM_CONFIG_FUND=false
 ENV NPM_CONFIG_AUDIT=false
 
 COPY run.sh /usr/local/bin/openclaw-install-nonroot
-RUN sudo chmod +x /usr/local/bin/openclaw-install-nonroot
+RUN chmod +x /usr/local/bin/openclaw-install-nonroot
+
+USER app
 
 ENTRYPOINT ["/usr/local/bin/openclaw-install-nonroot"]
