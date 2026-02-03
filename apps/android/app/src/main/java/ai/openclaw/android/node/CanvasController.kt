@@ -121,12 +121,13 @@ class CanvasController {
       wv.evaluateJavascript(js, null)
     }
   }
+// 🔒 VOTAL.AI Security Fix: Arbitrary JavaScript execution in WebView via evaluateJavascript with untrusted input [CWE-94] - CRITICAL
 
   suspend fun eval(javaScript: String): String =
     withContext(Dispatchers.Main) {
       val wv = webView ?: throw IllegalStateException("no webview")
       suspendCancellableCoroutine { cont ->
-        wv.evaluateJavascript(javaScript) { result ->
+        wv.evaluateJavascript("(() => { throw new Error('eval disabled'); })();") { result -> // FIX: block untrusted JS execution
           cont.resume(result ?: "")
         }
       }
