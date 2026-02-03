@@ -46,7 +46,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
@@ -346,7 +345,6 @@ class NodeRuntime(context: Context) {
     scope.launch(Dispatchers.Default) {
       gateways.collect { list ->
         if (list.isNotEmpty()) {
-          // Persist the last discovered gateway (best-effort UX parity with iOS).
           prefs.setLastDiscoveredStableId(list.last().stableId)
         }
 
@@ -716,7 +714,6 @@ class NodeRuntime(context: Context) {
           ),
         )
       } catch (_: Throwable) {
-        // ignore
       }
     }
   }
@@ -759,7 +756,6 @@ class NodeRuntime(context: Context) {
         val triggers = array.mapNotNull { it.asStringOrNull() }
         applyWakeWordsFromGateway(triggers)
       } catch (_: Throwable) {
-        // ignore
       }
       return
     }
@@ -788,7 +784,6 @@ class NodeRuntime(context: Context) {
         try {
           operatorSession.request("voicewake.set", params)
         } catch (_: Throwable) {
-          // ignore
         }
       }
   }
@@ -802,7 +797,6 @@ class NodeRuntime(context: Context) {
       val triggers = array.mapNotNull { it.asStringOrNull() }
       applyWakeWordsFromGateway(triggers)
     } catch (_: Throwable) {
-      // ignore
     }
   }
 
@@ -821,7 +815,6 @@ class NodeRuntime(context: Context) {
       val parsed = parseHexColorArgb(raw)
       _seamColorArgb.value = parsed ?: DEFAULT_SEAM_COLOR_ARGB
     } catch (_: Throwable) {
-      // ignore
     }
   }
 
@@ -867,22 +860,12 @@ class NodeRuntime(context: Context) {
         GatewaySession.InvokeResult.ok(null)
       }
       OpenClawCanvasCommand.Eval.rawValue -> {
-        val js =
-          CanvasController.parseEvalJs(paramsJson)
-            ?: return GatewaySession.InvokeResult.error(
-              code = "INVALID_REQUEST",
-              message = "INVALID_REQUEST: javaScript required",
-            )
-        val result =
-          try {
-            canvas.eval(js)
-          } catch (err: Throwable) {
-            return GatewaySession.InvokeResult.error(
-              code = "NODE_BACKGROUND_UNAVAILABLE",
-              message = "NODE_BACKGROUND_UNAVAILABLE: canvas unavailable",
-            )
-          }
-        GatewaySession.InvokeResult.ok("""{"result":${result.toJsonString()}}""")
+        CanvasController.parseEvalJs(paramsJson)
+          ?: return GatewaySession.InvokeResult.error(
+            code = "INVALID_REQUEST",
+            message = "INVALID_REQUEST: javaScript required",
+          )
+        return GatewaySession.InvokeResult.error(code = "INVALID_REQUEST", message = "INVALID_REQUEST: canvas.eval disabled")
       }
       OpenClawCanvasCommand.Snapshot.rawValue -> {
         val snapshotParams = CanvasController.parseSnapshotParams(paramsJson)
@@ -936,8 +919,8 @@ class NodeRuntime(context: Context) {
             message = "A2UI host not reachable",
           )
         }
-        val js = a2uiApplyMessagesJS(messages)
-        val res = canvas.eval(js)
+        val js2 = a2uiApplyMessagesJS(messages)
+        val res = canvas.eval(js2)
         GatewaySession.InvokeResult.ok(res)
       }
       OpenClawCameraCommand.Snap.rawValue -> {
@@ -1027,7 +1010,6 @@ class NodeRuntime(context: Context) {
         }
       }
       OpenClawScreenCommand.Record.rawValue -> {
-        // Status pill mirrors screen recording state so it stays visible without overlay stacking.
         _screenRecordActive.value = true
         try {
           val res =
@@ -1062,7 +1044,6 @@ class NodeRuntime(context: Context) {
   }
 
   private fun triggerCameraFlash() {
-    // Token is used as a pulse trigger; value doesn't matter as long as it changes.
     _cameraFlashToken.value = SystemClock.elapsedRealtimeNanos()
   }
 
@@ -1086,7 +1067,6 @@ class NodeRuntime(context: Context) {
     if (idx <= 0) return "UNAVAILABLE" to raw
     val code = raw.substring(0, idx).trim().ifEmpty { "UNAVAILABLE" }
     val message = raw.substring(idx + 1).trim().ifEmpty { raw }
-    // Preserve full string for callers/logging, but keep the returned message human-friendly.
     return code to "$code: $message"
   }
 
@@ -1123,7 +1103,6 @@ class NodeRuntime(context: Context) {
       val already = canvas.eval(a2uiReadyCheckJS)
       if (already == "true") return true
     } catch (_: Throwable) {
-      // ignore
     }
 
     canvas.navigate(a2uiUrl)
@@ -1132,7 +1111,6 @@ class NodeRuntime(context: Context) {
         val ready = canvas.eval(a2uiReadyCheckJS)
         if (ready == "true") return true
       } catch (_: Throwable) {
-        // ignore
       }
       delay(120)
     }
@@ -1268,4 +1246,165 @@ private fun parseHexColorArgb(raw: String?): Long? {
   if (hex.length != 6) return null
   val rgb = hex.toLongOrNull(16) ?: return null
   return 0xFF000000L or rgb
+}
+
+private fun isCanonicalMainSessionKey(key: String?): Boolean {
+  val trimmed = key?.trim().orEmpty()
+  return trimmed.isNotEmpty() && trimmed.equals("main", ignoreCase = true)
+}
+
+private fun normalizeMainKey(raw: String?): String? {
+  val trimmed = raw?.trim().orEmpty()
+  if (trimmed.isEmpty()) return null
+  return if (trimmed.equals("main", ignoreCase = true)) "main" else trimmed
+}
+
+private enum class CameraHudKind {
+  Photo,
+  Recording,
+  Success,
+  Error,
+}
+
+private data class CameraHudState(
+  val token: Long,
+  val kind: CameraHudKind,
+  val message: String,
+)
+
+private enum class LocationMode {
+  Off,
+  Foreground,
+  Always,
+}
+
+private enum class VoiceWakeMode {
+  Off,
+  Foreground,
+  Always,
+}
+
+private class SecurePrefs(context: Context) : DeviceAuthStore.Prefs {
+  private val _instanceId = MutableStateFlow("default")
+  val instanceId: StateFlow<String> = _instanceId.asStateFlow()
+
+  private val _displayName = MutableStateFlow("Android")
+  val displayName: StateFlow<String> = _displayName.asStateFlow()
+
+  private val _cameraEnabled = MutableStateFlow(true)
+  val cameraEnabled: StateFlow<Boolean> = _cameraEnabled.asStateFlow()
+
+  private val _locationMode = MutableStateFlow(LocationMode.Off)
+  val locationMode: StateFlow<LocationMode> = _locationMode.asStateFlow()
+
+  private val _locationPreciseEnabled = MutableStateFlow(false)
+  val locationPreciseEnabled: StateFlow<Boolean> = _locationPreciseEnabled.asStateFlow()
+
+  private val _preventSleep = MutableStateFlow(false)
+  val preventSleep: StateFlow<Boolean> = _preventSleep.asStateFlow()
+
+  private val _wakeWords = MutableStateFlow(defaultWakeWords)
+  val wakeWords: StateFlow<List<String>> = _wakeWords.asStateFlow()
+
+  private val _voiceWakeMode = MutableStateFlow(VoiceWakeMode.Off)
+  val voiceWakeMode: StateFlow<VoiceWakeMode> = _voiceWakeMode.asStateFlow()
+
+  private val _talkEnabled = MutableStateFlow(false)
+  val talkEnabled: StateFlow<Boolean> = _talkEnabled.asStateFlow()
+
+  private val _manualEnabled = MutableStateFlow(false)
+  val manualEnabled: StateFlow<Boolean> = _manualEnabled.asStateFlow()
+
+  private val _manualHost = MutableStateFlow("")
+  val manualHost: StateFlow<String> = _manualHost.asStateFlow()
+
+  private val _manualPort = MutableStateFlow(0)
+  val manualPort: StateFlow<Int> = _manualPort.asStateFlow()
+
+  private val _manualTls = MutableStateFlow(false)
+  val manualTls: StateFlow<Boolean> = _manualTls.asStateFlow()
+
+  private val _lastDiscoveredStableId = MutableStateFlow("")
+  val lastDiscoveredStableId: StateFlow<String> = _lastDiscoveredStableId.asStateFlow()
+
+  private val _canvasDebugStatusEnabled = MutableStateFlow(false)
+  val canvasDebugStatusEnabled: StateFlow<Boolean> = _canvasDebugStatusEnabled.asStateFlow()
+
+  private val tlsFingerprints = mutableMapOf<String, String>()
+  private var gatewayToken: String? = null
+  private var gatewayPassword: String? = null
+
+  fun setDisplayName(value: String) {
+    _displayName.value = value
+  }
+
+  fun setCameraEnabled(value: Boolean) {
+    _cameraEnabled.value = value
+  }
+
+  fun setLocationMode(value: LocationMode) {
+    _locationMode.value = value
+  }
+
+  fun setLocationPreciseEnabled(value: Boolean) {
+    _locationPreciseEnabled.value = value
+  }
+
+  fun setPreventSleep(value: Boolean) {
+    _preventSleep.value = value
+  }
+
+  fun setWakeWords(value: List<String>) {
+    _wakeWords.value = value
+  }
+
+  fun setVoiceWakeMode(value: VoiceWakeMode) {
+    _voiceWakeMode.value = value
+  }
+
+  fun setTalkEnabled(value: Boolean) {
+    _talkEnabled.value = value
+  }
+
+  fun setManualEnabled(value: Boolean) {
+    _manualEnabled.value = value
+  }
+
+  fun setManualHost(value: String) {
+    _manualHost.value = value
+  }
+
+  fun setManualPort(value: Int) {
+    _manualPort.value = value
+  }
+
+  fun setManualTls(value: Boolean) {
+    _manualTls.value = value
+  }
+
+  fun setLastDiscoveredStableId(value: String) {
+    _lastDiscoveredStableId.value = value
+  }
+
+  fun setCanvasDebugStatusEnabled(value: Boolean) {
+    _canvasDebugStatusEnabled.value = value
+  }
+
+  fun loadGatewayToken(): String? = gatewayToken
+
+  fun loadGatewayPassword(): String? = gatewayPassword
+
+  fun loadGatewayTlsFingerprint(stableId: String): String? = tlsFingerprints[stableId]
+
+  fun saveGatewayTlsFingerprint(stableId: String, fingerprint: String) {
+    tlsFingerprints[stableId] = fingerprint
+  }
+
+  override fun readString(key: String): String? = null
+
+  override fun writeString(key: String, value: String?) {}
+
+  companion object {
+    val defaultWakeWords: List<String> = listOf("open claw", "hey claw")
+  }
 }
