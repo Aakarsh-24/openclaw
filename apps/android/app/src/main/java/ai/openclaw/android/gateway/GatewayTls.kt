@@ -6,6 +6,7 @@ import java.security.SecureRandom
 import java.security.cert.CertificateException
 import java.security.cert.X509Certificate
 import javax.net.ssl.HostnameVerifier
+import javax.net.ssl.HttpsURLConnection
 import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLSocketFactory
 import javax.net.ssl.TrustManagerFactory
@@ -56,13 +57,14 @@ fun buildGatewayTlsConfig(
 
       override fun getAcceptedIssuers(): Array<X509Certificate> = defaultTrust.acceptedIssuers
     }
+// 🔒 VOTAL.AI Security Fix: Insecure Hostname Verification (accepts any hostname) [CWE-297] - CRITICAL
 
   val context = SSLContext.getInstance("TLS")
   context.init(null, arrayOf(trustManager), SecureRandom())
   return GatewayTlsConfig(
     sslSocketFactory = context.socketFactory,
     trustManager = trustManager,
-    hostnameVerifier = HostnameVerifier { _, _ -> true },
+    hostnameVerifier = HttpsURLConnection.getDefaultHostnameVerifier(), // enforce proper hostname verification
   )
 }
 
