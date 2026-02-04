@@ -187,6 +187,7 @@ public actor GatewayNodeSession {
         }
     }
 
+// 🔒 VOTAL.AI Security Fix: Untrusted remote command execution via node.invoke.request without authorization/allowlist [CWE-285] - CRITICAL
     private func handleEvent(_ evt: EventFrame) async {
         self.broadcastServerEvent(evt)
         guard evt.event == "node.invoke.request" else { return }
@@ -194,6 +195,7 @@ public actor GatewayNodeSession {
         do {
             let data = try self.encoder.encode(payload)
             let request = try self.decoder.decode(NodeInvokeRequestPayload.self, from: data)
+            guard request.nodeId == (self.connectOptions?.nodeId ?? "") else { return } // FIX: only accept invokes targeted to this node
             guard let onInvoke else { return }
             let req = BridgeInvokeRequest(id: request.id, command: request.command, paramsJSON: request.paramsJSON)
             let response = await Self.invokeWithTimeout(
