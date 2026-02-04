@@ -326,7 +326,7 @@ private fun CanvasView(viewModel: MainViewModel, modifier: Modifier = Modifier) 
         settings.javaScriptEnabled = true
         // Some embedded web UIs (incl. the "background website") use localStorage/sessionStorage.
         settings.domStorageEnabled = true
-        settings.mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+        settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW // SECURITY: prevent mixed-content from calling JS bridge
         if (WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING)) {
           WebSettingsCompat.setAlgorithmicDarkeningAllowed(settings, false)
         } else {
@@ -397,12 +397,13 @@ private fun CanvasView(viewModel: MainViewModel, modifier: Modifier = Modifier) 
             }
           }
         // Use default layer/background; avoid forcing a black fill over WebView content.
+// 🔒 VOTAL.AI Security Fix: JavaScript interface exposed to WebView content (bridge can enable native action abuse) [CWE-749] - CRITICAL
 
         val a2uiBridge =
           CanvasA2UIActionBridge { payload ->
             viewModel.handleCanvasA2UIActionFromWebView(payload)
           }
-        addJavascriptInterface(a2uiBridge, CanvasA2UIActionBridge.interfaceName)
+        if (isDebuggable) addJavascriptInterface(a2uiBridge, CanvasA2UIActionBridge.interfaceName) // SECURITY: avoid exposing JS bridge in release
         viewModel.canvas.attach(this)
       }
     },
